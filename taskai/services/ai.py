@@ -5,17 +5,20 @@ All services are idempotent
 """
 from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.models import TodoItem, TodoList, Comment
+from taskai.config import config
 import os
 import json
 from dotenv import load_dotenv
 load_dotenv()
 
-API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL = "gemini-3.5-flash"
 
+@config("GEMINI_API_KEY", "api_key")
+@config("GEMINI_MODEL", "model_name")
 def ai_headstart_service(
         db: JsonDirectoryDatabase,
         item_id: str,
+        api_key: str,
+        model_name: str
 ):
     """
     This service queries an LLM for your task and asks it to give you
@@ -70,9 +73,9 @@ task title: {item.title}
     # return "Survey says go fuck yourself"
 
     # query model
-    client = genai.Client(api_key=API_KEY)
+    client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model=MODEL,
+        model=model_name,
         contents=prompt
     )
 

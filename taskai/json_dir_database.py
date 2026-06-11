@@ -40,6 +40,7 @@ class JsonDirectoryDatabase:
         user_data[TodoList.__name__] = {}
         user_data[TodoItem.__name__] = {}
         user_data[Comment.__name__] = {}
+        user_data["config"] = {}
 
         self.user_data = user_data
         self.commit()
@@ -60,6 +61,10 @@ class JsonDirectoryDatabase:
     @property
     def user_id(self):
         return self.user_data["id"]
+    
+    @property
+    def config(self) -> dict:
+        return self.user_data["config"]
 
     # io
     def connect(self):
@@ -153,3 +158,14 @@ class JsonDirectoryDatabase:
             if list_.name.lower() == name.lower():
                 return list_
         raise RuntimeError("Don't recognize list")
+
+
+    # Config
+    def get_config_value(self, key: str) -> any:
+        return self.user_data["config"].get(key)
+
+    def get_config(self) -> dict:
+        return self.user_data.get("config", {})
+
+    def set_config_value(self, key: str, value: any):
+        self.user_data["config"][key] = value

@@ -4,6 +4,7 @@ from taskai.views import view_lists, view_item, view_items
 from taskai.models import Base, TodoItem, TodoList, Comment
 from taskai.services.ai import ai_headstart_service, ai_natural_language_service
 from taskai.help_menu import help_menu
+from taskai.config import GlobalConfig
 
 # standard lib
 import argparse
@@ -124,6 +125,7 @@ class Controller:
             if v is None:
                 continue
             match k:
+                case "title": item.title = str(v)
                 case "list_id": item.list_id = str(v)
                 case "completed": item.completed = bool(v)
                 case "description": item.description = str(v)
@@ -145,6 +147,7 @@ class Controller:
             item: TodoItem = db.read(item_id)
             if item.completed:
                 db.delete(item_id)
+        db.commit()
     
     def ai_headstart(item_id: int|str):
         ai_response_text = ai_headstart_service(db, item_id)
@@ -158,6 +161,21 @@ class Controller:
     def throw_error(error_description: str, *args, **kwargs):
         print(f"[red]ERROR: {error_description}[/red]\nargs={args}\nkwargs={kwargs}")
     
+    def get_config_value(key: str):
+        print(db.get_config_value(key))
+    
+    def list_config():
+        for k, v in db.get_config().items():
+            print(f"{k}={v}")
+    
+    def set_config_value(key: str, value: any):
+        db.set_config_value(key, value)
+        db.commit()
+        print(f"setting {key}={value}")
+    
+    def remove_config_value(key: str):
+        db.config.pop(key)
+        db.commit()
 
 # utilities
 def _parse_remaining(remaining_args: list[str]) -> tuple[list, dict]:
@@ -207,7 +225,7 @@ def entry_point():
         return
 
     args, kwargs = _parse_remaining(argv)
-    # Controller._debug(args, kwargs)
+    GlobalConfig.load_dict(db.config)
 
     try:
         match args[0]:
@@ -227,6 +245,11 @@ def entry_point():
                     case "comment": Controller.create_comment(*args[2:], **kwargs)
                     case _: Controller.throw_error("uncrecognized create command", *args, **kwargs)
             
+            case "update":
+                match args[1]:
+                    case _ if _is_int(args[1]): Controller.update_item(args[1], **kwargs)
+                    case _: Controller.throw_error("uncregnozed update command", *args, **kwargs)
+
             case "delete" | "remove":
                 match args[1]:
                     case _ if _is_int(args[1]): Controller.delete(args[1])
@@ -238,6 +261,14 @@ def entry_point():
             case "comment":
                 match args[1]:
                     case _ if _is_int(args[1]): Controller.create_comment(*args[1:], **kwargs)
+            
+            case "config":
+                match args[1]:
+                    case "set": Controller.set_config_value(key=args[2], value=args[3])
+                    case "get": Controller.get_config_value(key=args[2])
+                    case "list": Controller.list_config()
+                    case "pop": Controller.remove_config_value(key=args[2])
+                    case _: Controller.throw_error("unrecognized command", *args, **kwargs)
             
             case "ai":
                 match args[1]:
