@@ -1,5 +1,5 @@
 [project]
-name = "taskai"
+name = "taskai-cli"
 version = "0.1.3"
 description = ""
 authors = [{name = "Alex Paskal", email = "alexcpaskal@gmail.com"}]
