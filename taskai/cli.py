@@ -3,6 +3,7 @@ from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.views import view_lists, view_item, view_items
 from taskai.models import Base, TodoItem, TodoList, Comment
 from taskai.services.ai import ai_headstart_service, ai_natural_language_service
+from taskai.services.user_setup import user_setup_service
 from taskai.help_menu import help_menu
 from taskai.config import GlobalConfig
 
@@ -16,7 +17,7 @@ import builtins
 from rich import print
 
 # config
-DB_PATH = "/mnt/c/Users/alexc/projects/taskai/tmp/task_db"
+DB_PATH = ".taskai/task_db"
 USER = os.getenv("USER")
 db = JsonDirectoryDatabase(
         DB_PATH,
@@ -176,6 +177,9 @@ class Controller:
     def remove_config_value(key: str):
         db.config.pop(key)
         db.commit()
+    
+    def run_setup_service():
+        user_setup_service(db)
 
 # utilities
 def _parse_remaining(remaining_args: list[str]) -> tuple[list, dict]:
@@ -234,6 +238,9 @@ def entry_point():
 
     try:
         match args[0]:
+            case "setup":
+                Controller.run_setup_service()
+
             case "show":
                 match args[1]:
                     case "all": Controller.show_all(*args[2:], **kwargs)
@@ -272,7 +279,7 @@ def entry_point():
                 match args[1]:
                     case "set": Controller.set_config_value(key=args[2], value=args[3])
                     case "get": Controller.get_config_value(key=args[2])
-                    case "list": Controller.list_config()
+                    case "list"|"show": Controller.list_config()
                     case "pop": Controller.remove_config_value(key=args[2])
                     case _: Controller.throw_error("unrecognized command", *args, **kwargs)
             
@@ -303,9 +310,3 @@ def entry_point():
 
 if __name__ == "__main__":
     entry_point()
-# else:
-#     import sys
-#     if "--help" in sys.argv or "--help" in sys.argv:
-#         print(help_menu["general"])
-#         sys.exit()
-    
