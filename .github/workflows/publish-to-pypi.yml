@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/taskai  # Replace <package-name> with your PyPI project name
+      url: https://pypi.org/p/taskai-cli  # Replace <package-name> with your PyPI project name
     permissions:
       # This permission is required for Trusted Publishing
       id-token: write
