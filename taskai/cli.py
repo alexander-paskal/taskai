@@ -220,6 +220,11 @@ def entry_point():
     arg_parser = argparse.ArgumentParser()
     _, argv = arg_parser.parse_known_args()
 
+
+    if not argv:
+        print(help_menu["general"])
+        return
+
     if argv[0] in ("help","--help"):
         print(help_menu["general"])
         return
@@ -235,6 +240,7 @@ def entry_point():
                     case "list": Controller.show_list(*args[2:], **kwargs) 
                     case "item": Controller.show_item(*args[2:], **kwargs)
                     case "items": Controller.show_item(*args[2:], **kwargs)
+                    case "examples": Controller.show_examples()
                     case _ if _is_int(args[1]): Controller.show_by_id(*args[1:], **kwargs)
                     case _: Controller.show_by_list_name(args[1], **kwargs)
 
