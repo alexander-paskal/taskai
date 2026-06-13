@@ -37,7 +37,8 @@ jobs:
       name: pypi
       url: https://pypi.org/p/taskai  # Replace <package-name> with your PyPI project name
     permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
+      # This permission is required for Trusted Publishing
+      id-token: write
 
     steps:
     - name: Download all the dists
