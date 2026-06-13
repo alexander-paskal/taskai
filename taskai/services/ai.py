@@ -3,14 +3,14 @@ This file defines services for calling an LLM.
 
 All services are idempotent
 """
+# standard lib
+import json
+
+# local
 from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.models import TodoItem, TodoList, Comment
 from taskai.config import config
-import os
-import json
-from dotenv import load_dotenv
-load_dotenv()
-
+from taskai.help_menu import help_general
 
 @config("GEMINI_API_KEY", "api_key")
 @config("GEMINI_MODEL", "model_name")
@@ -33,7 +33,7 @@ def ai_headstart_service(
 
     item:TodoItem = db.read(item_id)
 
-
+    
     from google import genai
     
 
@@ -81,10 +81,13 @@ task title: {item.title}
 
     return response.text
 
-
+@config("GEMINI_API_KEY", "api_key")
+@config("GEMINI_MODEL", "model_name")
 def ai_natural_language_service(
     db: JsonDirectoryDatabase,
-    prompt: str
+    prompt: str,
+    api_key: str,
+    model_name: str
 ):
     """
     This service queries an LLM with a natural language
@@ -92,8 +95,6 @@ def ai_natural_language_service(
     called directly
     """
     print(f"Ai prompt: {prompt}")
-
-    command_help = ""
     
     # build user info
     user_info = []
@@ -109,19 +110,32 @@ def ai_natural_language_service(
 
     # build ai prompt
     ai_prompt = f"""
-You're job is to convert a natural language description for a user into a set
-of operations on a database. Here are a comprehensive list of operations that can be performed
+You are a todo-list agent. Your job is to convert a natural language description from a user into a set
+of CLI operations using our app. Here are a comprehensive list of operations that can be performed
 
-{command_help}
+{help_general}
 
 Here are all of the user's list and task titles, each prepended with their id
 
 {user_info}
+
+Here is the user's prompt: 
+
+{prompt}
 """
     
     ai_prompt += """
-Return your response in a json format, i.e.
+Your response should be a JSON output with a valid list of commands, as specified by the description above.
+Each command should be structured in the following format:
+    {
+        "command": ... -> the subcommand you want to use (omit the first 'task' here)
+        "args": [...] -> the positional arguments to use
+        "kwargs": {"..." : "...", ...} -> the keyword arguments to use. All keyword argument names should be prepended with '--' 
+    }
 
+Here is an example of a response that you could return:
+
+```
 [
     {
         "command": "add",
@@ -137,26 +151,25 @@ Return your response in a json format, i.e.
         "args": ["Old Daily List"]
     }
 ]
+```
+
+It is ABSOLUTELY IMPERATIVE that your response be valid json, as your output is going to be parsed directly. Return NOTHING but the json output.
 
 """
 
-    ai_prompt += f"""
-Here is the user's prompt: 
-
-{prompt}
-"""
     
     from google import genai
 
     print(ai_prompt)
-    client = genai.Client(api_key=API_KEY)
+    client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model=MODEL,
+        model=model_name,
         contents=prompt
     )
 
     try:
         response_json = json.loads(response.text)
+        print(response_json)
     except json.JSONDecodeError:
         print(response.text)
         print("\n\ndecode error")

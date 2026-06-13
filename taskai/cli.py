@@ -1,3 +1,9 @@
+# standard lib
+import argparse
+import os
+from datetime import datetime
+import builtins
+
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.views import view_lists, view_item, view_items
@@ -6,12 +12,6 @@ from taskai.services.ai import ai_headstart_service, ai_natural_language_service
 from taskai.services.user_setup import user_setup_service
 from taskai.help_menu import help_menu
 from taskai.config import GlobalConfig
-
-# standard lib
-import argparse
-import os
-from datetime import datetime
-import builtins
 
 # external
 from rich import print

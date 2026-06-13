@@ -1,16 +1,10 @@
-"""
-I want lists of todos
-I want dependencies
-I want comments on todos
-I want an AI head start
-I want an AI interpretation layer
-"""
-
+# standard lib
 from dataclasses import dataclass
-# from sqlmodel import Field, SQLModel
-from pydantic import Field, BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
+
+# external
+from pydantic import Field, BaseModel
 
 class Base(BaseModel):
     pass

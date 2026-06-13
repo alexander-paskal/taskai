@@ -1,5 +1,8 @@
+# local
 from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.models import TodoList, TodoItem, Comment
+
+# external
 from rich import print
 from rich.console import Console
 import rich
