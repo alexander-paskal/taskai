@@ -4,7 +4,7 @@ Welcome to Task AI - a command-line todo list with some extra ai features.
 
 Here's what you can do:
 
-
+```
 'task show all' --> show all of your lists and item titles, with their respective IDs prepended
 'task show {id or substring}' --> find the list or item matching your identifier and show it using its respective type's show command
 'task show list {id or substring}' --> show the list and all of its item titles
@@ -24,7 +24,7 @@ Here's what you can do:
 'task nuke' --> deletes all of your task data, letting you have a fresh start
 'task add ...' -> aliases directly to 'task create item ...'
 'task complete {item id}' --> sets the associated item's .completed attribute to true
-
+```
 Run 'task show examples' to print a comprehensive set of examples, and grep for the ones that you're interested in!
 
 
