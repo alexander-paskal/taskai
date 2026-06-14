@@ -50,16 +50,6 @@ class Controller:
                 id_ = inside_out[results[0]]  # might be duplication
                 return db.read(id_)
                 
-        # for id_ in [*db.lists.keys(),*db.items.keys(),*db.comments.keys()]:
-        #     # TODO convert to fnmatch
-        #     model = db.read(id_)
-        #     if (
-        #         hasattr(model, attr) and 
-        #         isinstance(getattr(model, attr), str) and 
-        #         value in getattr(model, attr)
-        #     ):
-        #         return model
-        
         return None
 
 
@@ -86,6 +76,9 @@ class Controller:
 
     def show_list(list_id: int|str, show_done=True):
         view_lists(db, [list_id], show_done=show_done)
+    
+    def show_lists():
+        view_lists(db, db.lists.keys(), show_items=False)
     
     def show_item(item_id: int|str):
         view_item(db, item_id)
@@ -287,7 +280,8 @@ def entry_point():
             case "show":
                 match args[1]:
                     case "all": Controller.show_all(*args[2:], **kwargs)
-                    case "list": Controller.show_list(*args[2:], **kwargs) 
+                    case "list": Controller.show_list(*args[2:], **kwargs)
+                    case "lists": Controller.show_lists() 
                     case "item": Controller.show_item(*args[2:], **kwargs)
                     case "items": Controller.show_item(*args[2:], **kwargs)
                     case "examples": Controller.show_examples()

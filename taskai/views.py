@@ -8,7 +8,7 @@ from rich.console import Console
 import rich
 
 
-def view_lists(db: JsonDirectoryDatabase, ids: list[str], show_done=False):
+def view_lists(db: JsonDirectoryDatabase, ids: list[str], show_done=False, show_items=True):
     """Shows all the lists"""
 
     
@@ -25,18 +25,19 @@ def view_lists(db: JsonDirectoryDatabase, ids: list[str], show_done=False):
                 raise RuntimeError("cannot match list")
 
         print(list.id, list.name)
-        for item_id in list.item_ids:
+        if show_items:
+            for item_id in list.item_ids:
 
-            # silently repair lists with
-            if (item_id not in db.items):
-                list.item_ids.remove(item_id)
-                continue
-                
-            item: TodoItem = db.read(item_id)
-            if not item.completed:
-                print("\t",item.id, item.title)
-            elif show_done:
-                print(f"\t [strike]{item.id} {item.title}[/strike]")
+                # silently repair lists with
+                if (item_id not in db.items):
+                    list.item_ids.remove(item_id)
+                    continue
+                    
+                item: TodoItem = db.read(item_id)
+                if not item.completed:
+                    print("\t",item.id, item.title)
+                elif show_done:
+                    print(f"\t [strike]{item.id} {item.title}[/strike]")
 
 
 def view_item(db: JsonDirectoryDatabase, item: str|TodoItem):
