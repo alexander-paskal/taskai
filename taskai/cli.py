@@ -68,23 +68,23 @@ class Controller:
         print("kwargs:", kwargs)
 
     # CRUD
-    def show_all(show_done=False):
+    def show_all(show_done=True):
         view_lists(db, db.lists, show_done=show_done)
     
-    def show_by_id(id_, show_done=False):
+    def show_by_id(id_, show_done=True):
         if id_ in db.items:
             Controller.show_item(id_)
         elif id_ in db.lists:
             Controller.show_list(id_, show_done=show_done)
     
-    def show_by_list_name(value: str, show_done=False):
+    def show_by_list_name(value: str, show_done=True):
         model = Controller._find_model_by_stringmatch("name", value)
         if isinstance(model, TodoList):
             Controller.show_list(model.id, show_done=show_done)
         else:
             print(f"Could not find list with substring '{value}'")
 
-    def show_list(list_id: int|str, show_done=False):
+    def show_list(list_id: int|str, show_done=True):
         view_lists(db, [list_id], show_done=show_done)
     
     def show_item(item_id: int|str):
@@ -209,6 +209,25 @@ class Controller:
     def repair_service():
         repair_database_service(db)
 
+    def move_item(item_id: int|str, list_identifier: int|str):
+
+        if item_id not in db.items:
+            Controller.throw_error(f"Couldn't find items with id {item_id}")
+        item: TodoItem = db.read(item_id)
+        
+        if _is_int(list_identifier):
+            new_list_: TodoList = db.read(list_identifier)
+        else:
+            new_list_: TodoList = Controller._find_model_by_stringmatch("name", list_identifier)
+        if not new_list_:
+            Controller.throw_error(f"Couldn't locate list by identifier {list_identifier}")
+        
+        # update item
+        item.list_id = new_list_.id
+        db.update(item)
+        
+        Controller.show_all()
+        # db.commit()
 
 
 # utilities
@@ -329,6 +348,14 @@ def entry_point():
 
             case "repair":
                 Controller.repair_service()
+
+            case "clear":
+                Controller.delete_completed()
+
+            case "move":
+                match args[1]:
+                    case _ if _is_int(args[1]): Controller.move_item(args[1], args[2])
+                    case _: Controller.throw_error("Unrecognized arguments", *args, **kwargs)
 
             case _: Controller.throw_error("unrecognized command", *args, **kwargs)
     except Exception as e: 

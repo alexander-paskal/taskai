@@ -143,20 +143,23 @@ class JsonDirectoryDatabase:
             assert record.id in self.items, "item doesn't exist"
             
             # update dependencies
-            old_item: TodoItem = self.items[record.id]
+            old_item = self.items[record.id]
             if old_item["list_id"] != record.list_id:
-                old_list: TodoList = self.read(old_item["list_id"])
-                old_list.item_ids.remove(record.id)
-                new_list: TodoList = self.read(record.list_id)
-                new_list.item_ids.append(record.id)
+                old_list = self.lists[old_item["list_id"]]
+                old_list["item_ids"].remove(record.id)
+                new_list = self.lists[record.list_id]
+                new_list["item_ids"].append(record.id)
 
             self.items[record.id] = record.model_dump()
         
         elif isinstance(record, TodoList):
             assert record.id in self.lists, "list doesn't exist"
-            old_list: TodoList = self.lists[record.id]
+            old_list: dict = self.lists[record.id]
             for item_id in old_list["item_ids"]:
-                if item_id not in record.item_ids:
+
+                # Remove any items that have been dropped from the list that still hold it as their list id,
+                # as they are now orphans
+                if self.items[item_id]["list_id"] == old_list["id"] and item_id not in record.item_ids:
                     self.items.pop(item_id)
             self.lists[record.id] = record.model_dump()
 
