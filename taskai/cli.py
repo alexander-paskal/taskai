@@ -226,8 +226,7 @@ class Controller:
         item.list_id = new_list_.id
         db.update(item)
         
-        Controller.show_all()
-        # db.commit()
+        db.commit()
 
 
 # utilities
