@@ -120,6 +120,21 @@ class JsonDirectoryDatabase:
             return Comment(**self.comments[id_])
         else:
             raise RuntimeError("Can't find record to read")
+    
+    def read_batch_attr(self, record_type: type[Base], attr: str, keep_nulls=False) -> dict[id, str]:
+        """Returns a dictonary of attr values for a given attribute name"""
+        record_store = {
+            TodoItem: self.items,
+            TodoList: self.lists,
+            Comment: self.comments
+        }[record_type]
+
+        # TODO make sure attr is on the model type else throw error
+        
+        records = {
+            id_: record[attr] for id_, record in record_store.items() if record.get(attr) or keep_nulls
+        }
+        return records
 
     def update(self, record: Base) -> None:
             

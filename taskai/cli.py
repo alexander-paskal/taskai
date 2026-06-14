@@ -3,6 +3,7 @@ import argparse
 import os
 from datetime import datetime
 import builtins
+import fnmatch
 
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
@@ -35,15 +36,29 @@ builtins.help = new_help
 class Controller:
 
     # utilities
-    def _find_model_by_substring(attr: str, value: str) -> TodoItem|TodoList|Comment|None:
-        for id_ in [*db.lists.keys(),*db.items.keys(),*db.comments.keys()]:
-            model = db.read(id_)
-            if (
-                hasattr(model, attr) and 
-                isinstance(getattr(model, attr), str) and 
-                value in getattr(model, attr)
-            ):
-                return model
+    def _find_model_by_stringmatch(attr: str, pattern: str) -> TodoItem|TodoList|Comment|None:
+
+        for record_type in [
+            TodoList,
+            TodoItem,
+            Comment
+        ]:
+            batch_attrs = db.read_batch_attr(record_type, attr)
+            inside_out = {v: k for k, v in batch_attrs.items()}  # TODO this is hacky
+            results = fnmatch.filter(batch_attrs.values(), pattern)
+            if results:
+                id_ = inside_out[results[0]]  # might be duplication
+                return db.read(id_)
+                
+        # for id_ in [*db.lists.keys(),*db.items.keys(),*db.comments.keys()]:
+        #     # TODO convert to fnmatch
+        #     model = db.read(id_)
+        #     if (
+        #         hasattr(model, attr) and 
+        #         isinstance(getattr(model, attr), str) and 
+        #         value in getattr(model, attr)
+        #     ):
+        #         return model
         
         return None
 
@@ -63,7 +78,7 @@ class Controller:
             Controller.show_list(id_, show_done=show_done)
     
     def show_by_list_name(value: str, show_done=False):
-        model = Controller._find_model_by_substring("name", value)
+        model = Controller._find_model_by_stringmatch("name", value)
         if isinstance(model, TodoList):
             Controller.show_list(model.id, show_done=show_done)
         else:
@@ -93,7 +108,7 @@ class Controller:
         try:
             int(list_id)
         except ValueError:
-            list_ = Controller._find_model_by_substring("name", list_id)
+            list_ = Controller._find_model_by_stringmatch("name", list_id)
             # TODO this should be just lists, not models
             list_id = list_.id
 
@@ -145,7 +160,7 @@ class Controller:
         print(f"Deleted {id_}")
     
     def delete_list_by_name(name: str):
-        list_ = Controller._find_model_by_substring("name", name)
+        list_ = Controller._find_model_by_stringmatch("name", name)
         if list_:
             db.delete(list_.id)
             db.commit()
@@ -226,11 +241,6 @@ def _is_int(val: any) -> bool:
     except:
         return False
 
-def _matches_string(val: str, target: str) -> bool:
-    # TODO make this follow linux rules
-    if val in target:
-        return True
-    return False
 
 
 
