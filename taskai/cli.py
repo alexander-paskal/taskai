@@ -10,6 +10,7 @@ from taskai.views import view_lists, view_item, view_items
 from taskai.models import Base, TodoItem, TodoList, Comment
 from taskai.services.ai import ai_headstart_service, ai_natural_language_service
 from taskai.services.user_setup import user_setup_service
+from taskai.services.repair_database import repair_database_service
 from taskai.help_menu import help_menu
 from taskai.config import GlobalConfig
 
@@ -143,6 +144,15 @@ class Controller:
         db.commit()
         print(f"Deleted {id_}")
     
+    def delete_list_by_name(name: str):
+        list_ = Controller._find_model_by_substring("name", name)
+        if list_:
+            db.delete(list_.id)
+            db.commit()
+        else:
+            Controller.throw_error("Cannot find list by name")
+
+    
     def delete_completed():
         for item_id in db.items.copy():
             item: TodoItem = db.read(item_id)
@@ -180,6 +190,11 @@ class Controller:
     
     def run_setup_service():
         user_setup_service(db)
+
+    def repair_service():
+        repair_database_service(db)
+
+
 
 # utilities
 def _parse_remaining(remaining_args: list[str]) -> tuple[list, dict]:
@@ -269,7 +284,7 @@ def entry_point():
                     case "item": Controller.delete(args[2])
                     case "list": Controller.delete(args[2])
                     case "completed" | "done": Controller.delete_completed()
-                    case _: Controller.throw_error("unrecognized delete command", *args, **kwargs)
+                    case _: Controller.delete_list_by_name(args[1])
 
             case "comment":
                 match args[1]:
@@ -301,6 +316,9 @@ def entry_point():
 
             case "examples":
                 Controller.show_examples()
+
+            case "repair":
+                Controller.repair_service()
 
             case _: Controller.throw_error("unrecognized command", *args, **kwargs)
     except Exception as e: 

@@ -137,8 +137,16 @@ class JsonDirectoryDatabase:
 
             self.items[record.id] = record.model_dump()
         
+        elif isinstance(record, TodoList):
+            assert record.id in self.lists, "list doesn't exist"
+            old_list: TodoList = self.lists[record.id]
+            for item_id in old_list["item_ids"]:
+                if item_id not in record.item_ids:
+                    self.items.pop(item_id)
+            self.lists[record.id] = record.model_dump()
+
         else:
-            raise RuntimeError("don't know what you're creating")
+            raise RuntimeError("don't know what you're updating")
         
     def delete(self, id_: int|str) -> None:
         id_ = str(id_)
