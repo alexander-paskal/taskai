@@ -16,7 +16,8 @@ from taskai.help_menu import help_menu
 from taskai.config import GlobalConfig
 
 # external
-from rich import print
+from rich import print, print_json
+
 
 # config
 DB_PATH = ".taskai/task_db"
@@ -113,7 +114,7 @@ class Controller:
             match k:
                 case "completed": item.completed = bool(v)
                 case "description": item.description = str(v)
-                case "due_by": item.due_by = datetime.strptime(v, "%Y-%m-%d")
+                case "due_by": item.due_by = datetime.strptime(v, "%m-%d-%Y")
                 case "parent": item.parent = str(v)
                 case "priority": item.priority = int(v)
                 case "depends_on": item.dependency_ids.extend(v.split(","))
@@ -139,7 +140,7 @@ class Controller:
                 case "list_id": item.list_id = str(v)
                 case "completed": item.completed = bool(v)
                 case "description": item.description = str(v)
-                case "due_by": item.due_by = datetime.strptime(v, "%Y-%m-%d")
+                case "due_by": item.due_by = datetime.strptime(v, "%m-%d-%Y")
                 case "parent": item.parent = str(v)
                 case "priority": item.priority = int(v)
                 # TODO handle recurrence
@@ -220,7 +221,13 @@ class Controller:
         db.update(item)
         
         db.commit()
-
+    
+    def add_dependency(src_id: int|str, dst_id: int|str):
+        """Adds a depedency src -> dst, meaning src depends on dst"""
+        src: TodoItem = db.read(src_id)
+        src.dependency_ids.append(dst_id)
+        db.update(src)
+        db.commit()
 
 # utilities
 def _parse_remaining(remaining_args: list[str]) -> tuple[list, dict]:
@@ -256,7 +263,6 @@ def _is_int(val: any) -> bool:
 
 
 def entry_point():
-
     arg_parser = argparse.ArgumentParser()
     _, argv = arg_parser.parse_known_args()
 
@@ -349,6 +355,17 @@ def entry_point():
                 match args[1]:
                     case _ if _is_int(args[1]): Controller.move_item(args[1], args[2])
                     case _: Controller.throw_error("Unrecognized arguments", *args, **kwargs)
+            
+            case "depend":
+                src_id, dst_id = args[1:3]
+                match (src_id, dst_id):
+                    case _ if _is_int(src_id) and _is_int(dst_id): Controller.add_dependency(src_id, dst_id) 
+                    case _: Controller.throw_error("Invalid arrow argument, must be one of (->, <-)")
+            
+            # developer use
+            case "db":
+                import orjson as json
+                print_json(json.dumps(db.read(args[1]).model_dump()).decode())
 
             case _: Controller.throw_error("unrecognized command", *args, **kwargs)
     except Exception as e: 
