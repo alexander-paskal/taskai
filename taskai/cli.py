@@ -4,6 +4,8 @@ import os
 from datetime import datetime
 import builtins
 import fnmatch
+import sys
+import subprocess
 
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
@@ -17,7 +19,9 @@ from taskai.config import GlobalConfig
 
 # external
 from rich import print, print_json
-
+from rich.console import Console
+import rich
+from rich.prompt import Prompt
 
 # config
 DB_PATH = ".taskai/task_db"
@@ -27,6 +31,7 @@ db = JsonDirectoryDatabase(
         USER
 )
 db.connect()
+GlobalConfig.load_dict(db.config)
 
 og_help = builtins.help
 def new_help(*args, **kwargs):
@@ -73,7 +78,7 @@ class Controller:
         if isinstance(model, TodoList):
             Controller.show_list(model.id, show_done=show_done)
         else:
-            print(f"Could not find list with substring '{value}'")
+            print(f"Could not find list matching pattern '{value}'")
 
     def show_list(list_id: int|str, show_done=True):
         view_lists(db, [list_id], show_done=show_done)
@@ -259,25 +264,20 @@ def _is_int(val: any) -> bool:
     except:
         return False
 
+def _clear_screen():
+    if sys.platform == "linux":
+        os.system("clear")
+    elif sys.platform == "windows":
+        os.system("cls")
+    else:
+        os.system("clear")
 
-
-
-def entry_point():
-    arg_parser = argparse.ArgumentParser()
-    _, argv = arg_parser.parse_known_args()
-
-
-    if not argv:
-        print(help_menu["general"])
-        return
-
-    if argv[0] in ("help","--help"):
-        print(help_menu["general"])
-        return
-
-    args, kwargs = _parse_remaining(argv)
-    GlobalConfig.load_dict(db.config)
-
+def execute_commands(*args, **kwargs) -> int:
+    """
+    Return codes:
+        0 -> termination
+        1 -> continue
+    """
     try:
         match args[0]:
             case "setup":
@@ -367,10 +367,57 @@ def entry_point():
                 import orjson as json
                 print_json(json.dumps(db.read(args[1]).model_dump()).decode())
 
+            case "exit" | "exit()" | "quit":
+                return 0
+
             case _: Controller.throw_error("unrecognized command", *args, **kwargs)
+
+
     except Exception as e: 
         Controller.throw_error(f"encountered exception '{e}'", *args, **kwargs)
 
+    return 1
+
+
+def interactive_program():
+    # console = Console()
+    # builtins.print = console.print
+
+    response = ""
+    _clear_screen()
+    while True:
+
+        try:
+            response = Prompt.ask("Type your commands:", default=response)
+            _clear_screen()
+            args, kwargs = _parse_remaining(response.split(" "))
+            return_code = execute_commands(*args, **kwargs)
+            if return_code == 0:
+                break
+            Console().rule()
+            
+        except KeyboardInterrupt:
+           break
+        
+    _clear_screen()
+    sys.exit(1)
+
+
+def entry_point():
+    arg_parser = argparse.ArgumentParser()
+    _, argv = arg_parser.parse_known_args()
+
+
+    if not argv:
+        interactive_program()
+
+    if argv[0] in ("help","--help"):
+        print(help_menu["general"])
+        return
+
+    args, kwargs = _parse_remaining(argv)
+
+    execute_commands(*args, **kwargs)
 
 
 if __name__ == "__main__":
