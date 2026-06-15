@@ -280,6 +280,9 @@ def execute_commands(*args, **kwargs) -> int:
     """
     try:
         match args[0]:
+            case "help":
+                print(help_menu['general'])
+
             case "setup":
                 Controller.run_setup_service()
 
@@ -391,6 +394,8 @@ def interactive_program():
             response = Prompt.ask("Type your commands:", default=response)
             _clear_screen()
             args, kwargs = _parse_remaining(response.split(" "))
+            if args[0] == "task":
+                args = args[1:]
             return_code = execute_commands(*args, **kwargs)
             if return_code == 0:
                 break
