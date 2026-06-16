@@ -195,8 +195,10 @@ class JsonDirectoryDatabase:
     def get_config_value(self, key: str) -> any:
         return self.user_data["config"].get(key)
 
-    def get_config(self) -> dict:
-        return self.user_data.get("config", {})
+    def get_config(self) -> CLIConfig:
+        return CLIConfig(**self.user_data.get("config", {}))
 
     def set_config_value(self, key: str, value: any):
+        if key not in CLIConfig.model_fields:
+            raise RuntimeError("Invalid Config Option")
         self.user_data["config"][key] = value

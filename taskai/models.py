@@ -53,5 +53,11 @@ class Comment(Base):
     user_id: Optional[str] = None
     created_on: datetime = Field(default_factory=datetime.now)
 
+class CLIConfig(Base):
+
+    # GEMINI
+    GEMINI_MODEL: str = None
+    GEMINI_API_KEY: str = None
+
 class LLMConfig(Base):
     pass

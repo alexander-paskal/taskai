@@ -190,7 +190,7 @@ class Controller:
         print(db.get_config_value(key))
     
     def list_config():
-        for k, v in db.get_config().items():
+        for k, v in db.get_config().model_dump().items():
             print(f"{k}={v}")
     
     def set_config_value(key: str, value: any):
