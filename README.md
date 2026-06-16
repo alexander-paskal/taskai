@@ -26,11 +26,25 @@ Here's what you can do:
 
 Run `task show examples` to print a comprehensive set of examples, and grep for the ones that you're interested in!
 
+Run `task` by itself to run in interactive mode, which improves performance.
 
 # Installation
 
+`pip install taskai-cli`
 
 # Configuration
 
+For first time usage, run our setup command:
 
+`task setup`
+
+This will walk you through the necessary steps to get all features set up.
+
+In order to edit or view your configurations, you can use the `task config` command family
+
+```bash
+task config show  # --> lists your current configuration options
+task config set {key} {value}  # --> Sets a given value
+task config get {key}  # retrieves a given value
+```
 
