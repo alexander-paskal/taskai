@@ -6,6 +6,7 @@ import builtins
 import fnmatch
 import sys
 import subprocess
+import getpass
 
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
@@ -25,7 +26,7 @@ from rich.prompt import Prompt
 
 # config
 DB_PATH = ".taskai/task_db"
-USER = os.getenv("USER")
+USER = os.getenv("USER") if sys.platform == "linux" else os.getenv('USERNAME')
 db = JsonDirectoryDatabase(
         DB_PATH,
         USER
