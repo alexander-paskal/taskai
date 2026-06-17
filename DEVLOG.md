@@ -28,7 +28,7 @@ put would be as methods on the objects, i.e. "item.updateList()", etc.
 Alright so how are comments gonna look here:
 
     ```
-    Title:
+    Name:
     Due By:
     Description:
     Depends On:

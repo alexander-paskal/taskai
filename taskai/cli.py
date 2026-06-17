@@ -104,7 +104,7 @@ class Controller:
         db.commit()
         print(f"Creating list {list_id} - {list.name}")
 
-    def create_item(list_id: int|str, title: str, **kwargs):
+    def create_item(list_id: int|str, name: str, **kwargs):
         try:
             int(list_id)
         except ValueError:
@@ -112,7 +112,7 @@ class Controller:
             # TODO this should be just lists, not models
             list_id = list_.id
 
-        item = TodoItem(title=title, list_id=list_id)
+        item = TodoItem(name=name, list_id=list_id)
 
         for k, v in kwargs.items():
             if v is None:
@@ -142,7 +142,7 @@ class Controller:
             if v is None:
                 continue
             match k:
-                case "title": item.title = str(v)
+                case "name": item.name = str(v)
                 case "list_id": item.list_id = str(v)
                 case "completed": item.completed = bool(v)
                 case "description": item.description = str(v)

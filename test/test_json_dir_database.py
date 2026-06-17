@@ -34,7 +34,7 @@ def test_create():
 
         list_id = _test_db.create(list)
         for j in range(10):
-            item = TodoItem(title=f"task {i}.{j}", list_id=list_id)
+            item = TodoItem(name=f"task {i}.{j}", list_id=list_id)
             item_id = _test_db.create(item)
             for k in range(2):
                 comment = Comment(content=f"Comment {k}", item_id=item_id)

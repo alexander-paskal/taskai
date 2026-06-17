@@ -35,9 +35,9 @@ def view_lists(db: JsonDirectoryDatabase, ids: list[str], show_done=False, show_
                     
                 item: TodoItem = db.read(item_id)
                 if not item.completed:
-                    print("\t",item.id, item.title)
+                    print("\t",item.id, item.name)
                 elif show_done:
-                    print(f"\t [strike]{item.id} {item.title}[/strike]")
+                    print(f"\t [strike]{item.id} {item.name}[/strike]")
 
 
 def view_item(db: JsonDirectoryDatabase, item: str|TodoItem):
@@ -46,7 +46,7 @@ def view_item(db: JsonDirectoryDatabase, item: str|TodoItem):
     if isinstance(item, (str,int)):
         item: TodoItem = db.read(item)
     console = Console()
-    console.print(f"[bold green]Title:[/bold green] {item.title}")
+    console.print(f"[bold green]Name:[/bold green] {item.name}")
     if item.due_by:
         console.print(f"[bold green]Due By:[/bold green] {item.due_by or ""}")
     
@@ -55,7 +55,7 @@ def view_item(db: JsonDirectoryDatabase, item: str|TodoItem):
     
     if item.dependency_ids:
         console.print(f"\n[bold green]Depends on:[/bold green]{''.join([
-            f'\n{depend_id} - {db.read(depend_id).title}' for depend_id in item.dependency_ids 
+            f'\n{depend_id} - {db.read(depend_id).name}' for depend_id in item.dependency_ids 
         ])}")
 
     if item.comment_ids:

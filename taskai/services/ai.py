@@ -58,7 +58,7 @@ These should be short and to the point. Your response should contain NOTHING but
 
 Here's the relevant information:
 
-task title: {item.title}
+task name: {item.name}
 """
 
     if item.description:
@@ -105,7 +105,7 @@ def ai_natural_language_service(
     
             item: TodoItem = db.read(item_id)
             if not item.completed:
-                user_info.append(f"\t {item.id} {item.title}")
+                user_info.append(f"\t {item.id} {item.name}")
     user_info = "\n".join(user_info)
 
     # build ai prompt
@@ -115,7 +115,7 @@ of CLI operations using our app. Here are a comprehensive list of operations tha
 
 {help_general}
 
-Here are all of the user's list and task titles, each prepended with their id
+Here are all of the user's list and task names, each prepended with their id
 
 {user_info}
 

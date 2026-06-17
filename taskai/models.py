@@ -28,7 +28,7 @@ class TodoList(Base):
     item_ids: Optional[list[str]] = Field(default_factory=list)
 
 class TodoItem(Base):
-    title: str = Field(index=True)
+    name: str = Field(index=True)
 
     id: Optional[str] = Field(default=None, primary_key=True)
     list_id: Optional[str] = None
@@ -44,6 +44,11 @@ class TodoItem(Base):
     recurs_every: Optional[list[timedelta]] = None
     recurs_until: Optional[datetime] = None 
     recur_keep_incomplete: bool = False
+
+    def model_post_init(self, context):
+        if not self.name:
+            self.name = self.name
+        return super().model_post_init(context)
     
 class Comment(Base):
     content: str
