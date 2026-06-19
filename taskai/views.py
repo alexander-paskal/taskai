@@ -1,6 +1,6 @@
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
-from taskai.models import TodoList, TodoItem, Comment
+from taskai.models import TodoItem, Comment
 
 # external
 from rich import print
@@ -8,43 +8,37 @@ from rich.console import Console
 import rich
 
 
-def view_lists(db: JsonDirectoryDatabase, ids: list[str], show_done=False, show_items=True):
+def view_lists(
+        db: JsonDirectoryDatabase, 
+        roots: list[int], 
+        show_done=True, 
+):
     """Shows all the lists"""
 
-    
-    for id_ in ids:
 
-        if id_ in db.lists:
-            list: TodoList = db.read(id_)
-        elif isinstance(id_, str):
-            for lid in db.lists:
-                list = db.read(lid)
-                if list.name.lower() == id_.lower():
-                    break
-            else: 
-                raise RuntimeError("cannot match list")
+    def _print_item(item: TodoItem, level: int):
+        if not show_done and item.completed:
+            return
+        display_string = f"{item.id} {item.name}"
+        display_string = _wrap_string(display_string, "[strike]", "[/strike]", condition=item.completed)
+        indent = "\t" * level
+        print(indent + display_string)
 
-        print(list.id, list.name)
-        if show_items:
-            for item_id in list.item_ids:
+    def _recursive_print(item_id: int, level: int):
+        item = db.get_item(item_id)
+        _print_item(item, level)
+        for child_id in item.child_ids:
+            _recursive_print(child_id, level+1)
 
-                # silently repair lists with
-                if (item_id not in db.items):
-                    list.item_ids.remove(item_id)
-                    continue
-                    
-                item: TodoItem = db.read(item_id)
-                if not item.completed:
-                    print("\t",item.id, item.name)
-                elif show_done:
-                    print(f"\t [strike]{item.id} {item.name}[/strike]")
+    for root in roots:
+        _recursive_print(root, 0)
+            
 
-
-def view_item(db: JsonDirectoryDatabase, item: str|TodoItem):
+def view_item(db: JsonDirectoryDatabase, item_id: int):
     """Show details for item"""
-    
-    if isinstance(item, (str,int)):
-        item: TodoItem = db.read(item)
+
+    item = db.get_item(item_id)
+
     console = Console()
     console.print(f"[bold green]Name:[/bold green] {item.name}")
     if item.due_by:
@@ -61,7 +55,7 @@ def view_item(db: JsonDirectoryDatabase, item: str|TodoItem):
     if item.comment_ids:
         console.print("\n[bold green]\nComments:[/bold green]")
         for comment_id in item.comment_ids:
-            comment: Comment = db.read(comment_id)
+            comment: Comment = db.get_comment(comment_id)
             console.print(f"{comment.created_on.strftime("%Y-%m-%d %H:%M:%S")} - {comment.content}")
     
 
@@ -77,12 +71,6 @@ def view_items(
         if id_ in db.items:
             item = db.read(id_)
             items[id_] = (item)
-        elif id_ in db.lists:
-            list: TodoList = db.read(id_)
-            for item_id in list.item_ids:
-                item = db.read(item_id)
-                items[item_id] = item
-    
     
     # sort
     items = sorted(items.values(), key=lambda item: str(getattr(item, sort_by)), reverse=ascending)
@@ -92,3 +80,17 @@ def view_items(
         rich.console.Console().rule(style="bold white")
         view_item(db, item)
         print()
+
+
+
+### Utils
+
+
+def _wrap_string(string_, before, after=None, condition=True):
+    if after is None:
+        after = before
+    
+    if condition:
+        return f"{before}{string_}{after}"
+    else:
+        return string_
