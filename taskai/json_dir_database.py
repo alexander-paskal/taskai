@@ -77,6 +77,9 @@ class JsonDirectoryDatabase:
     def get_items(self, ids: list[int]) -> list[TodoItem]:
         return [self.get_item(id) for id in ids]
 
+    def get_item_ids(self) -> list[int]:
+        return self.user_data.todo_items.keys()
+
     def get_items_recursively(self, id, _existing_items: dict[int, TodoItem]=None) -> dict[int, TodoItem]:
         if _existing_items is None:
             _existing_items = {}
@@ -91,6 +94,11 @@ class JsonDirectoryDatabase:
             return copy(self.user_data.todo_items[id][key]) 
         except KeyError:
             raise DatabaseError(f"No record by id {id}")
+        
+    def get_item_batch_attr(self, key: str) -> list[any]:
+        return {
+            id: self.get_item_attr(id, key) for id in self.get_item_ids()
+        }
     
     def get_comment(self, id: int) -> Comment:
         try:
@@ -249,7 +257,7 @@ class JsonDirectoryDatabase:
                 
 
     def get_config(self) -> CLIConfig:
-        return CLIConfig(**self.user_data.get("config", {}))
+        return CLIConfig(**self.user_data.config)
     
     # UTILS
     def _setup_directory(self):
@@ -262,6 +270,7 @@ class JsonDirectoryDatabase:
         )
         self.user_data = user_data
         self.commit()
+        self.close()
     
     def _get_new_id(self) -> int:
         self.user_data.id_counter += 1

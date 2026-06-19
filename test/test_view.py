@@ -22,7 +22,7 @@ def _populate_db():
     db.connect()
     root1 = db.create_item(name="root 1")
     child1 = db.create_item(name="child 1", parent_id=root1, priority=3)
-    root2 = db.create_item(name="root 2")
+    root2 = db.create_item(name="root 2", description="Describe Marcellus Wallace")
     child2 = db.create_item(name="child 2", parent_id=root2, priority=2)
     child3 = db.create_item(name="child 3", parent_id=root2, due_by=datetime(2026,10, 1))
     gchild1 = db.create_item(name="grandchild 1", parent_id=child3, completed=True, description="Say 'what' again.")
@@ -41,7 +41,8 @@ def test_view_lists():
 def test_view_item():
     print("\n\n\n");print("Grandchild");print("-"*30)
     view_item(db, ids["gchild1"])
-
+    print("\n\n\n");print("Grandchild");print("-"*30)
+    view_item(db, ids["root2"]) # should show sublist
 
 if __name__ == "__main__":
     _cleanup_db()

@@ -58,6 +58,9 @@ def view_item(db: JsonDirectoryDatabase, item_id: int):
             comment: Comment = db.get_comment(comment_id)
             console.print(f"{comment.created_on.strftime("%Y-%m-%d %H:%M:%S")} - {comment.content}")
     
+    if item.child_ids:
+        console.print("\n[bold green]\nSubtasks:[/bold green]")
+        view_lists(db, item.child_ids)
 
 def view_items(
     db: JsonDirectoryDatabase, 
