@@ -26,7 +26,6 @@ def test_init():
     assert os.path.exists("_tmp_database_dir/test_user.json")
 
 def test_basic():
-    db.connect()
     root1 = db.create_item(name="root 1")
     child1 = db.create_item(name="child 1", parent_id=root1)
     root2 = db.create_item(name="root 2")
@@ -56,6 +55,30 @@ def test_basic():
     except DatabaseError:
         pass
 
+    db.flush()
+
+def test_recursive_get():
+    root1 = db.create_item(name="root 1")
+    child1 = db.create_item(name="child 1", parent_id=root1)
+    root2 = db.create_item(name="root 2")
+    child2 = db.create_item(name="child 2", parent_id=root2)
+    child3 = db.create_item(name="child 3", parent_id=root2)
+    gchld1 = db.create_item(name="grandchild 1", parent_id=child3)
+    
+    item_map = db.get_items_recursively(root1)
+    assert all ([
+        root1 in item_map, 
+        child1 in item_map, 
+        root2 not in item_map
+    ])
+    item_map = db.get_items_recursively(root2)
+    assert all ([
+        root2 in item_map,
+        root1 not in item_map,
+        gchld1 in item_map
+    ])
+
+
 
 
 if __name__ == "__main__":
@@ -64,6 +87,7 @@ if __name__ == "__main__":
     try:
         test_init()
         test_basic()
+        test_recursive_get()
     except Exception as e:
         raise e
     finally:

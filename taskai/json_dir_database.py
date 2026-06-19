@@ -44,9 +44,12 @@ class JsonDirectoryDatabase:
     
     # IO
     def connect(self):
-        with open(self.user_data_path, "rb") as f:
-            json_bstring = f.read()
-            self.user_data = UserData(**json.loads(json_bstring))
+        if self.user_data is None:
+            with open(self.user_data_path, "rb") as f:
+                json_bstring = f.read()
+                self.user_data = UserData(**json.loads(json_bstring))
+        else:
+            raise DatabaseError("Database already connected")
 
     def commit(self):
         with open(self.user_data_path, "wb") as f:
@@ -54,10 +57,11 @@ class JsonDirectoryDatabase:
             f.write(json_bstring)
     
     def flush(self):
-        self.user_data = None
+        self.close()
+        self.connect()
     
     def close(self):
-        self.flush()
+        self.user_data = None
     
     def remove(self):
         if os.path.exists(self.db_dir):
@@ -72,6 +76,15 @@ class JsonDirectoryDatabase:
     
     def get_items(self, ids: list[int]) -> list[TodoItem]:
         return [self.get_item(id) for id in ids]
+
+    def get_items_recursively(self, id, _existing_items: dict[int, TodoItem]=None) -> dict[int, TodoItem]:
+        if _existing_items is None:
+            _existing_items = {}
+        _existing_items[id] = item = self.get_item(id)
+        
+        for child_id in item.child_ids:
+            self.get_items_recursively(child_id, _existing_items=_existing_items)
+        return _existing_items
 
     def get_item_attr(self, id: int, key: str) -> any:
         try:
@@ -103,7 +116,7 @@ class JsonDirectoryDatabase:
         return item.id
         
     def create_comment(self, content: str, item_id: int, **kwargs) -> int:
-        comment = Comment(content, item_id=item_id, **kwargs)
+        comment = Comment(content=content, item_id=item_id, **kwargs)
         comment.id = self._get_new_id()
         
         # create comment
