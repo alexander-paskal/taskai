@@ -34,7 +34,11 @@ def view_lists(
         _recursive_print(root, 0)
             
 
-def view_item(db: JsonDirectoryDatabase, item_id: int):
+def view_item(
+        db: JsonDirectoryDatabase, 
+        item_id: int,
+        show_done: bool = True
+    ):
     """Show details for item"""
 
     item = db.get_item(item_id)
@@ -60,13 +64,14 @@ def view_item(db: JsonDirectoryDatabase, item_id: int):
     
     if item.child_ids:
         console.print("\n[bold green]\nSubtasks:[/bold green]")
-        view_lists(db, item.child_ids)
+        view_lists(db, item.child_ids, show_done=show_done)
 
 def view_items(
     db: JsonDirectoryDatabase, 
     ids: list[str],
     sort_by: str  = "due_by",
-    ascending: bool = False
+    ascending: bool = False,
+    show_done: bool = True
 ):
     
     items = {}
@@ -81,7 +86,7 @@ def view_items(
     # view
     for item in items:
         rich.console.Console().rule(style="bold white")
-        view_item(db, item)
+        view_item(db, item, show_done=show_done)
         print()
 
 

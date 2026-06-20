@@ -47,7 +47,12 @@ class JsonDirectoryDatabase:
         if self.user_data is None:
             with open(self.user_data_path, "rb") as f:
                 json_bstring = f.read()
-                self.user_data = UserData(**json.loads(json_bstring))
+                if not json_bstring:  # zero length bstring
+                    self.user_data = UserData(
+                        name=self.user_name
+                    )
+                else:
+                    self.user_data = UserData(**json.loads(json_bstring))
         else:
             raise DatabaseError("Database already connected")
 
@@ -70,7 +75,7 @@ class JsonDirectoryDatabase:
     # CRUD
     def get_item(self, id: int) -> TodoItem:
         try:
-            return TodoItem(**self.user_data.todo_items[id])
+            return TodoItem(**self.user_data.todo_items[str(id)])
         except KeyError:
             raise DatabaseError(f"No record by id {id}")
     
@@ -78,7 +83,7 @@ class JsonDirectoryDatabase:
         return [self.get_item(id) for id in ids]
 
     def get_item_ids(self) -> list[int]:
-        return self.user_data.todo_items.keys()
+        return [int(k) for k in self.user_data.todo_items.keys()]
 
     def get_items_recursively(self, id, _existing_items: dict[int, TodoItem]=None) -> dict[int, TodoItem]:
         if _existing_items is None:
@@ -91,7 +96,7 @@ class JsonDirectoryDatabase:
 
     def get_item_attr(self, id: int, key: str) -> any:
         try:
-            return copy(self.user_data.todo_items[id][key]) 
+            return copy(self.user_data.todo_items[str(id)][key]) 
         except KeyError:
             raise DatabaseError(f"No record by id {id}")
         
@@ -102,7 +107,7 @@ class JsonDirectoryDatabase:
     
     def get_comment(self, id: int) -> Comment:
         try:
-            return Comment(**self.user_data.comments[id])
+            return Comment(**self.user_data.comments[str(id)])
         except KeyError:
             raise DatabaseError(f"No record by id {id}")
     
@@ -115,7 +120,7 @@ class JsonDirectoryDatabase:
         
         # create item
         self._debug(f"Creating item {item.id}")
-        self.user_data.todo_items[item.id] = item.model_dump()
+        self.user_data.todo_items[str(item.id)] = item.model_dump()
 
         # update parent
         if kwargs.get("parent_id"):
@@ -129,7 +134,7 @@ class JsonDirectoryDatabase:
         
         # create comment
         self._debug(f"Creating comment {comment.id}")
-        self.user_data.comments[comment.id] = comment.model_dump()
+        self.user_data.comments[str(comment.id)] = comment.model_dump()
 
         # update item
         self._validate_comment(comment.id, comment.item_id)
@@ -137,29 +142,29 @@ class JsonDirectoryDatabase:
         return comment.id
         
     def delete_item(self, id: int) -> bool:
-        if id not in self.user_data.todo_items:
+        if str(id) not in self.user_data.todo_items:
             raise DatabaseError(f"No record by id {id}")
         parent_id = self.get_item_attr(id, "parent_id")
         self._debug(f"Deleting item {id}")
-        item_dict = self.user_data.todo_items.pop(id)
+        item_dict = self.user_data.todo_items.pop(str(id))
         self._validate_parentage(parent_id, id)
         # recursively delete children
         for child_id in item_dict["child_ids"]:
             self.delete_item(child_id)
 
     def delete_comment(self, id: int) -> bool:
-        if id not in self.user_data.comments:
+        if str(id) not in self.user_data.comments:
             raise DatabaseError(f"No record by id {id}")
         comment = self.get_comment(id)
         self._debug(f"Deleting comment {id}")
-        self.user_data.comments.pop(id)
+        self.user_data.comments.pop(str(id))
         self._validate_parentage(comment.id, comment.item_id)    
     
     def update_item(self, id: int, **kwargs) -> bool:
-        if id not in self.user_data.todo_items:
+        if str(id) not in self.user_data.todo_items:
             raise DatabaseError(f"No record by id {id}")
         # validate the full new item
-        item_dict = self.user_data.todo_items[id].copy()
+        item_dict = self.user_data.todo_items[str(id)].copy()
         item_dict.update(kwargs)
         new_item_dict = TodoItem(**item_dict).model_dump()
 
@@ -167,18 +172,18 @@ class JsonDirectoryDatabase:
             self._validate_parentage(new_item_dict["parent_id"], id)
 
         self._debug(f"Updating item {id}")
-        self.user_data.todo_items[id] = new_item_dict
+        self.user_data.todo_items[str(id)] = new_item_dict
 
     def update_comment(self, id: int, **kwargs) -> bool:
-        if id not in self.user_data.comments:
+        if str(id) not in self.user_data.comments:
             raise DatabaseError(f"No record by id {id}")
         # validate the full new item
-        comment_dict = self.user_data.todo_items[id].copy()
+        comment_dict = self.user_data.todo_items[str(id)].copy()
         comment_dict.update(kwargs)
         new_comment_dict = Comment(**comment_dict).model_dump()
         self._validate_comment(id, new_comment_dict["child_id"])
         self._debug(f"Updating comments {id}")
-        self.user_data.comments[id] = new_comment_dict
+        self.user_data.comments[str(id)] = new_comment_dict
 
     def update_config(self, **kwargs) -> bool:
         config_dict = self.user_data.config.copy()
@@ -188,8 +193,8 @@ class JsonDirectoryDatabase:
         self.user_data.config = new_config_dict
 
     def _validate_comment(self, comment_id: int, item_id: int):
-        item_exists = item_id in self.user_data.todo_items
-        comment_exists = comment_id in self.user_data.comments
+        item_exists = str(item_id) in self.user_data.todo_items
+        comment_exists = str(comment_id) in self.user_data.comments
 
         match (item_exists, comment_exists):
             case (True, True):  # make sure they reference each other
@@ -209,7 +214,7 @@ class JsonDirectoryDatabase:
             
             case (False, True):  # delete the comment if its parent is deceesed
                 self._debug(f"Deleting orphan comment {comment_id}")
-                self.user_data.comments.pop(comment_id)
+                self.user_data.comments.pop(str(comment_id))
             
             case (True, False):  # remove the comment id from the item's list of comments
                 comment_ids =  self.get_item_attr(item_id, "comment_ids")
@@ -222,8 +227,8 @@ class JsonDirectoryDatabase:
                 self._debug(f"Couldn't find reference to comment {comment_id} or item {item_id}")    
 
     def _validate_parentage(self, parent_id: int, child_id: int):
-        parent_exists = parent_id in self.user_data.todo_items
-        child_exists = child_id in self.user_data.todo_items
+        parent_exists = str(parent_id) in self.user_data.todo_items
+        child_exists = str(child_id) in self.user_data.todo_items
 
         match (parent_exists, child_exists):
             case (True, True):  # make sure they reference each other
@@ -278,7 +283,7 @@ class JsonDirectoryDatabase:
 
     def _debug(self, *args, **kwargs):
         if self.debug:
-            print(*args, **kwargs)
+            print("db: ", *args, **kwargs)
 
     def _debug_print_tree(self):
 

@@ -11,7 +11,7 @@ import getpass
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.views import view_lists, view_item, view_items
-from taskai.models import Base, TodoItem, TodoList, Comment
+from taskai.models import TodoItem, Comment
 from taskai.services.ai import ai_headstart_service, ai_natural_language_service
 from taskai.services.user_setup import user_setup_service
 from taskai.services.repair_database import repair_database_service
@@ -29,36 +29,44 @@ DB_PATH = ".taskai/task_db"
 USER = os.getenv("USER") if sys.platform == "linux" else os.getenv('USERNAME')
 db = JsonDirectoryDatabase(
         DB_PATH,
-        USER
+        USER,
+        debug=True
 )
 db.connect()
-GlobalConfig.load_dict(db.config)
-
-og_help = builtins.help
-def new_help(*args, **kwargs):
-    print(f"help: args: {args}, kwargs: {kwargs}")
-    return og_help(*args, **kwargs)
-builtins.help = new_help
+GlobalConfig.load_dict(db.get_config())
 
 class Controller:
 
     # utilities
-    def _find_model_by_stringmatch(attr: str, pattern: str) -> TodoItem|TodoList|Comment|None:
+    def _find_model_by_stringmatch(attr: str, pattern: str) -> TodoItem|Comment|None:
 
         for record_type in [
-            TodoList,
             TodoItem,
             Comment
         ]:
-            batch_attrs = db.read_batch_attr(record_type, attr)
+            batch_attrs = db.get_item_batch_attr(attr)
             inside_out = {v: k for k, v in batch_attrs.items()}  # TODO this is hacky
             results = fnmatch.filter(batch_attrs.values(), pattern)
             if results:
                 id_ = inside_out[results[0]]  # might be duplication
-                return db.read(id_)
-                
+                return db.get_item(id_)
         return None
 
+    def _parse_item_kwargs(kwargs):
+        for k, v in kwargs.copy().items():
+            if v is None:
+                continue
+            match k:
+                case "completed": kwargs["completed"] = bool(v)
+                case "due_by": kwargs["due_by"] = datetime.strptime(v, "%m-%d-%Y")
+                case "depends_on": kwargs["dependency_ids"] = v.split(",")
+        return kwargs
+
+    def _get_root_ids():
+        return [
+            item_id for item_id in db.get_item_ids()
+            if db.get_item_attr(item_id, "parent_id") is None
+        ]
 
     def _debug(args, kwargs):
         print("args:", args)
@@ -66,113 +74,69 @@ class Controller:
 
     # CRUD
     def show_all(show_done=True):
-        view_lists(db, db.lists, show_done=show_done)
-    
-    def show_by_id(id_, show_done=True):
-        if id_ in db.items:
-            Controller.show_item(id_)
-        elif id_ in db.lists:
-            Controller.show_list(id_, show_done=show_done)
-    
-    def show_by_list_name(value: str, show_done=True):
+        view_lists(db, Controller._get_root_ids(), show_done=show_done)
+
+    def show_by_item_name(value: str, show_done=True):
         model = Controller._find_model_by_stringmatch("name", value)
-        if isinstance(model, TodoList):
-            Controller.show_list(model.id, show_done=show_done)
+        if model:
+            Controller.show_item(model.id, show_done=show_done)
         else:
-            print(f"Could not find list matching pattern '{value}'")
-
-    def show_list(list_id: int|str, show_done=True):
-        view_lists(db, [list_id], show_done=show_done)
+            print(f"Could not find item matching pattern '{value}'")
     
-    def show_lists():
-        view_lists(db, db.lists.keys(), show_items=False)
-    
-    def show_item(item_id: int|str):
-        view_item(db, item_id)
+    def show_item(item_id: int, **kwargs):
+        view_item(db, item_id, **kwargs)
 
-    def show_items(item_ids: str):
+    def show_items(item_ids: str, **kwargs):
         item_ids = item_ids.split(",")
-        view_items(db, item_ids)
+        view_items(db, item_ids, **kwargs)
     
     def show_examples():
         ...
         print("Not implemented yet")
 
-    def create_list(name: str):
-        list = TodoList(name=name)
-        list_id = db.create(list)
-        db.commit()
-        print(f"Creating list {list_id} - {list.name}")
+    def create_item(name: str, parent_id=None, **kwargs):
+        if parent_id is not None and not _is_int(parent_id):
+            parent = Controller._find_model_by_stringmatch("name", parent_id)
+            if not parent:
+                Controller.throw_error(f"Could not find parent by id '{parent_id}'")
+                return
+            parent_id = parent.id
 
-    def create_item(list_id: int|str, name: str, **kwargs):
-        try:
-            int(list_id)
-        except ValueError:
-            list_ = Controller._find_model_by_stringmatch("name", list_id)
-            # TODO this should be just lists, not models
-            list_id = list_.id
-
-        item = TodoItem(name=name, list_id=list_id)
-
-        for k, v in kwargs.items():
-            if v is None:
-                continue
-            match k:
-                case "completed": item.completed = bool(v)
-                case "description": item.description = str(v)
-                case "due_by": item.due_by = datetime.strptime(v, "%m-%d-%Y")
-                case "parent": item.parent = str(v)
-                case "priority": item.priority = int(v)
-                case "depends_on": item.dependency_ids.extend(v.split(","))
-                # TODO handle recurrence
-        db.create(item)
+        kwargs = Controller._parse_item_kwargs(kwargs)
+        item_id = db.create_item(name=name, parent_id=parent_id, **kwargs)
+        print(f"Created item {item_id} - '{name}'")
         db.commit()
 
     def create_comment(item_id: int|str, content: str):
-        comment = Comment(
-            item_id=item_id,
-            content=content
-        )
-        db.create(comment)
+        comment_id = db.create_comment(content=content, item_id=item_id)
+        print(f"Added comment {comment_id} to item {item_id} - '{content}'")
         db.commit()
             
     def update_item(item_id: int|str, **kwargs):
-        item: TodoItem = db.read(item_id)
-        for k, v in kwargs.items():
-            if v is None:
-                continue
-            match k:
-                case "name": item.name = str(v)
-                case "list_id": item.list_id = str(v)
-                case "completed": item.completed = bool(v)
-                case "description": item.description = str(v)
-                case "due_by": item.due_by = datetime.strptime(v, "%m-%d-%Y")
-                case "parent": item.parent = str(v)
-                case "priority": item.priority = int(v)
-                # TODO handle recurrence
-
-        db.update(item)
+        if not _is_int(item_id):
+            item_id = Controller._find_model_by_stringmatch("name", item_id)
+        db.update_item(item_id, **kwargs)
+        print(f"Updated item {item_id}")
         db.commit()
 
-    def delete(id_: int|str):
-        db.delete(id_)
+    def delete_item(id_: int|str):
+        db.delete_item(id_)
         db.commit()
-        print(f"Deleted {id_}")
+        print(f"Deleted item {id_}")
     
-    def delete_list_by_name(name: str):
-        list_ = Controller._find_model_by_stringmatch("name", name)
-        if list_:
-            db.delete(list_.id)
+    def delete_item_by_name(name: str):
+        item = Controller._find_model_by_stringmatch("name", name)
+        if item:
+            db.delete_item(item.id)
             db.commit()
         else:
             Controller.throw_error("Cannot find list by name")
-
     
     def delete_completed():
-        for item_id in db.items.copy():
-            item: TodoItem = db.read(item_id)
+        for item_id in db.get_item_ids():
+            item: TodoItem = db.get_item(item_id)
             if item.completed:
-                db.delete(item_id)
+                db.delete_item(item_id)
         db.commit()
     
     def ai_headstart(item_id: int|str):
@@ -188,19 +152,19 @@ class Controller:
         print(f"[red]ERROR: {error_description}[/red]\nargs={args}\nkwargs={kwargs}")
     
     def get_config_value(key: str):
-        print(db.get_config_value(key))
+        print(getattr(db.get_config(), key))
     
     def list_config():
         for k, v in db.get_config().model_dump().items():
             print(f"{k}={v}")
     
     def set_config_value(key: str, value: any):
-        db.set_config_value(key, value)
+        db.update_config(**{key: value})
         db.commit()
         print(f"setting {key}={value}")
     
     def remove_config_value(key: str):
-        db.config.pop(key)
+        db.update_config(**{key: None})
         db.commit()
     
     def run_setup_service():
@@ -209,30 +173,33 @@ class Controller:
     def repair_service():
         repair_database_service(db)
 
-    def move_item(item_id: int|str, list_identifier: int|str):
+    def move_item(item_id: int|str, parent_identifier: int|str):
 
-        if item_id not in db.items:
-            Controller.throw_error(f"Couldn't find items with id {item_id}")
-        item: TodoItem = db.read(item_id)
+        if not _is_int(item_id):
+            item = Controller._find_model_by_stringmatch("name", item_id)
+            if not item:
+                Controller.throw_error("Could not locate item")
+                return
+            item_id = item.id
         
-        if _is_int(list_identifier):
-            new_list_: TodoList = db.read(list_identifier)
+        
+        if _is_int(parent_identifier):
+            new_parent: TodoItem = db.get_item(parent_identifier)
         else:
-            new_list_: TodoList = Controller._find_model_by_stringmatch("name", list_identifier)
-        if not new_list_:
-            Controller.throw_error(f"Couldn't locate list by identifier {list_identifier}")
+            new_parent: TodoItem = Controller._find_model_by_stringmatch("name", parent_identifier)
+        if not new_parent:
+            Controller.throw_error(f"Couldn't locate item by identifier {parent_identifier}")
+            return
         
         # update item
-        item.list_id = new_list_.id
-        db.update(item)
-        
+        db.update_item(item_id, parent_id=new_parent.id)
         db.commit()
     
     def add_dependency(src_id: int|str, dst_id: int|str):
         """Adds a depedency src -> dst, meaning src depends on dst"""
-        src: TodoItem = db.read(src_id)
-        src.dependency_ids.append(dst_id)
-        db.update(src)
+        dependency_ids = db.get_item_attr(src_id, "dependency_ids")
+        dependency_ids.append(dst_id)
+        db.update_item(src_id, dependency_ids=dependency_ids)
         db.commit()
 
 # utilities
@@ -290,33 +257,21 @@ def execute_commands(*args, **kwargs) -> int:
             case "show":
                 match args[1]:
                     case "all": Controller.show_all(*args[2:], **kwargs)
-                    case "list": Controller.show_list(*args[2:], **kwargs)
-                    case "lists": Controller.show_lists() 
-                    case "item": Controller.show_item(*args[2:], **kwargs)
-                    case "items": Controller.show_item(*args[2:], **kwargs)
                     case "examples": Controller.show_examples()
-                    case _ if _is_int(args[1]): Controller.show_by_id(*args[1:], **kwargs)
-                    case _: Controller.show_by_list_name(args[1], **kwargs)
+                    case _ if _is_int(args[1]): Controller.show_item(*args[1:], **kwargs)
+                    case _: Controller.show_by_item_name(args[1], **kwargs)
 
             case "create":
-                match args[1]:
-                    case "item": Controller.create_item(*args[2:], **kwargs)
-                    case "list": Controller.create_list(*args[2:], **kwargs)
-                    case "comment": Controller.create_comment(*args[2:], **kwargs)
-                    case _: Controller.throw_error("uncrecognized create command", *args, **kwargs)
+                Controller.create_item(args[1], **kwargs)
             
             case "update":
-                match args[1]:
-                    case _ if _is_int(args[1]): Controller.update_item(args[1], **kwargs)
-                    case _: Controller.throw_error("uncregnozed update command", *args, **kwargs)
-
+                Controller.update_item(args[1], **kwargs)
+                
             case "delete" | "remove":
                 match args[1]:
-                    case _ if _is_int(args[1]): Controller.delete(args[1])
-                    case "item": Controller.delete(args[2])
-                    case "list": Controller.delete(args[2])
+                    case _ if _is_int(args[1]): Controller.delete_item(args[1])
                     case "completed" | "done": Controller.delete_completed()
-                    case _: Controller.delete_list_by_name(args[1])
+                    case _: Controller.delete_item_by_name(args[1])
 
             case "comment":
                 match args[1]:
@@ -339,7 +294,9 @@ def execute_commands(*args, **kwargs) -> int:
                 db.remove()
             
             case "add":
-                Controller.create_item(*args[1:], **kwargs)
+                parent_identifier = args[1]
+                item_name = args[2]
+                Controller.create_item(item_name, parent_identifier, **kwargs)
 
             case "complete" | "done":
                 match args[1]:
@@ -378,6 +335,7 @@ def execute_commands(*args, **kwargs) -> int:
 
 
     except Exception as e: 
+        raise e
         Controller.throw_error(f"encountered exception '{e}'", *args, **kwargs)
 
     return 1

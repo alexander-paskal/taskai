@@ -18,8 +18,8 @@ class Base(BaseModel):
 
 class UserData(Base):
     # serialized versions of the data
-    todo_items: dict[int, dict] = Field(default_factory=dict)
-    comments: dict[int, dict] = Field(default_factory=dict)
+    todo_items: dict[str, dict] = Field(default_factory=dict)
+    comments: dict[str, dict] = Field(default_factory=dict)
     config: dict = Field(default_factory=dict)
 
     id: Optional[int] = Field(default=None, primary_key=True)
