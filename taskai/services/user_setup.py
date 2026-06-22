@@ -14,20 +14,20 @@ def user_setup_service(
     db: JsonDirectoryDatabase
 ):
     
-    config = db.config
+    config = db.get_config()
     # setup gemini model
     print("Beginning setup")
     if "GEMINI_API_KEY" not in config:
         api_key = _get_gemini_api_key()
         if api_key:
-            config["GEMINI_API_KEY"] = api_key
+            db.update_config(GEMINI_API_KEY=api_key)
     else:
         print("gemini key already specified")
     
     if "GEMINI_MODEL" not in config:
         model = _select_gemini_model()
         if model:
-            config["GEMINI_MODEL"] = model
+            db.update_config(GEMINI_MODEL=model)
     else:
         print("gemini model already specified")
     print("Setup complete! Use 'task config set|get|list' to interact with your configuration options")
