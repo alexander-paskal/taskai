@@ -33,15 +33,10 @@ COMMANDS = [
 ]
 
 
-
-def _cleanup_db():
-    os.chdir(CWD)
-    if os.path.exists(TESTING_DIR):
-        shutil.rmtree(TESTING_DIR)
-
-if __name__ == "__main__":
+def test_run_commands():
 
     _cleanup_db()
+
     os.makedirs(TESTING_DIR, exist_ok=True)
     os.chdir(TESTING_DIR)
 
@@ -52,12 +47,18 @@ if __name__ == "__main__":
             return_code = os.system(c)
             print(f"return code: {return_code}")
             if return_code != 0:
-                import sys
-                sys.exit()
+                raise RuntimeError("test failed with return code {}".format(return_code))
     except Exception as e:
         raise e
     finally:
-    # import rich
-    # import orjson as json
-    # rich.print_json(json.dumps(_test_db.user_data).decode())
         _cleanup_db()
+
+
+def _cleanup_db():
+    os.chdir(CWD)
+    if os.path.exists(TESTING_DIR):
+        shutil.rmtree(TESTING_DIR)
+
+if __name__ == "__main__":
+
+    test_run_commands()

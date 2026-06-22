@@ -175,7 +175,11 @@ class Controller:
         repair_database_service(db)
 
     def move_item(item_id: int|str, parent_identifier: int|str):
-        item = db.get_item(item_id)
+        
+        if _is_int(item_id):
+            item = db.get_item(item_id)
+        else:
+            item = Controller._find_model_by_stringmatch("name", item_id)
         
         # remove from old parent
         if item.parent_id is not None:
@@ -187,11 +191,13 @@ class Controller:
         elif not parent_identifier:  # anything evaluating to false
             new_parent_id=None
         else:
-            new_parent_id = Controller._find_model_by_stringmatch("name", parent_identifier)
-        db.update_item(item_id, parent_id=new_parent_id)
+            new_parent_id = Controller._find_model_by_stringmatch("name", parent_identifier).id
+        
+        db.update_item(item.id, parent_id=new_parent_id)
         if new_parent_id is not None:
-            db.add_child_to_parent(item_id, new_parent_id)
+            db.add_child_to_parent(item.id, new_parent_id)
 
+        
         db.commit()     
     
     def add_dependency(src_id: int|str, dst_id: int|str):
