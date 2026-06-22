@@ -8,7 +8,7 @@ import json
 
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
-from taskai.models import TodoItem, TodoList, Comment
+from taskai.models import TodoItem, Comment
 from taskai.config import config
 from taskai.help_menu import help_general
 
@@ -96,16 +96,23 @@ def ai_natural_language_service(
     """
     print(f"Ai prompt: {prompt}")
     
-    # build user info
+    # recursively build user info
     user_info = []
-    for id_ in db.lists:
-        list: TodoList = db.read(id_)
-        user_info.append(f"{list.id} {list.name}")
-        for item_id in list.item_ids:
-    
-            item: TodoItem = db.read(item_id)
-            if not item.completed:
-                user_info.append(f"\t {item.id} {item.name}")
+    _visited_set = {}
+
+    def _add_info(item_id, level=0):
+        item: TodoItem = db.read(id_)
+        user_info.append("  "*level + f"{item.id} {item.name}")
+        _visited_set.add(item_id)
+        if item.child_ids:
+            for child_id in item.child_ids:
+                _add_info(child_id, level+1)
+
+
+    for id_ in db.items: 
+        if id_ not in _visited_set:
+            _add_info(id_)
+
     user_info = "\n".join(user_info)
 
     # build ai prompt

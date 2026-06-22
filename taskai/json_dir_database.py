@@ -124,10 +124,12 @@ class JsonDirectoryDatabase:
 
         # update parent
         if kwargs.get("parent_id"):
-            self._validate_parentage(kwargs["parent_id"], item.id)
-
+            parent = self.get_item(kwargs["parent_id"])
+            parent.child_ids.append(item.id)
+            self._debug(f"Adding item {item.id} to parent {parent.id}")
+            self.update_item(parent.id, child_ids=parent.child_ids)
         return item.id
-        
+
     def create_comment(self, content: str, item_id: int, **kwargs) -> int:
         comment = Comment(content=content, item_id=item_id, **kwargs)
         comment.id = self._get_new_id()
@@ -136,21 +138,42 @@ class JsonDirectoryDatabase:
         self._debug(f"Creating comment {comment.id}")
         self.user_data.comments[str(comment.id)] = comment.model_dump()
 
-        # update item
-        self._validate_comment(comment.id, comment.item_id)
+        # update item comment list
+        item = self.get_item(item_id)
+        item.comment_ids.append(comment.id)
+        self.update_item(item.id, comment_ids=item.comment_ids)
 
         return comment.id
-        
+
+    def add_child_to_parent(self, child_id: int, parent_id: int):
+        parent = self.get_item(parent_id)
+        if child_id in parent.child_ids:
+            raise DatabaseError(f"Item {child_id} already child of item {parent_id}") 
+        parent.child_ids.append(child_id)
+        self.update_item(parent.id, child_ids=parent.child_ids)
+        self._debug(f"Adding item {child_id} to parent {parent.id}")
+
     def delete_item(self, id: int) -> bool:
-        if str(id) not in self.user_data.todo_items:
-            raise DatabaseError(f"No record by id {id}")
-        parent_id = self.get_item_attr(id, "parent_id")
+
+        item = self.get_item(id)
+        
+        # recursively delete children
+        for child_id in item.child_ids: 
+            self.delete_item(child_id)
+
+        # remove child from parent
+        if item.parent_id is not None:
+            self.remove_child_from_parent(item.id, item.parent_id)
+        
         self._debug(f"Deleting item {id}")
         item_dict = self.user_data.todo_items.pop(str(id))
-        self._validate_parentage(parent_id, id)
-        # recursively delete children
-        for child_id in item_dict["child_ids"]:
-            self.delete_item(child_id)
+
+    def remove_child_from_parent(self, child_id: int, parent_id: int) -> bool:
+        parent = self.get_item(parent_id)
+        if child_id not in parent.child_ids:
+            raise DatabaseError(f"Cannot delete child {child_id} from parent {parent_id}")
+        parent.child_ids.remove(child_id)
+        self.update_item(parent_id, child_ids=parent.child_ids)
 
     def delete_comment(self, id: int) -> bool:
         if str(id) not in self.user_data.comments:
@@ -158,18 +181,19 @@ class JsonDirectoryDatabase:
         comment = self.get_comment(id)
         self._debug(f"Deleting comment {id}")
         self.user_data.comments.pop(str(id))
-        self._validate_parentage(comment.id, comment.item_id)    
     
+        # TODO remove from parent
+        item = self.get_item(comment.item_id)
+        item.comment_ids.remove(id)
+        self.update_item(item.id, comment_ids=item.comment_ids)
+
     def update_item(self, id: int, **kwargs) -> bool:
         if str(id) not in self.user_data.todo_items:
             raise DatabaseError(f"No record by id {id}")
         # validate the full new item
-        item_dict = self.user_data.todo_items[str(id)].copy()
-        item_dict.update(kwargs)
-        new_item_dict = TodoItem(**item_dict).model_dump()
-
-        if new_item_dict["parent_id"]:
-            self._validate_parentage(new_item_dict["parent_id"], id)
+        old_item_dict = self.user_data.todo_items[str(id)].copy()
+        old_item_dict.update(kwargs)
+        new_item_dict = TodoItem(**old_item_dict).model_dump()
 
         self._debug(f"Updating item {id}")
         self.user_data.todo_items[str(id)] = new_item_dict
@@ -181,7 +205,6 @@ class JsonDirectoryDatabase:
         comment_dict = self.user_data.todo_items[str(id)].copy()
         comment_dict.update(kwargs)
         new_comment_dict = Comment(**comment_dict).model_dump()
-        self._validate_comment(id, new_comment_dict["child_id"])
         self._debug(f"Updating comments {id}")
         self.user_data.comments[str(id)] = new_comment_dict
 
@@ -191,75 +214,6 @@ class JsonDirectoryDatabase:
         self._debug(f"Updating config {id}")
         new_config_dict = CLIConfig(**config_dict).model_dump()
         self.user_data.config = new_config_dict
-
-    def _validate_comment(self, comment_id: int, item_id: int):
-        item_exists = str(item_id) in self.user_data.todo_items
-        comment_exists = str(comment_id) in self.user_data.comments
-
-        match (item_exists, comment_exists):
-            case (True, True):  # make sure they reference each other
-                comment = self.get_comment(comment_id)
-                comment_ids = self.get_item_attr(item_id, "comment_ids")
-
-                # make sure the item references the comment in its comment list
-                if comment_id not in comment_ids:
-                    self._debug(f"Adding comment {comment_id} to item {item_id}")
-                    comment_ids.append(comment_id)
-                    self.update_item(item_id, comment_ids=comment_ids)
-
-                # make sure the comment references its parent
-                if comment.item_id != item_id:
-                    self._debug(f"Setting comment {comment_id} to reference item {item_id}")
-                    self.update_item(comment_id, item_id=item_id)
-            
-            case (False, True):  # delete the comment if its parent is deceesed
-                self._debug(f"Deleting orphan comment {comment_id}")
-                self.user_data.comments.pop(str(comment_id))
-            
-            case (True, False):  # remove the comment id from the item's list of comments
-                comment_ids =  self.get_item_attr(item_id, "comment_ids")
-                if comment_id in comment_ids:
-                    self._debug(f"Removing reference to comment {comment_id} from item {item_id}")
-                    comment_ids.remove(comment_id)
-                    self.update_item(item_id, child_ids=comment_ids)
-            
-            case (False, False):
-                self._debug(f"Couldn't find reference to comment {comment_id} or item {item_id}")    
-
-    def _validate_parentage(self, parent_id: int, child_id: int):
-        parent_exists = str(parent_id) in self.user_data.todo_items
-        child_exists = str(child_id) in self.user_data.todo_items
-
-        match (parent_exists, child_exists):
-            case (True, True):  # make sure they reference each other
-                child = self.get_item(child_id)
-                parent_children_ids = self.get_item_attr(parent_id, "child_ids")
-                
-                # make sure the child id is in the parent's children list
-                if child_id not in parent_children_ids:
-                    self._debug(f"Adding child {child_id} to parent {parent_id}")
-                    parent_children_ids.append(child_id)
-                    self.update_item(parent_id, child_ids=parent_children_ids)
-
-                # make sure the child references the parent
-                if child.parent_id != parent_id:
-                    self._debug(f"Setting child {child_id} to reference parent {parent_id}")
-                    self.update_item(child_id, parent_id=parent_id)
-            
-            case (False, True):  # set child parent_id to null
-                self._debug(f"Setting child {child_id} as root")
-                self.update_item(child_id, parent_id=None)
-            
-            case (True, False):  # remove the child id from the parents list
-                parent_children_ids=  self.get_item_attr(parent_id, "child_ids")
-                if child_id in parent_children_ids:
-                    self._debug(f"Removing reference to child {child_id} from parent {parent_id}")
-                    parent_children_ids.remove(child_id)
-                    self.update_item(parent_id, child_ids=parent_children_ids)
-            
-            case (False, False):
-                self._debug(f"Couldn't find reference to child {child_id} or parent {parent_id}")
-                
 
     def get_config(self) -> CLIConfig:
         return CLIConfig(**self.user_data.config)

@@ -30,7 +30,6 @@ USER = os.getenv("USER") if sys.platform == "linux" else os.getenv('USERNAME')
 db = JsonDirectoryDatabase(
         DB_PATH,
         USER,
-        debug=True
 )
 db.connect()
 GlobalConfig.load_dict(db.get_config())
@@ -150,6 +149,8 @@ class Controller:
     
     def throw_error(error_description: str, *args, **kwargs):
         print(f"[red]ERROR: {error_description}[/red]\nargs={args}\nkwargs={kwargs}")
+        import sys
+        sys.exit(-1)
     
     def get_config_value(key: str):
         print(getattr(db.get_config(), key))
@@ -174,26 +175,24 @@ class Controller:
         repair_database_service(db)
 
     def move_item(item_id: int|str, parent_identifier: int|str):
-
-        if not _is_int(item_id):
-            item = Controller._find_model_by_stringmatch("name", item_id)
-            if not item:
-                Controller.throw_error("Could not locate item")
-                return
-            item_id = item.id
+        item = db.get_item(item_id)
         
+        # remove from old parent
+        if item.parent_id is not None:
+            db.remove_child_from_parent(item.id, item.parent_id)
         
+        # add to new parent
         if _is_int(parent_identifier):
-            new_parent: TodoItem = db.get_item(parent_identifier)
+            new_parent_id = parent_identifier
+        elif not parent_identifier:  # anything evaluating to false
+            new_parent_id=None
         else:
-            new_parent: TodoItem = Controller._find_model_by_stringmatch("name", parent_identifier)
-        if not new_parent:
-            Controller.throw_error(f"Couldn't locate item by identifier {parent_identifier}")
-            return
-        
-        # update item
-        db.update_item(item_id, parent_id=new_parent.id)
-        db.commit()
+            new_parent_id = Controller._find_model_by_stringmatch("name", parent_identifier)
+        db.update_item(item_id, parent_id=new_parent_id)
+        if new_parent_id is not None:
+            db.add_child_to_parent(item_id, new_parent_id)
+
+        db.commit()     
     
     def add_dependency(src_id: int|str, dst_id: int|str):
         """Adds a depedency src -> dst, meaning src depends on dst"""
@@ -313,10 +312,8 @@ def execute_commands(*args, **kwargs) -> int:
                 Controller.delete_completed()
 
             case "move":
-                match args[1]:
-                    case _ if _is_int(args[1]): Controller.move_item(args[1], args[2])
-                    case _: Controller.throw_error("Unrecognized arguments", *args, **kwargs)
-            
+                Controller.move_item(args[1], args[2])
+                
             case "depend":
                 src_id, dst_id = args[1:3]
                 match (src_id, dst_id):

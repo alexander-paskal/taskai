@@ -1,3 +1,86 @@
+# 6-20
+
+Let's think critically about what i want this API to lookk like. How should be people be
+using the CLI?
+
+
+task create {name} {**kwargs} -> create an item
+task add {parent_id} ...  -> create an item as a child
+task show all
+task show {id}
+
+
+
+# 6-19
+
+Really this whole thing should just be a tree abstraction, and I should have a root node class
+and just built a tree database with some attrs depending on the type
+
+idk why i'm being a dipshit
+But that's gonna be the next iteration
+
+# 6-18
+
+Everything is fucked up anyways lol so might as qweell make some decisions about
+the best way to do the database
+
+
+
+```python
+class DB:
+
+    def get_item(id: int) -> TodoItem:
+    def get_comment(id: int) -> Comment:
+    def get_config() -> CLIConfig:
+    def create_item(name: str, parent: Optional[TodoItem]=None, ...) -> str:
+    def create_comment(content: str, parent: TodoItem) -> str:
+    def delete_item(name: str) -> bool:
+    def delete_comment(name: str) -> bool:
+    def update_item(id_: int, kwargs) -> bool:
+    def update_comment(id_: int, kwargs) -> bool:
+    def update_config(kwargs) -> bool:
+
+    def connect():
+        pass
+    def commit():
+        pass
+    def validate():
+        pass
+
+``` 
+
+Important factors:
+- do i want to serialize/deserialize every record twice? probably not
+- so let's make sure that everything is read-only
+
+How do i want to handle parentage? 
+i could:
+- do it at the client level i.e. make sure to call (add parent)
+- do it at the db level i.e. on every create, update, and delete method, validate
+
+Let's do it at the db level - i want the database to be responsible for ensuring data
+validation so I don't have to worry about it when I'm writing code downstream
+
+
+# 6-17
+
+Alright I find myself needing to make some design decisions about hierarchical lists.
+
+I could:
+    - differentiate between child items and child lists, and have items only be leaf nodes
+        pros:
+        cons:
+    - treat everything as a single "item" and simply due away with the concept of lists as a
+      separate data point
+    - still distinguish between the two but treat them all as child ids - useful for sorting
+
+Looking at it, i see no good reason to distinguish between items and lists - it complicates the
+code without adding any additional functionality. There is nothing that a list does that an item
+can't do apart from be a container, and there's no reason why an item can't also be a container.
+
+So let's just go ahead and implement that change. 
+
+
 # 6-14
 
 Damn it's been a productive couple of weeks. App is deployed on PyPi and I'm starting to think
