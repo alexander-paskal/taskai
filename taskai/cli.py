@@ -15,6 +15,7 @@ from taskai.models import TodoItem, Comment
 from taskai.services.ai import ai_headstart_service, ai_natural_language_service
 from taskai.services.user_setup import user_setup_service
 from taskai.services.repair_database import repair_database_service
+from taskai.services.pomodoro import pomodoro_service
 from taskai.help_menu import help_menu
 from taskai.config import GlobalConfig
 
@@ -362,7 +363,10 @@ def execute_commands(*args, **kwargs) -> int:
                 match (src_id, dst_id):
                     case _ if _is_int(src_id) and _is_int(dst_id): Controller.add_dependency(src_id, dst_id) 
                     case _: Controller.throw_error("Invalid arrow argument, must be one of (->, <-)")
-            
+        
+            case "pomo":
+                pomodoro_service(int(args[1]), int(args[2]))
+
             # developer use
             case "db":
                 import orjson as json

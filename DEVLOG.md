@@ -1,3 +1,25 @@
+# 6-25
+
+Alright let's start to think a bit about how I want to handle the pomo service.
+
+task pomo 25 3
+
+
+Let's start with spawning the timer, and then we can worry about logging and shit.
+
+Pomo should spawn a process and write a log to a database. The process
+should continuously monitor that log and see "am I active?"
+  - if so, it keeps running
+  - if not, we prompt the user for what they want to do?
+    - rest/reset/cancel
+do I need this to be serialized even? maybe not if I'm just starting - we can start pomo in another thread (or just the same thread)
+
+Yeah let's honestly not even worry about the multiprocessing part of it right now. 
+
+Let's just enter a loop and count down, while I keep clearing the screen
+
+I need to figure out how to make it play a bell or have a screen pop up (if it's running in the background)
+
 # 6-20
 
 Let's think critically about what i want this API to lookk like. How should be people be
