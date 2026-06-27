@@ -14,3 +14,5 @@ tmp*/
 .taskai
 *venv
 _tmp_database_dir/
+.dev
+.prod

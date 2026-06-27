@@ -227,7 +227,8 @@ def _parse_remaining(remaining_args: list[str]) -> tuple[list, dict]:
             kwargs[next_arg[2:]] = remaining_args.pop(0)
         else:
             args.append(next_arg)
-    
+
+
     return args, kwargs
 
 def _is_int(val: any) -> bool:
@@ -349,22 +350,46 @@ def interactive_program():
     # builtins.print = console.print
 
     response = ""
+    last_show_command = None
+    args = None
+    kwargs = None
+
+    # TODO save the last show
+
     _clear_screen()
     while True:
 
         try:
+
+            # render last show command
+            if last_show_command is not None:
+                execute_commands(*last_show_command[0], **last_show_command[1])
+
+            Console().rule()
+            
+            # prompt user input
             response = Prompt.ask("Type your commands:", default=response)
-            _clear_screen()
+            
+            # parse commands
             args, kwargs = _parse_remaining(response.split(" "))
             if args[0] == "task":
                 args = args[1:]
-            return_code = execute_commands(*args, **kwargs)
+
+            # defer show
+            if args[0] == "show":
+                last_show_command = (args, kwargs)
+                return_code = 1
+            else:
+                return_code = execute_commands(*args, **kwargs)
+            
+            _clear_screen()
             if return_code == 0:
                 break
-            Console().rule()
             
         except KeyboardInterrupt:
            break
+        except Exception as e:
+            print(e)
         
     _clear_screen()
     sys.exit(1)
