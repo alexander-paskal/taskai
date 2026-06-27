@@ -390,8 +390,6 @@ def interactive_program():
     args = None
     kwargs = None
 
-    # TODO save the last show
-
     _clear_screen()
     while True:
 
@@ -399,7 +397,10 @@ def interactive_program():
 
             # render last show command
             if last_show_command is not None:
-                execute_commands(*last_show_command[0], **last_show_command[1])
+                try:
+                    execute_commands(*last_show_command[0], **last_show_command[1])
+                except Exception as e:
+                    print(e)
 
             Console().rule()
             
