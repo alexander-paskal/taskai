@@ -208,13 +208,45 @@ class Controller:
         db.commit()
 
 # utilities
+def _parse_arg_string(arg_string: str) -> list[str]:
+    """parses a string properly before dispatching it to the argument parser"""
+    
+    # scan for quote characters
+    
+    currently_enclosed = False
+    current_quote_char = None
+    quote_chars = ('"',"'")
+    buffer = ""
+    arg_parts = []
+    for c in arg_string:
+        if c == " ":
+            if currently_enclosed:
+                buffer += c
+            else:
+                arg_parts.append(buffer)
+                buffer = ""
+        elif c == current_quote_char:
+            currently_enclosed = False
+            current_quote_char = None
+        
+        elif c in quote_chars and not currently_enclosed:
+            currently_enclosed = True
+            current_quote_char = c
+        else:
+            buffer +=  c
+    if buffer:
+        arg_parts.append(buffer)
+    return arg_parts
+
 def _parse_remaining(remaining_args: list[str]) -> tuple[list, dict]:
 
-    for i, _arg in enumerate(remaining_args):
-        remaining_args[i] = _arg.replace(" ", "+-*/")
-    remaining_args = " ".join(remaining_args).replace("="," ").split(" ")
-    for i, _arg in enumerate(remaining_args):
-        remaining_args[i] = _arg.replace("+-*/", " ")
+    # parse flags
+
+    #for i, _arg in enumerate(remaining_args):
+    #    remaining_args[i] = _arg.replace(" ", "+-*/")
+    #remaining_args = " ".join(remaining_args).replace("="," ").split(" ")
+    #for i, _arg in enumerate(remaining_args):
+    #    remaining_args[i] = _arg.replace("+-*/", " ")
     
     # outputs
     args = []
@@ -223,8 +255,12 @@ def _parse_remaining(remaining_args: list[str]) -> tuple[list, dict]:
     while remaining_args:
         next_arg = remaining_args.pop(0)
         if next_arg.startswith("--"):
-            assert remaining_args, "kwarg specified with no value provided"
-            kwargs[next_arg[2:]] = remaining_args.pop(0)
+            if "=" in next_arg:
+                key, value = next_arg.split("=")
+                kwargs[key] = value
+            else:
+                assert remaining_args, "kwarg specified with no value provided"
+                kwargs[next_arg[2:]] = remaining_args.pop(0)
         else:
             args.append(next_arg)
 
@@ -350,7 +386,7 @@ def interactive_program():
     # builtins.print = console.print
 
     response = ""
-    last_show_command = None
+    last_show_command = [("show", "all"), {}]
     args = None
     kwargs = None
 
@@ -371,7 +407,11 @@ def interactive_program():
             response = Prompt.ask("Type your commands:", default=response)
             
             # parse commands
-            args, kwargs = _parse_remaining(response.split(" "))
+            args_remaining = _parse_arg_string(response)
+            args, kwargs = _parse_remaining(args_remaining)
+            print("arg_string:", args_remaining)
+            print("args:", args)
+            print("kwargs:", kwargs)
             if args[0] == "task":
                 args = args[1:]
 

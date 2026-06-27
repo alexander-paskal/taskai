@@ -1,4 +1,5 @@
 from taskai.json_dir_database import JsonDirectoryDatabase
+from taskai.cli import _parse_arg_string
 import os
 import shutil
 
@@ -53,6 +54,23 @@ def test_run_commands():
     finally:
         _cleanup_db()
 
+def test_args_parser():
+    
+    def _assert_list_equal(l1, l2):
+        assert len(l1) == len(l2), f"{l1} length not equal to {l2} length"
+        assert all([thing1==thing2 for thing1, thing2 in zip(l1, l2)]), f"{l1} not equal to {l2}"
+    
+    dataset = [
+        ("show thing 1", ["show", "thing", "1"]),
+        ("show 'this is a string' 2", ["show", "this is a string", "2"]),
+        ("show https://url.com/thing?arg=1 hello there", ["show", "https://url.com/thing?arg=1", "hello", "there"])
+    ]
+
+    for input, label in dataset:
+        output = _parse_arg_string(input)
+        _assert_list_equal(label, output)
+
+    
 
 def _cleanup_db():
     os.chdir(CWD)
@@ -60,5 +78,5 @@ def _cleanup_db():
         shutil.rmtree(TESTING_DIR)
 
 if __name__ == "__main__":
-
-    test_run_commands()
+    test_args_parser()
+    # test_run_commands()
