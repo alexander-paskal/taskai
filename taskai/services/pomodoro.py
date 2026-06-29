@@ -18,7 +18,6 @@ def pomodoro_service(
         history = []
         console = Console()
         while True:
-            
             if state == "ready":
                 prompt = "Press enter to begin ..."
                 input(prompt)
@@ -31,7 +30,7 @@ def pomodoro_service(
                 now = datetime.datetime.now()
                 if now < end_time:
                     diff = end_time - now
-                    message = f"{min(diff.seconds // 60, 0)}:{str(diff.seconds % 60).zfill(2)} to go"
+                    message = f"{diff.seconds // 60}:{str(diff.seconds % 60).zfill(2)} to go"
                     if history[-1].endswith("to go"):
                         history.pop()
                     history.append(message)
@@ -47,7 +46,7 @@ def pomodoro_service(
                 now = datetime.datetime.now()
                 if now < end_time:
                     diff = end_time - now
-                    message = f"{min(diff.seconds // 60, 0)}:{str(diff.seconds % 60).zfill(2)} to go"
+                    message = f"{diff.seconds // 60}:{str(diff.seconds % 60).zfill(2)} to go"
                     if history[-1].endswith("to go"):
                         history.pop()
                     history.append(message)
