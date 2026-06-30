@@ -208,6 +208,30 @@ class Controller:
         db.update_item(src_id, dependency_ids=dependency_ids)
         db.commit()
 
+    def reorder(id1: int, id2: int, position: str):
+        if position not in ("before", "after"):
+            Controller.throw_error("position must be one of before, after")
+
+        child1 = db.get_item(id1)
+        parent = db.get_item(child1.parent_id)
+        if parent is None:
+            Controller.throw_error("Cannot reorder root items")
+        
+
+        new_child_ids = []
+        for child_id in parent.child_ids:
+            if child_id == id1:
+                continue
+            if child_id == id2:
+                new_child_ids.extend(
+                    [id1, id2] if position == "before" else [id2, id1]
+                )
+                continue
+            new_child_ids.append(child_id)
+        db.update_item(parent.id, child_ids=new_child_ids)
+        db.commit()
+
+
 # utilities
 def _parse_arg_string(arg_string: str) -> list[str]:
     """parses a string properly before dispatching it to the argument parser"""
@@ -309,7 +333,10 @@ def execute_commands(*args, **kwargs) -> int:
             
             case "update":
                 Controller.update_item(args[1], **kwargs)
-                
+        
+            case "reorder":
+                Controller.reorder(int(args[1]), int(args[3]), args[2])
+
             case "delete" | "remove":
                 match args[1]:
                     case _ if _is_int(args[1]): Controller.delete_item(args[1])
