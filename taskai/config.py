@@ -7,9 +7,9 @@ class GlobalConfig:
     _data_store: dict[str, any]
 
     @classmethod
-    def load_dict(cls, d: dict):
+    def load_dict(cls, model):
         """loads values from a configuration"""
-        cls._data_store = d
+        cls._data_store = model.model_dump()
 
     @classmethod
     def get(cls, key: str):

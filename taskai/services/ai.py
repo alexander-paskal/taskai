@@ -30,8 +30,7 @@ def ai_headstart_service(
     - Parse and return its response
     """
 
-
-    item:TodoItem = db.read(item_id)
+    item:TodoItem = db.get_item(item_id)
 
     
     from google import genai
@@ -67,11 +66,8 @@ task name: {item.name}
 
         prompt += f"\ntask comments:"
         for comment_id in item.comment_ids:
-            comment: Comment = db.read(comment_id)
+            comment: Comment = db.get_comment(comment_id)
             prompt += f"\n\t- {comment.content}"
-
-    # return "Survey says go fuck yourself"
-
     # query model
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
@@ -101,7 +97,7 @@ def ai_natural_language_service(
     _visited_set = {}
 
     def _add_info(item_id, level=0):
-        item: TodoItem = db.read(id_)
+        item: TodoItem = db.get_item(id_)
         user_info.append("  "*level + f"{item.id} {item.name}")
         _visited_set.add(item_id)
         if item.child_ids:
@@ -109,7 +105,7 @@ def ai_natural_language_service(
                 _add_info(child_id, level+1)
 
 
-    for id_ in db.items: 
+    for id_ in db.get_item_ids(): 
         if id_ not in _visited_set:
             _add_info(id_)
 
