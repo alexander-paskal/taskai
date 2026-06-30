@@ -44,6 +44,7 @@ class TodoItem(Base):
     recurs_every: Optional[list[timedelta]] = None
     recurs_until: Optional[datetime] = None 
     recur_keep_incomplete: bool = False
+    status: str = False
 
 
 class Comment(Base):
