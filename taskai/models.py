@@ -61,5 +61,10 @@ class CLIConfig(Base):
     GEMINI_MODEL: str = None
     GEMINI_API_KEY: str = None
 
+    # VIEW
+    DISPLAY_STRING: str = "id name status due_by"
+    DISPLAY_COLORS: str = "_ white dark_orange _"
+
+
 class LLMConfig(Base):
     pass

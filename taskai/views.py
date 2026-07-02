@@ -1,6 +1,7 @@
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.models import TodoItem, Comment
+from taskai.config import config
 
 # external
 from rich import print
@@ -8,19 +9,68 @@ from rich.console import Console
 import rich
 
 
+"""
+Lets give the lists a display string
+
+
+set of valid attributes
+- id
+- name
+- status
+- 
+
+
+"""
+
+
+VALID_ATTRS = {
+    "id",
+    "name",
+    "created_on",
+    "due_by",
+    "priority",
+    "status"
+}
+
+
+@config("DISPLAY_STRING", "display_str")
+@config("DISPLAY_COLORS", "display_colors")
 def view_lists(
         db: JsonDirectoryDatabase, 
         roots: list[int], 
-        show_done=True, 
+        show_done=True,
+        display_str: str = "id name status", 
+        display_colors: str = None
 ):
     """Shows all the lists"""
 
+    attrs = display_str.lower().split(" ")
+
+    if display_colors:
+        colors = display_colors.lower().split(" ")
+        assert len(colors) == len(attrs), "must have a color for every attr"
+
+    for attr in attrs:
+        assert attr in VALID_ATTRS, "invalid attribute in display string {}".format(attr)
+
+    def _render_display_string(item: TodoItem):
+        display_string = ""
+        for i, attr in enumerate(attrs):
+            part = getattr(item, attr)
+            if not part:
+                continue
+            part = str(part)
+            if display_colors and colors[i] != "_":
+                part = _wrap_string(part, f"[{colors[i]}]", f"[/{colors[i]}]")  
+            display_string += f" {part}"
+        display_string = _wrap_string(display_string, "[strike]", "[/strike]", condition=item.completed)
+        return display_string
 
     def _print_item(item: TodoItem, level: int):
         if not show_done and item.completed:
             return
-        display_string = f"{item.id} {item.name}"
-        display_string = _wrap_string(display_string, "[strike]", "[/strike]", condition=item.completed)
+        
+        display_string = _render_display_string(item)
         indent = "\t" * level
         print(indent + display_string)
 
