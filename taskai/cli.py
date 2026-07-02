@@ -112,11 +112,17 @@ class Controller:
         print(f"Added comment {comment_id} to item {item_id} - '{content}'")
         db.commit()
             
-    def update_item(item_id: int|str, **kwargs):
+    def update_item(item_id: int|str, recursive=False, **kwargs):
         if not _is_int(item_id):
             item_id = Controller._find_model_by_stringmatch("name", item_id)
         db.update_item(item_id, **kwargs)
         print(f"Updated item {item_id}")
+
+        if recursive:
+            children = db.get_item_attr(item_id, "child_ids")
+            for child_id in children:
+                Controller.update_item(child_id, recursive=True, **kwargs) 
+
         db.commit()
 
     def delete_item(id_: int|str):
@@ -134,7 +140,10 @@ class Controller:
     
     def delete_completed():
         for item_id in db.get_item_ids():
-            item: TodoItem = db.get_item(item_id)
+            try:
+                item: TodoItem = db.get_item(item_id)
+            except:
+                continue
             if item.completed:
                 db.delete_item(item_id)
         db.commit()
@@ -370,7 +379,7 @@ def execute_commands(*args, **kwargs) -> int:
 
             case "complete" | "done":
                 match args[1]:
-                    case _ if _is_int(args[1]): Controller.update_item(args[1], completed=True)
+                    case _ if _is_int(args[1]): Controller.update_item(args[1], completed=True, recursive=True)
                     case _: Controller.throw_error("unrecognized complete command", *args, **kwargs)
 
             case "examples":
