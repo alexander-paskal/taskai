@@ -406,7 +406,11 @@ def execute_commands(*args, **kwargs) -> int:
             # developer use
             case "db":
                 import orjson as json
-                print_json(json.dumps(db.read(args[1]).model_dump()).decode())
+                print_json(json.dumps(db.get_item(int(args[1])).model_dump()).decode())
+
+            case "status":
+                item_id, status_val = args[1:3]
+                Controller.update_item(item_id, status=status_val)
 
             case "exit" | "exit()" | "quit":
                 return 0

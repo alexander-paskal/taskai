@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 # external
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, field_validator
 
 class Base(BaseModel):
     pass
@@ -45,6 +45,12 @@ class TodoItem(Base):
     recurs_until: Optional[datetime] = None 
     recur_keep_incomplete: bool = False
     status: str = ""
+
+    @field_validator("status", mode="before")
+    def coerce_status(cls, value):
+        if not isinstance(value, str):
+            return ""
+        return value
 
 
 class Comment(Base):
