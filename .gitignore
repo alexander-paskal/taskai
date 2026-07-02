@@ -16,3 +16,4 @@ tmp*/
 _tmp_database_dir/
 .dev
 .prod
+*.swo

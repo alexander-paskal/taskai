@@ -33,12 +33,18 @@ def _populate_db():
     ids.update(locals())
 
 def test_view_lists():
+    _cleanup_db()
+    _setup_db()
+    _populate_db()
     print("Root 1");print("-"*30)
     view_lists(db, [ids["root1"]])
     print("\n\n\n");print("Root 1");print("-"*30)
     view_lists(db, [ids["root2"]])
 
 def test_view_item():
+    _cleanup_db()
+    _setup_db()
+    _populate_db()
     print("\n\n\n");print("Grandchild");print("-"*30)
     view_item(db, ids["gchild1"])
     print("\n\n\n");print("Grandchild");print("-"*30)
