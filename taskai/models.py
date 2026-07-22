@@ -39,6 +39,7 @@ class TodoItem(Base):
     due_by: Optional[datetime] = None
     comment_ids: list[int] = Field(default_factory=list)
     dependency_ids: list[int] = Field(default_factory=list)
+    linked_ids: list[int] = Field(default_factory=list)
     child_ids: list[int] = Field(default_factory=list)
     priority: int = 0
     recurs_every: Optional[list[timedelta]] = None

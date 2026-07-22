@@ -52,6 +52,12 @@ class Controller:
                 return db.get_item(id_)
         return None
 
+    def _find_item_by_identifier(identifier: str|int) -> TodoItem:
+        if _is_int(identifier):
+            return db.get_item(identifier)
+        else:
+            return Controller._find_model_by_stringmatch("name", identifier)
+
     def _parse_item_kwargs(kwargs):
         for k, v in kwargs.copy().items():
             if v is None:
@@ -240,6 +246,15 @@ class Controller:
         db.update_item(parent.id, child_ids=new_child_ids)
         db.commit()
 
+    def add_link(parent_id: int|str, child_id: int|str):
+        parent: TodoItem = Controller._find_item_by_identifier(parent_id)
+        child: TodoItem = Controller._find_item_by_identifier(child_id)
+
+        if child.id not in parent.linked_ids:
+            parent.linked_ids.append(child_id)
+        db.update_item(parent.id, linked_ids=parent.linked_ids)
+        db.commit()
+
 
 # utilities
 def _parse_arg_string(arg_string: str) -> list[str]:
@@ -376,6 +391,11 @@ def execute_commands(*args, **kwargs) -> int:
                 parent_identifier = args[1]
                 item_name = args[2]
                 Controller.create_item(item_name, parent_identifier, **kwargs)
+            
+            case "link":
+                parent_identifier = args[1]
+                item_identifier = args[2]
+                Controller.add_link(parent_identifier, item_identifier)
 
             case "complete" | "done":
                 match args[1]:

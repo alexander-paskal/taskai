@@ -1,5 +1,5 @@
 # local
-from taskai.json_dir_database import JsonDirectoryDatabase
+from taskai.json_dir_database import JsonDirectoryDatabase, DatabaseError
 from taskai.models import TodoItem, Comment
 from taskai.config import config
 
@@ -66,19 +66,26 @@ def view_lists(
         display_string = _wrap_string(display_string, "[strike]", "[/strike]", condition=item.completed)
         return display_string
 
-    def _print_item(item: TodoItem, level: int):
+    def _print_item(item: TodoItem, level: int, prefix=""):
         if not show_done and item.completed:
             return
         
         display_string = _render_display_string(item)
         indent = "\t" * level
-        print(indent + display_string)
+        print(indent + prefix + display_string)
 
     def _recursive_print(item_id: int, level: int):
         item = db.get_item(item_id)
         _print_item(item, level)
+        for linked_id in item.linked_ids:
+            try:
+                linked_item = db.get_item(linked_id)
+            except DatabaseError:
+                continue
+            _print_item(linked_item, level+1, prefix="-->")
         for child_id in item.child_ids:
             _recursive_print(child_id, level+1)
+
 
     for root in roots:
         _recursive_print(root, 0)
