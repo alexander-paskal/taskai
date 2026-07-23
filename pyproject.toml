@@ -1,6 +1,6 @@
 [project]
 name = "taskai-cli"
-version = "1.4.3"
+version = "1.4.4"
 description = ""
 authors = [{name = "Alex Paskal", email = "alexcpaskal@gmail.com"}]
 readme = "README.md"
