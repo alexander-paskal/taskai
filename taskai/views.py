@@ -79,7 +79,11 @@ def view_lists(
         if level >= max_level:
             return
 
-        item = db.get_item(item_id)
+        try:
+            item = db.get_item(item_id)
+        except DatabaseError:
+            return
+        
         _print_item(item, level)
 
 
@@ -89,6 +93,7 @@ def view_lists(
             except DatabaseError:
                 continue
             _print_item(linked_item, level+1, prefix="-->")
+
         for child_id in item.child_ids:
             _recursive_print(child_id, level+1)
 
