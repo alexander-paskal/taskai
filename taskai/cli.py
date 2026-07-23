@@ -432,7 +432,10 @@ def execute_commands(*args, **kwargs) -> int:
                 print_json(json.dumps(db.get_item(int(args[1])).model_dump()).decode())
 
             case "status":
-                item_id, status_val = args[1:3]
+                if len(args) < 3:
+                    item_id, status_val = args[1], ""
+                else:
+                    item_id, status_val = args[1:3]
                 Controller.update_item(item_id, status=status_val)
 
             case "exit" | "exit()" | "quit":
