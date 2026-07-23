@@ -39,6 +39,7 @@ def view_lists(
         db: JsonDirectoryDatabase, 
         roots: list[int], 
         show_done=True,
+        max_level=1000,
         display_str: str = "id name status", 
         display_colors: str = None
 ):
@@ -75,6 +76,8 @@ def view_lists(
         print(indent + prefix + display_string)
 
     def _recursive_print(item_id: int, level: int):
+        if level > max_level:
+            return
         item = db.get_item(item_id)
         _print_item(item, level)
         for linked_id in item.linked_ids:
@@ -119,9 +122,10 @@ def view_item(
             comment: Comment = db.get_comment(comment_id)
             console.print(f"{comment.created_on.strftime("%Y-%m-%d %H:%M:%S")} - {comment.content}")
     
-    if item.child_ids:
+    if item.child_ids or item.linked_ids:
         console.print("\n[bold green]\nSubtasks:[/bold green]")
         view_lists(db, item.child_ids, show_done=show_done)
+        view_lists(db, item.linked_ids, show_done=show_done, max_level=1, prefix="-->")
 
 def view_items(
     db: JsonDirectoryDatabase, 

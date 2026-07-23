@@ -413,6 +413,9 @@ def execute_commands(*args, **kwargs) -> int:
 
             case "move":
                 Controller.move_item(args[1], args[2])
+
+            case "rename":
+                Controller.update_item(args[1], name=args[2])
                 
             case "depend":
                 src_id, dst_id = args[1:3]
