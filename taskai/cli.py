@@ -58,6 +58,19 @@ class Controller:
         else:
             return Controller._find_model_by_stringmatch("name", identifier)
 
+    def _flatten_item_descendants(item: TodoItem, existing=None) -> list[int]:
+        """DFS through children"""
+        if existing is None:
+            existing = []
+
+        existing.append(item.id)
+        for child_id in item.child_ids:
+            child = db.get_item(child_id)
+            child_descendants = Controller._flatten_item_descendants(child, existing=existing)
+
+        return existing
+
+
     def _parse_item_kwargs(kwargs):
         for k, v in kwargs.copy().items():
             if v is None:
@@ -144,8 +157,16 @@ class Controller:
         else:
             Controller.throw_error("Cannot find list by name")
     
-    def delete_completed():
-        for item_id in db.get_item_ids():
+    def delete_completed(parent_identifier=None):
+
+
+        if parent_identifier is None:
+            ids_to_check = db.get_item_ids()
+        else:
+            parent = Controller._find_item_by_identifier(parent_identifier)
+            ids_to_check = Controller._flatten_item_descendants(parent)
+
+        for item_id in ids_to_check:
             try:
                 item: TodoItem = db.get_item(item_id)
             except:
@@ -409,7 +430,11 @@ def execute_commands(*args, **kwargs) -> int:
                 Controller.repair_service()
 
             case "clear":
-                Controller.delete_completed()
+                if len(args) > 1:
+                    parent_identifier = args[1]
+                else:
+                    parent_identifier = None
+                Controller.delete_completed(parent_identifier=parent_identifier)
 
             case "move":
                 Controller.move_item(args[1], args[2])
