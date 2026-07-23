@@ -125,7 +125,7 @@ def view_item(
     if item.child_ids or item.linked_ids:
         console.print("\n[bold green]\nSubtasks:[/bold green]")
         view_lists(db, item.child_ids, show_done=show_done)
-        view_lists(db, item.linked_ids, show_done=show_done, max_level=1, prefix="-->")
+        # view_lists(db, item.linked_ids, show_done=show_done, max_level=1, prefix="-->")
 
 def view_items(
     db: JsonDirectoryDatabase, 
