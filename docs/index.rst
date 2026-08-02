@@ -1,8 +1,8 @@
-Welcome to taskai's documentation!
-====================================
-
-taskai is a CLI task manager with AI features.
+taskai
+======
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :hidden:
+
+   ../README

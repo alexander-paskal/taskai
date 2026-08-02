@@ -1,50 +1,123 @@
-# Task AI
+# taskai
 
-Welcome to Task AI - a command-line todo list with some extra ai features. 
-
-Here's what you can do:
-
-- `task show all` --> show all of your lists and item names, with their respective IDs prepended
-- `task show {id or substring}` --> find the list or item matching your identifier and show it using its respective type's show command
-- `task show list {id or substring}` --> show the list and all of its item names
-- `task show item {id}` --> show the associated item and all of its specified information
-- `task show items {id1},{id2},...,{idx}` --> show the associated items and all of their specified information
-- `task create item {list id or substring} {name} {**kwargs}` --> Create a new item for the associated list. Can specify kwargs as --optional cli arguments. 
-- `task create list {name}` --> create a new list by that name
-- `task delete {id}` --> deletes the list or item associated with that id
-- `task delete item {id}` --> deletes the item associated with that id
-- `task delete list {id}` --> deletes the list associated with that id
-- `task delete completed` --> deletes all items that have been completed
-- `task remove ...` --> aliases directly to 'task delete ...
-- `task update {item id} {**kwargs}` --> updates the associated attributes on the item
-- `task comment {item id} {content}` --> adds a comment to that items comment thread
-- `task ai {prompt}` --> Feeds a prompt directly to an LLM, which constructs and executes a series of task commands according to its interpretation of the prompt
-- `task ai headstart {item id}` --> Feeds the item context to an LLM, which responds with a concise description of the next step to perform. The response is added as a comment in the items comment thread
-- `task nuke` --> deletes all of your task data, letting you have a fresh start
-- `task add ...` -> aliases directly to `task create item ...`
-- `task complete {item id}` --> sets the associated item's .completed attribute to true
-
-Run `task show examples` to print a comprehensive set of examples, and grep for the ones that you're interested in!
-
-Run `task` by itself to run in interactive mode, which improves performance.
-
-# Installation
-
-`pip install taskai-cli`
-
-# Configuration
-
-For first time usage, run our setup command:
-
-`task setup`
-
-This will walk you through the necessary steps to get all features set up.
-
-In order to edit or view your configurations, you can use the `task config` command family
+A command-line task manager with AI features.
 
 ```bash
-task config show  # --> lists your current configuration options
-task config set {key} {value}  # --> Sets a given value
-task config get {key}  # retrieves a given value
+pip install taskai-cli
 ```
 
+---
+
+## Setup
+
+```bash
+task setup
+```
+---
+
+## Commands
+
+```
+task                              interactive mode
+
+task show all                     show everything
+task show <id|name>               show a specific item
+task show <id1>,<id2>,...         show multiple items
+
+task create <name>                create a top-level item
+task add <parent> <name>          add a child item
+task update <id> --field value    update any field
+task rename <id> <new name>       rename an item
+task move <item> <new parent>     reparent an item
+task complete <id>                mark complete (recursive)
+task delete <id|name>             delete by id or name
+task delete completed             delete all completed items
+task clear <parent>               delete completed under a parent
+
+task comment <id> <text>          add a comment
+task depend <src_id> <dst_id>     src depends on dst
+task link <parent> <item>         soft-link two items
+task reorder <id1> before|after <id2>
+
+task status <id> <text>           set a status string
+task pomo <on_mins> <off_mins>    pomodoro timer
+
+task ai <prompt>                  natural language → commands
+task ai headstart <id>            AI suggests next step, saved as comment
+
+task config show                  list current config
+task config set <key> <value>     set a config value
+task config get <key>             get a config value
+task config pop <key>             remove a config value
+
+task repair                       repair the database
+task nuke                         delete all data
+```
+
+### Item fields
+
+Pass any of these as `--field value` to `create`, `add`, or `update`:
+
+| Field | Format | Example |
+|---|---|---|
+| `description` | string | `--description "needs review"` |
+| `due_by` | MM-DD-YYYY | `--due_by 08-15-2026` |
+| `priority` | integer | `--priority 2` |
+| `status` | string | `--status "in progress"` |
+| `completed` | bool | `--completed true` |
+| `depends_on` | comma-separated ids | `--depends_on 3,7` |
+
+---
+
+## Config
+
+AI features require a Gemini API key:
+
+```bash
+task config set GEMINI_API_KEY <your-key>
+task config set GEMINI_MODEL gemini-2.0-flash
+```
+
+---
+
+## Example
+
+```
+task create "Today"
+task add "Today" "Morning run"
+task add "Today" "Review pull requests" --status "blocked"
+task add "Today" "Call dentist" --due_by 08-02-2026
+task show "Today"
+task complete 4
+task show "Today"
+task exit
+```
+
+Or:
+
+```bash
+task ai "add a task called 'Reply to Alex' under Today, and mark the dentist task as done"
+```
+
+---
+
+## Another Example
+
+```bash
+task create "Launch website"
+
+# add subtasks (by name or id)
+task add "Launch website" "Write copy"
+task add "Launch website" "Design mockups" --priority 1
+task add "Launch website" "Set up hosting" --due_by 08-15-2026
+
+# check your work
+task show "Launch website"
+
+# ask AI what to do first on a specific task
+task ai headstart 3
+
+# mark something done and clean up
+task complete 2
+task clear "Launch website"
+```
