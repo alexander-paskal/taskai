@@ -72,6 +72,20 @@ const ctx = canvas.getContext("2d"); // get the canvas context I guess?
 canvas.width = 800;
 canvas.height = 800;
 
+// pan/zoom view state: world coordinates map to screen as screen = world * scale + offset
+const view = { offsetX: 0, offsetY: 0, scale: 1 };
+const MIN_SCALE = 0.2;
+const MAX_SCALE = 4;
+const ZOOM_SPEED = 0.001;
+
+function screenToWorld(sx, sy) {
+	return { x: (sx - view.offsetX) / view.scale, y: (sy - view.offsetY) / view.scale };
+}
+
+function worldToScreen(wx, wy) {
+	return { x: wx * view.scale + view.offsetX, y: wy * view.scale + view.offsetY };
+}
+
 
 // truncates text with an ellipsis until it fits maxWidth at the ctx's current font
 function fitText(ctx, text, maxWidth) {
@@ -85,6 +99,10 @@ function fitText(ctx, text, maxWidth) {
 
 function draw() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+	ctx.save();
+	ctx.translate(view.offsetX, view.offsetY);
+	ctx.scale(view.scale, view.scale);
 
 	// Draw connecting Lines
 	function drawLines(node) {
@@ -114,14 +132,20 @@ function draw() {
 		ctx.fillText(fitText(ctx, node.label, maxWidth), node.x, node.y);
 	});
 
-	// Full label tooltip for the hovered node (labels are truncated in-node above)
+	ctx.restore();
+
+	// Full label tooltip for the hovered node, drawn in screen space (after restore)
+	// so its text stays a fixed, readable size regardless of zoom level.
 	if (hoveredNode) {
+		const { x: sx, y: sy } = worldToScreen(hoveredNode.x, hoveredNode.y);
+		const sr = hoveredNode.r * view.scale;
+
 		ctx.font = "12px sans-serif";
 		const paddingX = 6;
 		const boxW = ctx.measureText(hoveredNode.label).width + paddingX * 2;
 		const boxH = 20;
-		const boxX = hoveredNode.x - boxW / 2;
-		const boxY = hoveredNode.y - hoveredNode.r - boxH - 6;
+		const boxX = sx - boxW / 2;
+		const boxY = sy - sr - boxH - 6;
 
 		ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
 		ctx.fillRect(boxX, boxY, boxW, boxH);
@@ -129,52 +153,93 @@ function draw() {
 		ctx.fillStyle = "white";
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
-		ctx.fillText(hoveredNode.label, hoveredNode.x, boxY + boxH / 2);
+		ctx.fillText(hoveredNode.label, sx, boxY + boxH / 2);
 	}
 }
 
+// hovering color change
+let hoveredNode = null;
+
+// panning state
+let isPanning = false;
+let didPan = false; // set once a mousedown->mousemove drag moves enough to count as a pan, not a click
+let panStart = null; // {x, y, offsetX, offsetY} in screen coords
+
 canvas.addEventListener("click", (e) => {
+	if (didPan) {
+		didPan = false;
+		return;
+	}
+
 	const rect = canvas.getBoundingClientRect();
-	const mx = e.clientX - rect.left;
-	const my = e.clientY - rect.top;
-	
-	const clicked = nodes.find(node => {
-		const dx = mx - node.x;
-		const dy = my - node.y;
-		return Math.sqrt(dx*dx + dy*dy) <= node.r;
-	});
-	
+	const { x, y } = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+
+	const clicked = nodes.find(node => Math.hypot(x - node.x, y - node.y) <= node.r);
+
 	if (clicked) {
 		console.log("Clicked:", clicked.id, clicked.label);
 	}
 })
 
+canvas.addEventListener("mousedown", (e) => {
+	const rect = canvas.getBoundingClientRect();
+	isPanning = true;
+	didPan = false;
+	panStart = {
+		x: e.clientX - rect.left,
+		y: e.clientY - rect.top,
+		offsetX: view.offsetX,
+		offsetY: view.offsetY,
+	};
+	canvas.style.cursor = "grabbing";
+})
 
-// hovering color change
-let hoveredNode = null;
-
-function screenToWorld(sx, sy) {
-	// return { x: (sx - view.offsetX) / view.scale, y: (sy - view.offsetY) / view.scale };
-    return {x: sx, y: sy};
-}
+window.addEventListener("mouseup", () => {
+	isPanning = false;
+	canvas.style.cursor = hoveredNode ? "pointer" : "default";
+})
 
 canvas.addEventListener("mousemove", (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const {x, y } = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-    const found = nodes.find(
-        n => Math.hypot(
-            x - n.x, 
-            y-n.y
-        ) <= n.r
-    );
+	const rect = canvas.getBoundingClientRect();
+	const sx = e.clientX - rect.left;
+	const sy = e.clientY - rect.top;
 
-    if (found !== hoveredNode) {
-        hoveredNode = found || null;
-        canvas.style.cursor = found ? "pointer": "default";
-        draw();
-    }
+	if (isPanning) {
+		const dx = sx - panStart.x;
+		const dy = sy - panStart.y;
+		if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didPan = true;
+		view.offsetX = panStart.offsetX + dx;
+		view.offsetY = panStart.offsetY + dy;
+		draw();
+		return;
+	}
 
+	const { x, y } = screenToWorld(sx, sy);
+	const found = nodes.find(n => Math.hypot(x - n.x, y - n.y) <= n.r);
+
+	if (found !== hoveredNode) {
+		hoveredNode = found || null;
+		canvas.style.cursor = found ? "pointer": "default";
+		draw();
+	}
 })
+
+// zoom, keeping the point under the cursor fixed on screen
+canvas.addEventListener("wheel", (e) => {
+	e.preventDefault();
+
+	const rect = canvas.getBoundingClientRect();
+	const sx = e.clientX - rect.left;
+	const sy = e.clientY - rect.top;
+
+	const worldBefore = screenToWorld(sx, sy);
+	const zoomFactor = Math.exp(-e.deltaY * ZOOM_SPEED);
+	view.scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, view.scale * zoomFactor));
+	view.offsetX = sx - worldBefore.x * view.scale;
+	view.offsetY = sy - worldBefore.y * view.scale;
+
+	draw();
+}, { passive: false })
 
 
 loadTree();
