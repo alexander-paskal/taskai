@@ -8,29 +8,14 @@
 // ctx.fillRect(20, 20, 100, 80);
 
 
-const tree = {
-  id: "root",
-  label: "Root",
-  x: 200, y: 50, r: 30,
-  children: [
-    {
-      id: "child1",
-      label: "Child 1",
-      x: 100, y: 150, r: 25,
-      children: [
-        { id: "grandchild1", label: "GC 1", x: 60, y: 250, r: 20, children: [] }
-      ]
-    },
-    {
-      id: "child2",
-      label: "Child 2",
-      x: 300, y: 150, r: 25,
-      children: []
-    }
-  ]
-};
+const NODE_RADIUS = 25;
+const X_SPACING = 90;
+const Y_SPACING = 100;
+const MARGIN_X = 60;
+const MARGIN_Y = 60;
 
-
+let roots = [];
+let nodes = [];
 
 function flatten(node, list = []){
 	list.push(node);
@@ -38,9 +23,49 @@ function flatten(node, list = []){
 	return list;
 }
 
+// builds a renderable node tree from the flat {id: item} map returned by /api/tree
+function buildTree(itemsById, id) {
+	const item = itemsById[id];
+	return {
+		id: String(item.id),
+		label: item.name,
+		r: NODE_RADIUS,
+		children: (item.child_ids || []).map(childId => buildTree(itemsById, childId)),
+	};
+}
 
+// depth-first layout: y from depth, x from a running leaf counter shared across the whole forest,
+// with parent x centered over its children
+function layout(node, depth, leafCounter) {
+	node.y = MARGIN_Y + depth * Y_SPACING;
+	if (node.children.length === 0) {
+		node.x = MARGIN_X + leafCounter.count * X_SPACING;
+		leafCounter.count += 1;
+	} else {
+		node.children.forEach(child => layout(child, depth + 1, leafCounter));
+		const xs = node.children.map(c => c.x);
+		node.x = (Math.min(...xs) + Math.max(...xs)) / 2;
+	}
+}
 
-const nodes = flatten(tree);
+async function loadTree() {
+	const res = await fetch("/api/tree");
+	const itemsById = await res.json();
+
+	const rootIds = Object.values(itemsById)
+		.filter(item => item.parent_id === null)
+		.map(item => item.id);
+
+	roots = rootIds.map(id => buildTree(itemsById, id));
+
+	const leafCounter = { count: 0 };
+	roots.forEach(root => layout(root, 0, leafCounter));
+
+	nodes = roots.flatMap(root => flatten(root));
+
+	draw();
+}
+
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d"); // get the canvas context I guess?
 
@@ -62,7 +87,7 @@ function draw() {
 			drawLines(child);
 		});
 	}
-	drawLines(tree);
+	roots.forEach(root => drawLines(root));
 	
 	// Draw circles
 	nodes.forEach(node => {
@@ -123,4 +148,4 @@ canvas.addEventListener("mousemove", (e) => {
 })
 
 
-draw();
+loadTree();

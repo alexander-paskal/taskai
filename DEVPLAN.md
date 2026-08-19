@@ -3,6 +3,107 @@
 Roadmap for the browser UI, the AI layer rewrite, and polish. Organized as
 incremental phases — each step should leave the app in a runnable state.
 
+## Project overview
+
+Read this section first if you're picking this up cold — it's everything
+about the existing codebase you need to not rediscover from scratch.
+
+**What this is.** `taskai-cli` is a Python CLI task manager (published to
+PyPI as `taskai-cli`, entry point `task` → `taskai.cli:entry_point`,
+`requires-python >= 3.12`). Single user per machine. Optional AI features
+call out to an LLM.
+
+**Data model — there are no "lists," only items.** Everything lives in
+[taskai/models.py](taskai/models.py) as Pydantic models. `TodoItem` is a
+generic tree node: `parent_id` + `child_ids` form the hierarchy (a root item
+has `parent_id = None`); any item can be a parent of any other item to any
+depth, and the same node type is used whether it's acting as a "list" or a
+"task." Other `TodoItem` fields: `dependency_ids` (blocks-on), `linked_ids`
+(soft link, not reparenting), `comment_ids`, `due_by`, `priority`, `status`,
+`completed`, `description`, and unused-so-far recurrence fields
+(`recurs_every`/`recurs_until`/`recur_keep_incomplete`). `Comment` is a
+simple `{content, item_id, created_on}`. `UserData` is the whole-DB
+container: `todo_items: dict[str, dict]`, `comments: dict[str, dict]`,
+`config: dict`, `id_counter`. `CLIConfig` currently holds
+`GEMINI_MODEL`/`GEMINI_API_KEY` (Phase 2 below plans migrating this to a
+single `AI_MODEL` field once `aisuite` lands) plus `DISPLAY_STRING`/
+`DISPLAY_COLORS` for CLI rendering.
+
+**Storage.** [taskai/json_dir_database.py](taskai/json_dir_database.py):
+`JsonDirectoryDatabase` — one JSON file per user under `.taskai/task_db/
+<user>.json`. `connect()` loads the whole file into memory as a `UserData`
+Pydantic instance; `commit()` dumps the whole thing back out. No real
+transactions — every `update_item` re-validates the *entire* item through
+Pydantic. Parent/child/comment id-lists are maintained by hand on both sides
+of every relationship (e.g. `create_item` also appends to the parent's
+`child_ids`), so it's easy for future changes to desync them if you touch
+one side and not the other. The real dev database at
+`.taskai/task_db/alexc.json` has live in-progress task data used for manual
+testing — don't `nuke` it.
+
+**CLI dispatch.** [taskai/cli.py](taskai/cli.py): a `Controller` class
+(methods intentionally take no `self` — called as `Controller.foo(...)`, not
+instantiated) holds all the CRUD/business logic. `execute_commands(*args,
+**kwargs)` is one big `match` statement mapping subcommands (`show`,
+`create`, `add`, `update`, `move`, `rename`, `delete`, `complete`/`done`,
+`comment`, `depend`, `link`, `reorder`, `clear`, `status`, `config`, `ai`,
+`pomo`, `repair`, `nuke`, `browser`, ...) to `Controller` calls. There's a
+hand-rolled arg/kwarg parser (`_parse_arg_string`, `_parse_remaining`)
+instead of `argparse`. `interactive_program()` is the REPL entered when
+`task` runs with no arguments. The module connects to the database and loads
+config **at import time** (`db = JsonDirectoryDatabase(...); db.connect()`
+at module scope) — anything that imports `taskai.cli` triggers this, which
+is why `taskai/browser.py` reuses `from taskai.cli import db` rather than
+opening a second connection.
+
+**Views.** [taskai/views.py](taskai/views.py): Rich-based tree rendering
+(`view_lists`, `view_item`, `view_items`), display format configurable via
+`DISPLAY_STRING`/`DISPLAY_COLORS`.
+
+**AI services.** [taskai/services/ai.py](taskai/services/ai.py):
+`ai_headstart_service` (single item → LLM suggests a next concrete step,
+saved as a comment) and `ai_natural_language_service` (prompt → LLM returns
+a JSON list of `{command, args, kwargs}` → executed through
+`taskai.cli.execute_commands`, one call per entry). Both currently call
+Gemini directly via `google-genai`; Phase 2 below covers migrating to
+`aisuite`. The natural-language prompt embeds
+[taskai/help_menu.py](taskai/help_menu.py)'s `help_general` string as the
+LLM's command reference — **that file is the single source of truth for the
+command surface, shown to humans via `task help` and to the LLM verbatim.
+Keep it in sync with `execute_commands` whenever the command set changes**,
+it's gone stale before.
+
+**Known code quirks (found but intentionally not fixed — out of scope
+unless you're told to fix them):**
+- `Controller.update_item` (`cli.py`) resolves a non-numeric `item_id` via
+  `_find_model_by_stringmatch` but assigns the *whole model object* back
+  into `item_id` instead of pulling `.id` off it, so it's passed down to
+  `db.update_item` as a model, not an id, and fails. This means `update`,
+  `rename`, and `status` (all three route through `update_item`) only work
+  reliably with a numeric id, not a name.
+- `task show <id1>,<id2>,...` is documented in the README but
+  `execute_commands`'s `show` case never dispatches to
+  `Controller.show_items`/`view_items` — there's no wired path to it.
+
+**Command reference:** don't re-derive this — read
+[taskai/help_menu.py](taskai/help_menu.py)'s `help_general`, it's kept
+accurate on purpose.
+
+**Dev environment.** Two venvs exist; `.taskai-venv` is the one with
+`pytest` and all runtime deps installed — `source .taskai-venv/bin/activate`
+before running anything. Tests: `python -m pytest -q` from repo root (7
+tests across `test/test_cli.py`, `test_execution.py`,
+`test_json_dir_database.py`, `test_view.py`).
+
+**Browser work — status as of this writing.** Work happens on the git
+branch `browser`. The toolchain actually in use differs from this file's
+"Ground rules" section below in two ways, both because working code already
+existed when the decision came up and reuse won: **FastAPI + uvicorn**
+(not stdlib `http.server`), and **`<canvas>` 2D rendering** (not SVG). See
+Phase 1 below for what's built vs. still open.
+
+**Keeping this doc and DEVLOG.md current:** see the ground rules.
+
 ## Ground rules
 
 - **Always running.** No stub functions, no half-wired features. Every step
@@ -17,10 +118,17 @@ incremental phases — each step should leave the app in a runnable state.
   the browser is fine.
 - **Less Manual Testing.** When you're making edits, to save tokens, don't 
   exhaustively test every single change, especially if its a small one. We
-  will do larger scale testing at the end of each phase.
+  will do larger scale testing at the end of each phase. If there's testing
+  that needs to be done before progressing, tell me what to run and i'll test
+  myself.
 - **Tight Scope.** I don't need you to flag everything that's broken or suboptimal.
-  Doing so will make simple thigns take unnecessarily long. Stay very focused
+  Doing so will make simple things take unnecessarily long. Stay very focused
   on the explicit task that I said to do.
+- **Keep DEVLOG.md current.** After a meaningful chunk of work (not every
+  tiny edit), add a dated entry to `DEVLOG.md` describing what changed and
+  the current state of things. This file (`DEVPLAN.md`) is the plan;
+  `DEVLOG.md` is the running record of what's actually been done, so a fresh
+  session can pick up context without re-deriving it from `git log`.
 
 ---
 

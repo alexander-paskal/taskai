@@ -1,3 +1,70 @@
+# 8-18
+
+Working with Claude this session. Started a DEVPLAN.md with a roadmap
+(Phase 0: bugfixes, Phase 1: browser UI, Phase 2: AI/aisuite rewrite,
+Phase 3: polish) plus ground rules for how we want to work together.
+
+Phase 0 (bugfixes), done:
+- ai.py: the natural-language prompt was being built (with the command
+  grammar + task tree baked in) but the actual LLM call sent the raw
+  un-instructed prompt instead - fixed.
+- ai.py: `_add_info` (used to build the task-tree context for the AI
+  prompt) referenced the wrong loop variable and would throw on the first
+  recursive call - fixed.
+- ai.py: the natural-language service parsed the LLM's JSON command list
+  but never actually ran it - now it executes each parsed command through
+  `execute_commands`, same dispatcher the CLI uses.
+- cli.py: `execute_commands` had a `raise e` ahead of the friendly
+  `throw_error` path, so errors always came out as raw tracebacks - removed.
+- views.py: `view_item`/`view_items` called `db.read`/`db.items`, which
+  don't exist on `JsonDirectoryDatabase` - fixed to `get_item`/
+  `get_item_ids`. Also found and fixed a second bug on the same path:
+  `view_items` was passing the whole `TodoItem` object into `view_item`
+  instead of its `.id`.
+
+Also did a pass on help_menu.py and the AI prompt in ai.py:
+- help_menu.py's command reference was stale (referenced commands/syntax
+  that don't exist, missing others that do) - rewrote it to match
+  `execute_commands` exactly, including which commands need an id vs.
+  accept a name, and the `--field` table that wasn't documented anywhere.
+- Added explicit rules to the AI prompt about not referencing items that
+  don't exist yet (create it first), preferring ids over names for the
+  commands that need them, and not inventing commands/fields.
+- Removed "list" as a separate concept from both docs - it's a generic
+  item tree now. Clarified `create` = new root item, `add` = child of an
+  *existing* parent only.
+
+Found (not fixed, tracked in DEVPLAN's "known quirks"): `update_item`
+resolves a name to a model object but never unwraps `.id` before handing
+it to the db layer, so `update`/`rename`/`status` only work with numeric
+ids, not names.
+
+Browser phase, started on the `browser` branch:
+Already had FastAPI + uvicorn wired up (`task browser` -> launches
+uvicorn on taskai.browser:app) and a canvas.js proof-of-concept
+(hardcoded fake tree, circle nodes, click/hover hit-testing) from an
+earlier session. Decided to build on that instead of the stdlib
+http.server + SVG that DEVPLAN originally sketched, since it already ran
+end to end. Wired it to real data:
+- browser.py: added `GET /api/tree`, reusing the db connection already
+  established by importing `taskai.cli` (no second connection).
+- canvas.js: replaced the hardcoded fake tree with `loadTree()`, which
+  fetches `/api/tree`, builds the real node tree from `parent_id`/
+  `child_ids`, and lays it out with a simple depth-first layout (y from
+  depth, x from a running leaf counter, parents centered over children).
+  Handles a forest of root items, not just a single root.
+- Verified end to end against the real dev database.
+
+Still open for Phase 1: the `/api/command` mutation endpoint, the edit
+menu, the console panel, dependency/link edges, pan/zoom, node coloring.
+Nothing there yet beyond the read-only tree render.
+
+DEVPLAN.md now has a full "Project overview" section prepended (data
+model, storage, CLI dispatch, known quirks, dev environment, etc.) so a
+fresh session doesn't need to re-derive all of this by reading the whole
+codebase. Also added a ground rule to keep this DEVLOG updated going
+forward.
+
 # 6-25
 
 Alright let's start to think a bit about how I want to handle the pomo service.
