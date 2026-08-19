@@ -12,6 +12,7 @@ const STYLE = {
 		nodeBorderHover: "#4772fa",
 		nodeBorderDone: "#a9dab9",
 		text: "#23252b",
+		idText: "#b4b9c4",
 		edge: "#dcdfe6",
 		tooltipBackground: "#ffffff",
 		tooltipBorder: "#e2e4ea",
@@ -24,6 +25,8 @@ const STYLE = {
 		lineHeight: 24,
 		maxLines: 3,
 		padding: 16,
+		idFont: "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+		idPadding: 12,
 		borderWidth: 1.5,
 		borderWidthHover: 2,
 		shadowColor: "rgba(15, 23, 42, 0.10)",
@@ -281,6 +284,12 @@ function draw() {
 		ctx.strokeStyle = border;
 		ctx.lineWidth = isHovered ? STYLE.node.borderWidthHover : STYLE.node.borderWidth;
 		ctx.stroke();
+
+		ctx.fillStyle = STYLE.colors.idText;
+		ctx.font = STYLE.node.idFont;
+		ctx.textAlign = "left";
+		ctx.textBaseline = "top";
+		ctx.fillText(node.id, nodeX + STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
 
 		ctx.fillStyle = STYLE.colors.text;
 		ctx.font = STYLE.node.font;
