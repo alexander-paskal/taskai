@@ -75,12 +75,19 @@ it's gone stale before.
 
 **Known code quirks (found but intentionally not fixed — out of scope
 unless you're told to fix them):**
-- `Controller.update_item` (`cli.py`) resolves a non-numeric `item_id` via
+- ~~`Controller.update_item` (`cli.py`) resolves a non-numeric `item_id` via
   `_find_model_by_stringmatch` but assigns the *whole model object* back
-  into `item_id` instead of pulling `.id` off it, so it's passed down to
-  `db.update_item` as a model, not an id, and fails. This means `update`,
-  `rename`, and `status` (all three route through `update_item`) only work
-  reliably with a numeric id, not a name.
+  into `item_id` instead of pulling `.id` off it~~ **Fixed.** All identifier
+  resolution (id or name) now routes through one function,
+  `Controller._resolve_item()` (throws via `throw_error` if not found; a
+  non-throwing `_find_item_by_identifier` still backs the soft-fail `show`
+  path). Every command that takes an item identifier — `update`, `rename`,
+  `status`, `done`/`complete`, `comment`, `depend`, `reorder`, `move`,
+  `link`, `delete`, `create`'s parent — now accepts a name via `fnmatch`,
+  not just a numeric id. Net effect was less code, not more: two
+  name-only-duplicate methods (`show_by_item_name`, `delete_item_by_name`)
+  and several inline `_is_int(...)` dispatch branches in `execute_commands`
+  were deleted outright rather than kept alongside the id path.
 - `task show <id1>,<id2>,...` is documented in the README but
   `execute_commands`'s `show` case never dispatches to
   `Controller.show_items`/`view_items` — there's no wired path to it.
