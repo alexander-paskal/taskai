@@ -276,7 +276,7 @@ class Controller:
         db.commit()
 
     def browser_service():
-        subprocess.run(['uvicorn','taskai.browser:app','--reload'])
+        subprocess.run([sys.executable, '-m', 'uvicorn', 'taskai.browser:app', '--reload'])
         
 
 
