@@ -58,6 +58,15 @@ class Controller:
         else:
             return Controller._find_model_by_stringmatch("name", identifier)
 
+    def _resolve_item(identifier: str|int) -> TodoItem:
+        """Like _find_item_by_identifier, but a missing item is a hard error
+        instead of None - use this in any command that needs an item to
+        exist rather than re-checking for None at every call site."""
+        item = Controller._find_item_by_identifier(identifier)
+        if item is None:
+            Controller.throw_error(f"Could not find item matching '{identifier}'")
+        return item
+
     def _flatten_item_descendants(item: TodoItem, existing=None) -> list[int]:
         """DFS through children"""
         if existing is None:
@@ -95,15 +104,14 @@ class Controller:
     def show_all(show_done=True):
         view_lists(db, Controller._get_root_ids(), show_done=show_done)
 
-    def show_by_item_name(value: str, show_done=True):
-        model = Controller._find_model_by_stringmatch("name", value)
-        if model:
-            Controller.show_item(model.id, show_done=show_done)
-        else:
-            print(f"Could not find item matching pattern '{value}'")
-    
-    def show_item(item_id: int, **kwargs):
-        view_item(db, item_id, **kwargs)
+    def show_item(item_id: int|str, **kwargs):
+        # not fatal on a miss (unlike _resolve_item) - a typo'd show target
+        # shouldn't kill the session
+        item = Controller._find_item_by_identifier(item_id)
+        if item is None:
+            print(f"Could not find item matching pattern '{item_id}'")
+            return
+        view_item(db, item.id, **kwargs)
 
     def show_items(item_ids: str, **kwargs):
         item_ids = item_ids.split(",")
@@ -114,12 +122,8 @@ class Controller:
         print("Not implemented yet")
 
     def create_item(name: str, parent_id=None, **kwargs):
-        if parent_id is not None and not _is_int(parent_id):
-            parent = Controller._find_model_by_stringmatch("name", parent_id)
-            if not parent:
-                Controller.throw_error(f"Could not find parent by id '{parent_id}'")
-                return
-            parent_id = parent.id
+        if parent_id is not None:
+            parent_id = Controller._resolve_item(parent_id).id
 
         kwargs = Controller._parse_item_kwargs(kwargs)
         item_id = db.create_item(name=name, parent_id=parent_id, **kwargs)
@@ -127,43 +131,36 @@ class Controller:
         db.commit()
 
     def create_comment(item_id: int|str, content: str):
-        comment_id = db.create_comment(content=content, item_id=item_id)
-        print(f"Added comment {comment_id} to item {item_id} - '{content}'")
+        item = Controller._resolve_item(item_id)
+        comment_id = db.create_comment(content=content, item_id=item.id)
+        print(f"Added comment {comment_id} to item {item.id} - '{content}'")
         db.commit()
-            
+
     def update_item(item_id: int|str, recursive=False, **kwargs):
-        if not _is_int(item_id):
-            item_id = Controller._find_model_by_stringmatch("name", item_id)
+        item_id = Controller._resolve_item(item_id).id
         db.update_item(item_id, **kwargs)
         print(f"Updated item {item_id}")
 
         if recursive:
             children = db.get_item_attr(item_id, "child_ids")
             for child_id in children:
-                Controller.update_item(child_id, recursive=True, **kwargs) 
+                Controller.update_item(child_id, recursive=True, **kwargs)
 
         db.commit()
 
     def delete_item(id_: int|str):
-        db.delete_item(id_)
+        item = Controller._resolve_item(id_)
+        db.delete_item(item.id)
         db.commit()
-        print(f"Deleted item {id_}")
-    
-    def delete_item_by_name(name: str):
-        item = Controller._find_model_by_stringmatch("name", name)
-        if item:
-            db.delete_item(item.id)
-            db.commit()
-        else:
-            Controller.throw_error("Cannot find list by name")
-    
+        print(f"Deleted item {item.id}")
+
     def delete_completed(parent_identifier=None):
 
 
         if parent_identifier is None:
             ids_to_check = db.get_item_ids()
         else:
-            parent = Controller._find_item_by_identifier(parent_identifier)
+            parent = Controller._resolve_item(parent_identifier)
             ids_to_check = Controller._flatten_item_descendants(parent)
 
         for item_id in ids_to_check:
@@ -176,9 +173,10 @@ class Controller:
         db.commit()
     
     def ai_headstart(item_id: int|str):
-        ai_response_text = ai_headstart_service(db, item_id)
+        item = Controller._resolve_item(item_id)
+        ai_response_text = ai_headstart_service(db, item.id)
         comment_content = f"AI: {ai_response_text}"
-        Controller.create_comment(item_id, comment_content)
+        Controller.create_comment(item.id, comment_content)
         print(comment_content)
 
     def ai_natural_language(prompt: str):
@@ -212,55 +210,52 @@ class Controller:
         repair_database_service(db)
 
     def move_item(item_id: int|str, parent_identifier: int|str):
-        
-        if _is_int(item_id):
-            item = db.get_item(item_id)
-        else:
-            item = Controller._find_model_by_stringmatch("name", item_id)
-        
+        item = Controller._resolve_item(item_id)
+
         # remove from old parent
         if item.parent_id is not None:
             db.remove_child_from_parent(item.id, item.parent_id)
-        
+
         # add to new parent
-        if _is_int(parent_identifier):
-            new_parent_id = parent_identifier
-        elif not parent_identifier:  # anything evaluating to false
-            new_parent_id=None
+        if not parent_identifier:  # anything evaluating to false -> becomes a root item
+            new_parent_id = None
         else:
-            new_parent_id = Controller._find_model_by_stringmatch("name", parent_identifier).id
-        
+            new_parent_id = Controller._resolve_item(parent_identifier).id
+
         db.update_item(item.id, parent_id=new_parent_id)
         if new_parent_id is not None:
             db.add_child_to_parent(item.id, new_parent_id)
 
-        
-        db.commit()     
-    
-    def add_dependency(src_id: int|str, dst_id: int|str):
-        """Adds a depedency src -> dst, meaning src depends on dst"""
-        dependency_ids = db.get_item_attr(src_id, "dependency_ids")
-        dependency_ids.append(dst_id)
-        db.update_item(src_id, dependency_ids=dependency_ids)
         db.commit()
 
-    def reorder(id1: int, id2: int, position: str):
+    def add_dependency(src_id: int|str, dst_id: int|str):
+        """Adds a depedency src -> dst, meaning src depends on dst"""
+        src = Controller._resolve_item(src_id)
+        dst = Controller._resolve_item(dst_id)
+        dependency_ids = src.dependency_ids
+        dependency_ids.append(dst.id)
+        db.update_item(src.id, dependency_ids=dependency_ids)
+        db.commit()
+
+    def reorder(id1: int|str, id2: int|str, position: str):
         if position not in ("before", "after"):
             Controller.throw_error("position must be one of before, after")
+            return
 
-        child1 = db.get_item(id1)
+        child1 = Controller._resolve_item(id1)
+        child2 = Controller._resolve_item(id2)
         parent = db.get_item(child1.parent_id)
         if parent is None:
             Controller.throw_error("Cannot reorder root items")
-        
+            return
 
         new_child_ids = []
         for child_id in parent.child_ids:
-            if child_id == id1:
+            if child_id == child1.id:
                 continue
-            if child_id == id2:
+            if child_id == child2.id:
                 new_child_ids.extend(
-                    [id1, id2] if position == "before" else [id2, id1]
+                    [child1.id, child2.id] if position == "before" else [child2.id, child1.id]
                 )
                 continue
             new_child_ids.append(child_id)
@@ -268,11 +263,11 @@ class Controller:
         db.commit()
 
     def add_link(parent_id: int|str, child_id: int|str):
-        parent: TodoItem = Controller._find_item_by_identifier(parent_id)
-        child: TodoItem = Controller._find_item_by_identifier(child_id)
+        parent: TodoItem = Controller._resolve_item(parent_id)
+        child: TodoItem = Controller._resolve_item(child_id)
 
         if child.id not in parent.linked_ids:
-            parent.linked_ids.append(child_id)
+            parent.linked_ids.append(child.id)
         db.update_item(parent.id, linked_ids=parent.linked_ids)
         db.commit()
 
@@ -374,8 +369,7 @@ def execute_commands(*args, **kwargs) -> int:
                 match args[1]:
                     case "all": Controller.show_all(*args[2:], **kwargs)
                     case "examples": Controller.show_examples()
-                    case _ if _is_int(args[1]): Controller.show_item(*args[1:], **kwargs)
-                    case _: Controller.show_by_item_name(args[1], **kwargs)
+                    case _: Controller.show_item(args[1], **kwargs)
 
             case "create":
                 Controller.create_item(args[1], **kwargs)
@@ -384,17 +378,15 @@ def execute_commands(*args, **kwargs) -> int:
                 Controller.update_item(args[1], **kwargs)
         
             case "reorder":
-                Controller.reorder(int(args[1]), int(args[3]), args[2])
+                Controller.reorder(args[1], args[3], args[2])
 
             case "delete" | "remove":
                 match args[1]:
-                    case _ if _is_int(args[1]): Controller.delete_item(args[1])
                     case "completed" | "done": Controller.delete_completed()
-                    case _: Controller.delete_item_by_name(args[1])
+                    case _: Controller.delete_item(args[1])
 
             case "comment":
-                match args[1]:
-                    case _ if _is_int(args[1]): Controller.create_comment(*args[1:], **kwargs)
+                Controller.create_comment(*args[1:], **kwargs)
             
             case "config":
                 match args[1]:
@@ -423,9 +415,7 @@ def execute_commands(*args, **kwargs) -> int:
                 Controller.add_link(parent_identifier, item_identifier)
 
             case "complete" | "done":
-                match args[1]:
-                    case _ if _is_int(args[1]): Controller.update_item(args[1], completed=True, recursive=True)
-                    case _: Controller.throw_error("unrecognized complete command", *args, **kwargs)
+                Controller.update_item(args[1], completed=True, recursive=True)
 
             case "examples":
                 Controller.show_examples()
@@ -451,9 +441,7 @@ def execute_commands(*args, **kwargs) -> int:
                 
             case "depend":
                 src_id, dst_id = args[1:3]
-                match (src_id, dst_id):
-                    case _ if _is_int(src_id) and _is_int(dst_id): Controller.add_dependency(src_id, dst_id) 
-                    case _: Controller.throw_error("Invalid arrow argument, must be one of (->, <-)")
+                Controller.add_dependency(src_id, dst_id)
         
             case "pomo":
                 pomodoro_service(int(args[1]), int(args[2]))

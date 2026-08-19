@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from taskai.cli import Controller, _is_int, _parse_arg_string, _parse_remaining, db, execute_commands
+from taskai.cli import Controller, _parse_arg_string, _parse_remaining, db, execute_commands
 
 
 app = FastAPI()
@@ -67,15 +67,12 @@ def _run_show(args):
     if target == "examples":
         return {"output": "Not implemented yet", "tree": _full_tree(), "focus": None}
 
-    if _is_int(target):
-        return {"output": "", "tree": _full_tree(), "focus": str(target)}
-
-    model = Controller._find_model_by_stringmatch("name", target)
-    if model is None:
+    item = Controller._find_item_by_identifier(target)
+    if item is None:
         return {
             "output": f"Could not find item matching pattern '{target}'",
             "tree": _full_tree(),
             "focus": None,
         }
 
-    return {"output": "", "tree": _full_tree(), "focus": str(model.id)}
+    return {"output": "", "tree": _full_tree(), "focus": str(item.id)}
