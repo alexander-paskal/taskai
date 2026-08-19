@@ -97,7 +97,7 @@ def ai_natural_language_service(
     _visited_set = set()
 
     def _add_info(item_id, level=0):
-        item: TodoItem = db.get_item(id_)
+        item: TodoItem = db.get_item(item_id)
         user_info.append("  "*level + f"{item.id} {item.name}")
         _visited_set.add(item_id)
         if item.child_ids:
@@ -173,11 +173,22 @@ markdown formatting. Just the raw json string.
 
     try:
         response_json = json.loads(response.text)
-        print(response_json)
     except json.JSONDecodeError:
         print(response.text)
         print("\n\ndecode error")
         import sys
         sys.exit(-1)
 
-        
+    print(response_json)
+
+    from taskai.cli import execute_commands
+
+    for entry in response_json:
+        command = entry["command"]
+        cmd_args = entry.get("args", [])
+        cmd_kwargs = {
+            k.lstrip("-"): v
+            for k, v in entry.get("kwargs", {}).items()
+        }
+        execute_commands(command, *cmd_args, **cmd_kwargs)
+
