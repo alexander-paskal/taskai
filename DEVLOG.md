@@ -1,3 +1,26 @@
+# 8-19
+
+Fixed a typo in `browser.py` that caused uvicorn to fail with "Could not import
+module 'taskai.browser'" when launching on a new machine: `os.path.dirname(__file)`
+should have been `__file__` (double underscores). The `NameError` was raised at
+module import time before FastAPI could even get the app object.
+
+Added three console QoL commands, handled entirely client-side (no server round-trip):
+
+- `zoom in` / `zoom out` — zoom ×1.5/÷1.5 around the canvas center
+- `pan left` / `pan right` / `pan up` / `pan down` — shift viewport 250px per step
+
+Implemented as `easeView` / `canvasZoom` / `canvasPan` helpers in `canvas.js`
+(same ease-out cubic as `focusOnNode`), with a `CLIENT_COMMANDS` dispatch map in
+`console.js` that intercepts matching input before it reaches the fetch path.
+
+Added `edit <id|name>` console command: resolves the target via the existing
+`show` server path (reuses `_find_item_by_identifier`, so fnmatch patterns work),
+then selects the node, focuses/zooms the canvas to it, and expands the edit panel.
+Added `openEditPanel()` to `editpanel.js` for this purpose.
+
+---
+
 # 8-18
 
 Continued the browser/`canvas.js` work in a later session (DEVLOG is a
