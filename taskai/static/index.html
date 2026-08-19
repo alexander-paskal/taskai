@@ -15,7 +15,10 @@
 				<path d="M1 12L8 7L15 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
 			</svg>
 		</button>
-		<div class="console-body">Console — coming soon.</div>
+		<div class="console-body">
+			<div id="console-scrollback" class="console-scrollback"></div>
+			<input id="console-input" class="console-input" type="text" placeholder="Type a command…" autocomplete="off" />
+		</div>
 	</div>
 
 	<script src="/static/canvas.js"></script>

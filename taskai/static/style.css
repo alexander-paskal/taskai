@@ -60,8 +60,40 @@ canvas {
 
 .console-body {
 	flex: 1;
-	padding: 4px 16px 16px;
-	color: #6b7280;
-	font-size: 13px;
-	overflow: auto;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	padding: 0 16px 12px;
+}
+
+.console-scrollback {
+	flex: 1;
+	overflow-y: auto;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+	font-size: 12.5px;
+	color: #23252b;
+	padding: 8px 0;
+}
+
+.console-line {
+	white-space: pre-wrap;
+	line-height: 1.5;
+}
+
+.console-input {
+	flex: none;
+	box-sizing: border-box;
+	width: 100%;
+	padding: 8px 10px;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+	font-size: 12.5px;
+	color: #23252b;
+	background: #f5f6f8;
+	border: 1px solid #e2e4ea;
+	border-radius: 8px;
+	outline: none;
+}
+
+.console-input:focus {
+	border-color: #4772fa;
 }
