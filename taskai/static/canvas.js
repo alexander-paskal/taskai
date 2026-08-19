@@ -65,6 +65,7 @@ const STYLE = {
 
 let roots = [];
 let nodes = [];
+let latestItemsById = {}; // full raw item data keyed by id, from the last /api/tree or /api/command response
 
 function flatten(node, list = []){
 	list.push(node);
@@ -102,6 +103,8 @@ function layout(node, depth, leafCounter) {
 // shared by the initial /api/tree load and command responses from the
 // console, which already carry the updated tree and don't need a refetch.
 function applyTree(itemsById) {
+	latestItemsById = itemsById;
+
 	const rootIds = Object.values(itemsById)
 		.filter(item => item.parent_id === null)
 		.map(item => item.id);
@@ -115,6 +118,15 @@ function applyTree(itemsById) {
 	});
 
 	nodes = roots.flatMap(root => flatten(root));
+
+	// the previously-selected node was rebuilt as a new object (or may no
+	// longer exist) — re-resolve by id so selection survives a tree refresh
+	if (selectedNode) {
+		selectedNode = nodes.find(n => n.id === selectedNode.id) || null;
+		if (typeof onNodeSelected === "function") {
+			onNodeSelected(selectedNode ? latestItemsById[selectedNode.id] : null);
+		}
+	}
 
 	draw();
 }
@@ -337,6 +349,7 @@ function draw() {
 	nodes.forEach(node => {
 		const half = node.size / 2;
 		const isHovered = node === hoveredNode;
+		const isSelected = node === selectedNode;
 		const nodeX = node.x - half;
 		const nodeY = node.y - half;
 
@@ -355,12 +368,12 @@ function draw() {
 		ctx.restore(); // drop the shadow before stroking the border
 
 		let border = STYLE.colors.nodeBorder;
-		if (isHovered) border = STYLE.colors.nodeBorderHover;
-		else if (node.completed) border = STYLE.colors.nodeBorderDone;
+		if (node.completed) border = STYLE.colors.nodeBorderDone;
+		if (isHovered || isSelected) border = STYLE.colors.nodeBorderHover;
 
 		roundedRectPath(ctx, nodeX, nodeY, node.size, node.size, STYLE.node.cornerRadius);
 		ctx.strokeStyle = border;
-		ctx.lineWidth = isHovered ? STYLE.node.borderWidthHover : STYLE.node.borderWidth;
+		ctx.lineWidth = (isHovered || isSelected) ? STYLE.node.borderWidthHover : STYLE.node.borderWidth;
 		ctx.stroke();
 
 		ctx.fillStyle = STYLE.colors.idText;
@@ -412,6 +425,10 @@ function draw() {
 // hovering color change
 let hoveredNode = null;
 
+// selection — persists across hover and drives the edit panel (see
+// onNodeSelected, defined in editpanel.js)
+let selectedNode = null;
+
 // panning state
 let isPanning = false;
 let didPan = false; // set once a mousedown->mousemove drag moves enough to count as a pan, not a click
@@ -428,9 +445,11 @@ canvas.addEventListener("click", (e) => {
 
 	const clicked = nodes.find(node => hitTest(node, x, y));
 
-	if (clicked) {
-		console.log("Clicked:", clicked.id, clicked.label);
+	selectedNode = clicked || null;
+	if (typeof onNodeSelected === "function") {
+		onNodeSelected(selectedNode ? latestItemsById[selectedNode.id] : null);
 	}
+	draw();
 })
 
 canvas.addEventListener("dblclick", (e) => {
