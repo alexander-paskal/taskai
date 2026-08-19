@@ -85,10 +85,10 @@ function layout(node, depth, leafCounter) {
 	}
 }
 
-async function loadTree() {
-	const res = await fetch("/api/tree");
-	const itemsById = await res.json();
-
+// builds the node tree + layout from a {id: item} map and (re)renders —
+// shared by the initial /api/tree load and command responses from the
+// console, which already carry the updated tree and don't need a refetch.
+function applyTree(itemsById) {
 	const rootIds = Object.values(itemsById)
 		.filter(item => item.parent_id === null)
 		.map(item => item.id);
@@ -104,6 +104,12 @@ async function loadTree() {
 	nodes = roots.flatMap(root => flatten(root));
 
 	draw();
+}
+
+async function loadTree() {
+	const res = await fetch("/api/tree");
+	const itemsById = await res.json();
+	applyTree(itemsById);
 }
 
 const canvas = document.getElementById("myCanvas");

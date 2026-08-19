@@ -1,5 +1,7 @@
-// Collapsible console panel. Toggle + input echo only for now — real
-// execution against /api/command lands once that endpoint exists.
+// Collapsible console panel: toggle, plus command submission against
+// POST /api/command. That endpoint always returns the current full tree;
+// `show` commands don't mutate anything, they just return a `focus` id
+// telling us which node to center/zoom on (see focusOnNode in canvas.js).
 const consolePanel = document.getElementById("console-panel");
 const consoleToggle = document.getElementById("console-toggle");
 const consoleInput = document.getElementById("console-input");
@@ -18,7 +20,7 @@ function appendLine(text) {
 	consoleScrollback.scrollTop = consoleScrollback.scrollHeight;
 }
 
-consoleInput.addEventListener("keydown", (e) => {
+consoleInput.addEventListener("keydown", async (e) => {
 	if (e.key !== "Enter") return;
 
 	const command = consoleInput.value.trim();
@@ -26,4 +28,26 @@ consoleInput.addEventListener("keydown", (e) => {
 
 	appendLine("> " + command);
 	consoleInput.value = "";
+
+	let data;
+	try {
+		const res = await fetch("/api/command", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ input: command }),
+		});
+		data = await res.json();
+	} catch (err) {
+		appendLine("Error: " + err.message);
+		return;
+	}
+
+	if (data.output) appendLine(data.output);
+
+	applyTree(data.tree);
+
+	if (data.focus) {
+		const focusedNode = nodes.find(n => n.id === String(data.focus));
+		if (focusedNode) focusOnNode(focusedNode);
+	}
 });
