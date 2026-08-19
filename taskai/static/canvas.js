@@ -6,8 +6,11 @@ const STYLE = {
 		background: "#f5f6f8",
 		nodeFill: "#ffffff",
 		nodeFillHover: "#f3f6ff",
+		nodeFillDone: "#e6f7ec",
+		nodeFillDoneHover: "#d9f0e1",
 		nodeBorder: "#e2e4ea",
 		nodeBorderHover: "#4772fa",
+		nodeBorderDone: "#a9dab9",
 		text: "#23252b",
 		edge: "#dcdfe6",
 		tooltipBackground: "#ffffff",
@@ -69,6 +72,7 @@ function buildTree(itemsById, id) {
 		id: String(item.id),
 		label: item.name,
 		size: STYLE.node.size,
+		completed: item.completed,
 		children: (item.child_ids || []).map(childId => buildTree(itemsById, childId)),
 	};
 }
@@ -260,13 +264,21 @@ function draw() {
 		ctx.shadowBlur = STYLE.node.shadowBlur;
 		ctx.shadowOffsetY = STYLE.node.shadowOffsetY;
 
+		let fill = STYLE.colors.nodeFill;
+		if (node.completed) fill = isHovered ? STYLE.colors.nodeFillDoneHover : STYLE.colors.nodeFillDone;
+		else if (isHovered) fill = STYLE.colors.nodeFillHover;
+
 		roundedRectPath(ctx, nodeX, nodeY, node.size, node.size, STYLE.node.cornerRadius);
-		ctx.fillStyle = isHovered ? STYLE.colors.nodeFillHover : STYLE.colors.nodeFill;
+		ctx.fillStyle = fill;
 		ctx.fill();
 		ctx.restore(); // drop the shadow before stroking the border
 
+		let border = STYLE.colors.nodeBorder;
+		if (isHovered) border = STYLE.colors.nodeBorderHover;
+		else if (node.completed) border = STYLE.colors.nodeBorderDone;
+
 		roundedRectPath(ctx, nodeX, nodeY, node.size, node.size, STYLE.node.cornerRadius);
-		ctx.strokeStyle = isHovered ? STYLE.colors.nodeBorderHover : STYLE.colors.nodeBorder;
+		ctx.strokeStyle = border;
 		ctx.lineWidth = isHovered ? STYLE.node.borderWidthHover : STYLE.node.borderWidth;
 		ctx.stroke();
 
