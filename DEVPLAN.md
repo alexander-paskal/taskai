@@ -84,6 +84,17 @@ unless you're told to fix them):**
 - `task show <id1>,<id2>,...` is documented in the README but
   `execute_commands`'s `show` case never dispatches to
   `Controller.show_items`/`view_items` — there's no wired path to it.
+- `Controller.update_item` never calls `Controller._parse_item_kwargs`
+  (`create_item` does) before handing kwargs to `db.update_item`. Confirmed
+  effects: `update <id> --due_by MM-DD-YYYY` throws a pydantic validation
+  error (the string never gets converted to a `datetime`, unlike on
+  `create`), and `update <id> --depends_on 1,2` silently no-ops (never
+  remapped to the model's real `dependency_ids` field, so pydantic just
+  drops it as an unrecognized extra key — no error, no effect). Every other
+  field (`name`, `description`, `status`, `priority`, `completed`) updates
+  correctly. The edit panel (1.5) and console both go through `update` and
+  will hit this. Likely fix: add the same
+  `kwargs = Controller._parse_item_kwargs(kwargs)` call `create_item` makes.
 
 **Command reference:** don't re-derive this — read
 [taskai/help_menu.py](taskai/help_menu.py)'s `help_general`, it's kept
@@ -184,15 +195,27 @@ stdlib `http.server` — no new dependency, consistent with "less code."
 
 ### 1.2 — Command execution endpoint (shared mutation path)
 
-- [ ] `POST /api/command` accepting `{ "input": "<raw command string>" }`.
-      Reuse `_parse_arg_string` + `_parse_remaining` + `execute_commands`
-      from `cli.py` directly (import, don't reimplement). Capture `print`
-      output for the response (redirect `sys.stdout` for the duration of the
-      call, or thread a `Console(record=True)` through) and return
-      `{ "output": "...", "tree": {...} }`.
-- [ ] This single endpoint becomes the only mutation path for the browser:
-      the edit menu and the console both end up POSTing command strings
-      here. No separate REST CRUD surface to build or keep in sync.
+- [x] `POST /api/command` accepting `{ "input": "<raw command string>" }`,
+      in `taskai/browser.py`. Reuses `_parse_arg_string` + `_parse_remaining`
+      + `execute_commands` from `cli.py` (imported, not reimplemented).
+      Response shape ended up `{ "output": "...", "tree": {...}, "focus":
+      "<id>"|null }` — the extra `focus` field exists because `show` is
+      special-cased: it never touches `execute_commands` (it's read-only
+      from the browser's perspective), it just resolves a target id and
+      returns it as `focus` so the frontend can call `focusOnNode` on it
+      instead of getting text output back. Everything else runs through
+      `execute_commands` normally with stdout captured via
+      `contextlib.redirect_stdout`.
+- [x] Found and worked around a real landmine while building this:
+      `Controller.throw_error` calls `sys.exit(-1)`, which raises
+      `SystemExit` — not an `Exception`, so `execute_commands`'s own
+      `except Exception` never catches it. Any unrecognized command or bad
+      args (very common from a console) would throw `SystemExit` straight
+      through the request handler. Caught at the server boundary only
+      (`cli.py` untouched, so CLI behavior is unchanged) so bad input
+      degrades to an error string instead.
+- [x] This single endpoint is now the only mutation path for the browser —
+      both the edit menu (1.5) and the console (1.6) POST through it.
 
 ### 1.3 — DAG view (v1: static render)
 
@@ -217,15 +240,21 @@ stdlib `http.server` — no new dependency, consistent with "less code."
       under the cursor fixed. Also added beyond the original plan:
       double-click a node to ease the view to center + zoom on it
       (`focusOnNode` in `canvas.js`).
-- [ ] Click to select/highlight a node and its edges. Still open — a click
-      currently only `console.log`s the node; no persisted "selected node"
-      state yet. Note double-click is now taken by the center/zoom behavior
-      above, so this will be a single click. **1.5's edit menu is meant to
-      piggyback off this selection** (open by clicking a node, not by
-      double-clicking it), so build the selection state with that in mind.
-- [ ] Color/style nodes by `status` / `completed` (strike-through or dim for
-      completed, matching the existing `views.py` CLI convention). Still
-      open.
+- [x] Click to select a node — single click (double-click stays taken by
+      center/zoom). `selectedNode` in `canvas.js` persists across hover and
+      redraws, and is re-resolved by id after every tree refresh (a command
+      response rebuilds all node objects from scratch, so the old reference
+      would otherwise silently dangle and the selection would appear to
+      break after any mutation). Drawn with the same accent-blue
+      border/thicker stroke as hover. This is exactly the state 1.5's edit
+      menu piggybacks off — not edge highlighting yet, just the node.
+- [x] Color/style nodes by `completed` — soft green fill + border (see
+      `STYLE.colors.nodeFill/BorderDone`), not strike-through/dim like the
+      CLI. `status` ended up as a small orange text label in the node's
+      top-right corner (`STYLE.colors.statusText`) rather than a node-wide
+      recolor, since status is a free-form string, not a small fixed set of
+      states — recoloring the whole node didn't make sense for arbitrary
+      text.
 
 Also done, ahead of plan: hover now highlights the node (border + fill tint)
 and shows a tooltip with its full, untruncated label — labels are truncated
@@ -237,33 +266,60 @@ add new visual knobs there, not inline in `draw()`.
 
 ### 1.5 — Edit menu
 
-- [ ] Collapsible side panel (CSS class toggle, no JS animation library).
-      Click a DAG node to select it (double-click is already used for
-      center/zoom — see 1.4), populated from that node's tree data already
-      in memory (no extra fetch needed). Depends on the click-to-select work
-      in 1.4 actually persisting a selected node first.
-- [ ] Form fields mirror the CLI's `--field value` set from the README table
-      (`description`, `due_by`, `priority`, `status`, `completed`,
-      `depends_on`).
-- [ ] Save builds an `update <id> --field value ...` command string per
-      changed field and posts it to `/api/command` (reusing 1.2) — the edit
-      menu never talks to the database directly.
-- [ ] After save, re-fetch `/api/tree` and re-render the DAG in place.
+- [x] Collapsible panel — ended up right-side (not left/bottom), in
+      `taskai/static/editpanel.js` + `.edit-panel` in `style.css`. Collapsed
+      state is just a bare `44px` chevron button (no visible bar/background)
+      pinned to its own top-left corner; expanded is a `320px` white panel.
+      Toggling animates the canvas's width/pan/zoom in step with the panel
+      over the same 200ms as its CSS transition (`setRightPanelWidth` in
+      `canvas.js`), rescaling zoom in proportion to the width change (not
+      just re-panning) so the same amount of graph content stays visible
+      instead of getting cropped. Populated by clicking a DAG node (1.4's
+      selection), from `latestItemsById` (the full `/api/tree`-shaped data
+      canvas.js already has) — no extra fetch.
+- [x] Form fields: `name`, `description`, `status`, `priority`, `due_by`,
+      `completed`, `dependency_ids` (labeled "Depends on"). Added `name`
+      beyond the README's `--field` table since it's directly editable data,
+      not just renameable via a separate command. Each field's input type
+      matches its data: text/textarea/number/date/checkbox; `due_by` round-
+      trips `<input type="date">`'s `YYYY-MM-DD` to/from the CLI's
+      `MM-DD-YYYY`; `dependency_ids` round-trips to/from the CLI's
+      comma-separated `depends_on` id list.
+- [x] **No Save button** — deliberate deviation from the original plan.
+      Every field change posts straight to `/api/command` as
+      `update <id> --<field> <value>`. Checkbox sends immediately on toggle;
+      everything else listens on `input` and debounces 1s per field (keyed
+      by item+field, so editing `name` doesn't reset `description`'s timer)
+      so typing doesn't spam a request per keystroke.
+- [x] After each update, the response's `tree` is applied in place (same
+      `applyTree` the console uses) — no separate re-fetch needed.
+
+While wiring this up, confirmed against a throwaway test item (created and
+deleted, not real data): `name`/`description`/`priority`/`completed` all
+update correctly end to end. `due_by` and `depends_on` hit the
+`update_item`/`_parse_item_kwargs` bug documented above — left unfixed on
+purpose, current call.
 
 ### 1.6 — Console
 
-- [ ] Collapsible panel (bottom or side) with a scrollback `<div>` and a
-      single-line input, styled like a terminal.
-- [ ] On submit: POST the raw text to `/api/command`, append `input` +
-      `output` to scrollback, then refresh the DAG the same way the edit
-      menu does. This is the same interactive loop `interactive_program()`
-      already implements — the browser console is just a UI over the same
-      endpoint, not a new command grammar.
-- [ ] Up-arrow history is a nice cheap addition (array + index, no library).
+- [x] Collapsible panel, bottom-anchored (`taskai/static/console.js` +
+      `.console-panel` in `style.css`) — `44px` collapsed strip with a
+      double-chevron toggle, `280px` expanded, scrollback `<div>` +
+      single-line input styled like a terminal (monospace, dark-on-light to
+      match the rest of the theme).
+- [x] On submit: POSTs to `/api/command`, appends output to scrollback, and
+      applies the returned tree (`applyTree`) in place — matches the plan,
+      except there's no separate "refresh the DAG" step since the command
+      response already carries the fresh tree. Also handles the `focus`
+      field `show` commands return: calls `focusOnNode` on that id instead
+      of expecting text output.
+- [ ] Up-arrow history — still open, not done.
 
-At the end of Phase 1 the DAG, edit menu, and console all funnel through one
-`/api/command` endpoint and one `/api/tree` read — that's the "less code"
-payoff of routing everything through the existing `Controller`.
+At the end of Phase 1: dependency/link edges (1.4) and up-arrow console
+history (1.6) are the only pieces left open. The DAG, edit panel, and
+console all funnel through one `/api/command` endpoint and one `/api/tree`
+read, as planned — that's the "less code" payoff of routing everything
+through the existing `Controller`.
 
 ---
 

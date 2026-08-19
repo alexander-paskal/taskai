@@ -1,5 +1,67 @@
 # 8-18
 
+Continued the browser/`canvas.js` work in a later session (DEVLOG is a
+stack now — newest first within a date — so this sits above the earlier
+entries from today):
+
+- Console got wired up for real: `POST /api/command` now exists in
+  `browser.py` (design: branch on whether the parsed command is `show` —
+  `show` never touches `execute_commands`, it's read-only from the
+  browser's perspective, it just resolves a target id and returns it as
+  `focus` for the frontend to `focusOnNode` on; everything else runs
+  through `execute_commands` with stdout captured, always returning the
+  fresh full tree). Found a real landmine while building it:
+  `Controller.throw_error` calls `sys.exit(-1)`, raising `SystemExit`,
+  which `execute_commands`'s own `except Exception` doesn't catch — any
+  bad console command would've thrown that straight through the request
+  handler. Caught at the server boundary only, `cli.py` untouched. Console
+  input now actually POSTs, echoes output, and applies the returned tree.
+- Node labels now wrap up to 3 lines before truncating (was single-line
+  truncate only) — `wrapText` in `canvas.js`, refactored `fitText`'s
+  trimming logic into a shared `truncateWithEllipsis` helper.
+- `completed` items get a soft green fill/border
+  (`STYLE.colors.nodeFill/BorderDone`). Each node also shows its id
+  (top-left, small muted gray) and, when set, its `status` (top-right,
+  small warm orange, ellipsis-truncated if it'd collide with the id).
+- Tuned double-click focus after it read as too aggressive: scale down
+  1.4 → 0.85 (settles slightly zoomed *out*, not in), and it no longer
+  centers vertically — lands at 20% down from the top
+  (`STYLE.zoom.focusYRatio`) so there's room below to see a focused node's
+  children.
+- Built the edit panel (right-side, collapsible, `editpanel.js` +
+  `.edit-panel` in `style.css`): collapsed is just a bare `44px` chevron
+  button pinned to its own top-left corner (no visible bar), expanded is a
+  `320px` white panel. Toggling animates the canvas's width/pan/zoom in
+  step with the panel's own 200ms CSS transition (`setRightPanelWidth` in
+  `canvas.js`), rescaling zoom in proportion to the width change (not just
+  re-panning) so the same amount of graph stays in view instead of getting
+  cropped. This required adding real click-to-select on the DAG first
+  (`selectedNode` in `canvas.js`, persistent blue border, re-resolved by
+  id after every tree refresh so it doesn't silently dangle) — the edit
+  panel piggybacks off that selection.
+- Edit panel form: `name`, `description`, `status`, `priority`, `due_by`,
+  `completed`, `dependency_ids` ("Depends on"), each typed to match its
+  data (text/textarea/number/date/checkbox). No Save button — deliberate:
+  every field POSTs `update <id> --<field> <value>` to `/api/command`
+  directly. Checkbox sends immediately; everything else debounces 1s per
+  field (keyed by item+field) so typing doesn't spam a request per
+  keystroke.
+- Confirmed against a throwaway test item (created + deleted, not real
+  data) that `name`/`description`/`priority`/`completed` all update
+  correctly end to end. `due_by` and `depends_on` don't — both trace to
+  `Controller.update_item` never calling `_parse_item_kwargs` the way
+  `create_item` does, so `due_by` throws a validation error and
+  `depends_on` silently no-ops. Documented in DEVPLAN's known quirks,
+  left unfixed on purpose (explicit call: wire the endpoint first, fix
+  bugs later).
+
+Phase 1 status per the updated DEVPLAN checklist: only dependency/link
+edges (1.4) and console up-arrow history (1.6) remain open. Everything
+else in Phase 1 — tree render, pan/zoom, click-to-select, completed/status
+display, the command endpoint, the edit panel, the console — is done.
+
+---
+
 Working with Claude this session. Started a DEVPLAN.md with a roadmap
 (Phase 0: bugfixes, Phase 1: browser UI, Phase 2: AI/aisuite rewrite,
 Phase 3: polish) plus ground rules for how we want to work together.

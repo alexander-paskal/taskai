@@ -13,6 +13,7 @@ const STYLE = {
 		nodeBorderDone: "#a9dab9",
 		text: "#23252b",
 		idText: "#b4b9c4",
+		statusText: "#e0924a",
 		edge: "#dcdfe6",
 		tooltipBackground: "#ffffff",
 		tooltipBorder: "#e2e4ea",
@@ -81,6 +82,7 @@ function buildTree(itemsById, id) {
 		label: item.name,
 		size: STYLE.node.size,
 		completed: item.completed,
+		status: item.status,
 		children: (item.child_ids || []).map(childId => buildTree(itemsById, childId)),
 	};
 }
@@ -381,6 +383,16 @@ function draw() {
 		ctx.textAlign = "left";
 		ctx.textBaseline = "top";
 		ctx.fillText(node.id, nodeX + STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
+
+		if (node.status) {
+			ctx.fillStyle = STYLE.colors.statusText;
+			ctx.font = STYLE.node.idFont;
+			ctx.textAlign = "right";
+			ctx.textBaseline = "top";
+			const maxStatusWidth = node.size / 2 - STYLE.node.idPadding;
+			const statusLabel = fitText(ctx, node.status, maxStatusWidth);
+			ctx.fillText(statusLabel, nodeX + node.size - STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
+		}
 
 		ctx.fillStyle = STYLE.colors.text;
 		ctx.font = STYLE.node.font;
