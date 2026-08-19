@@ -268,6 +268,41 @@ function focusOnNode(node, scale = STYLE.zoom.focusScale, duration = STYLE.zoom.
 }
 
 
+// animates view to target offset/scale using the same ease-out cubic as focusOnNode
+function easeView(targetOffsetX, targetOffsetY, targetScale, duration = STYLE.zoom.focusDurationMs) {
+	const startOffsetX = view.offsetX;
+	const startOffsetY = view.offsetY;
+	const startScale = view.scale;
+	const startTime = performance.now();
+
+	function step(now) {
+		const t = Math.min(1, (now - startTime) / duration);
+		const eased = 1 - Math.pow(1 - t, 3);
+
+		view.scale = startScale + (targetScale - startScale) * eased;
+		view.offsetX = startOffsetX + (targetOffsetX - startOffsetX) * eased;
+		view.offsetY = startOffsetY + (targetOffsetY - startOffsetY) * eased;
+
+		draw();
+		if (t < 1) requestAnimationFrame(step);
+	}
+	requestAnimationFrame(step);
+}
+
+// zoom around the canvas center by `factor` (e.g. 1.5 = in, 1/1.5 = out)
+function canvasZoom(factor) {
+	const cx = canvas.width / 2;
+	const cy = canvas.height / 2;
+	const worldCenter = screenToWorld(cx, cy);
+	const newScale = Math.min(STYLE.zoom.max, Math.max(STYLE.zoom.min, view.scale * factor));
+	easeView(cx - worldCenter.x * newScale, cy - worldCenter.y * newScale, newScale);
+}
+
+// pan by dx/dy screen pixels (positive dx = camera moves left, revealing content to the right)
+function canvasPan(dx, dy) {
+	easeView(view.offsetX + dx, view.offsetY + dy, view.scale);
+}
+
 // trims text, always appending an ellipsis, until "text…" fits maxWidth
 function truncateWithEllipsis(ctx, text, maxWidth) {
 	let truncated = text;

@@ -20,6 +20,18 @@ function appendLine(text) {
 	consoleScrollback.scrollTop = consoleScrollback.scrollHeight;
 }
 
+const PAN_AMOUNT = 250; // screen pixels per pan command
+const ZOOM_FACTOR = 1.5;
+
+const CLIENT_COMMANDS = {
+	"zoom in":   () => canvasZoom(ZOOM_FACTOR),
+	"zoom out":  () => canvasZoom(1 / ZOOM_FACTOR),
+	"pan left":  () => canvasPan(PAN_AMOUNT, 0),
+	"pan right": () => canvasPan(-PAN_AMOUNT, 0),
+	"pan up":    () => canvasPan(0, PAN_AMOUNT),
+	"pan down":  () => canvasPan(0, -PAN_AMOUNT),
+};
+
 consoleInput.addEventListener("keydown", async (e) => {
 	if (e.key !== "Enter") return;
 
@@ -28,6 +40,12 @@ consoleInput.addEventListener("keydown", async (e) => {
 
 	appendLine("> " + command);
 	consoleInput.value = "";
+
+	const clientHandler = CLIENT_COMMANDS[command.toLowerCase()];
+	if (clientHandler) {
+		clientHandler();
+		return;
+	}
 
 	let data;
 	try {
