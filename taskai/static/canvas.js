@@ -1,18 +1,57 @@
-// const canvas = document.getElementById('myCanvas');
-// const ctx = canvas.getContext('2d');
-
-// canvas.width = 400;
-// canvas.height = 300;
-
-// ctx.fillStyle = 'tomato';
-// ctx.fillRect(20, 20, 100, 80);
-
-
-const NODE_RADIUS = 25;
-const X_SPACING = 90;
-const Y_SPACING = 100;
-const MARGIN_X = 60;
-const MARGIN_Y = 60;
+// Visual configuration for the DAG canvas. Plain data on purpose — this will
+// eventually be served by a backend endpoint (e.g. GET /api/style) so the
+// look can be themed/configured server-side instead of hardcoded here.
+const STYLE = {
+	colors: {
+		background: "#0d0f14",
+		nodeGradientTop: "#242c3d",
+		nodeGradientBottom: "#181d29",
+		nodeHoverGradientTop: "#2e3a52",
+		nodeHoverGradientBottom: "#1f2636",
+		nodeBorder: "#333c52",
+		nodeBorderHover: "#6c9bff",
+		text: "#e8eaf0",
+		edge: "#333c52",
+		tooltipBackground: "#161a22",
+		tooltipBorder: "#333c52",
+		tooltipText: "#e8eaf0",
+	},
+	node: {
+		size: 160, // full square side length, in world units
+		cornerRadius: 18,
+		font: "20px sans-serif",
+		padding: 16,
+		borderWidth: 1.5,
+		borderWidthHover: 2,
+		shadowColor: "rgba(0, 0, 0, 0.45)",
+		shadowBlur: 18,
+		shadowOffsetY: 4,
+	},
+	edge: {
+		width: 1.5,
+	},
+	layout: {
+		xSpacing: 230,
+		ySpacing: 230,
+		marginX: 120,
+		marginY: 120,
+		treeGap: 260, // extra horizontal gap, on top of xSpacing, between separate root trees
+	},
+	zoom: {
+		min: 0.1,
+		max: 4,
+		speed: 0.001,
+		focusScale: 1.4,
+		focusDurationMs: 250,
+	},
+	tooltip: {
+		font: "12px sans-serif",
+		paddingX: 8,
+		height: 24,
+		cornerRadius: 6,
+		offset: 10,
+	},
+};
 
 let roots = [];
 let nodes = [];
@@ -29,7 +68,7 @@ function buildTree(itemsById, id) {
 	return {
 		id: String(item.id),
 		label: item.name,
-		r: NODE_RADIUS,
+		size: STYLE.node.size,
 		children: (item.child_ids || []).map(childId => buildTree(itemsById, childId)),
 	};
 }
@@ -37,9 +76,9 @@ function buildTree(itemsById, id) {
 // depth-first layout: y from depth, x from a running leaf counter shared across the whole forest,
 // with parent x centered over its children
 function layout(node, depth, leafCounter) {
-	node.y = MARGIN_Y + depth * Y_SPACING;
+	node.y = STYLE.layout.marginY + depth * STYLE.layout.ySpacing;
 	if (node.children.length === 0) {
-		node.x = MARGIN_X + leafCounter.count * X_SPACING;
+		node.x = STYLE.layout.marginX + leafCounter.count * STYLE.layout.xSpacing;
 		leafCounter.count += 1;
 	} else {
 		node.children.forEach(child => layout(child, depth + 1, leafCounter));
@@ -59,7 +98,10 @@ async function loadTree() {
 	roots = rootIds.map(id => buildTree(itemsById, id));
 
 	const leafCounter = { count: 0 };
-	roots.forEach(root => layout(root, 0, leafCounter));
+	roots.forEach((root, i) => {
+		if (i > 0) leafCounter.count += STYLE.layout.treeGap / STYLE.layout.xSpacing;
+		layout(root, 0, leafCounter);
+	});
 
 	nodes = roots.flatMap(root => flatten(root));
 
@@ -69,16 +111,15 @@ async function loadTree() {
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d"); // get the canvas context I guess?
 
-canvas.width = 800;
-canvas.height = 800;
+function resizeCanvas() {
+	canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
+	draw();
+}
+window.addEventListener("resize", resizeCanvas);
 
 // pan/zoom view state: world coordinates map to screen as screen = world * scale + offset
 const view = { offsetX: 0, offsetY: 0, scale: 1 };
-const MIN_SCALE = 0.2;
-const MAX_SCALE = 4;
-const ZOOM_SPEED = 0.001;
-const FOCUS_SCALE = 2;
-const FOCUS_DURATION_MS = 250;
 
 function screenToWorld(sx, sy) {
 	return { x: (sx - view.offsetX) / view.scale, y: (sy - view.offsetY) / view.scale };
@@ -88,8 +129,14 @@ function worldToScreen(wx, wy) {
 	return { x: wx * view.scale + view.offsetX, y: wy * view.scale + view.offsetY };
 }
 
+// true if the world point (x, y) falls inside node's square
+function hitTest(node, x, y) {
+	const half = node.size / 2;
+	return Math.abs(x - node.x) <= half && Math.abs(y - node.y) <= half;
+}
+
 // eases the view to center on `node` at `scale`
-function focusOnNode(node, scale = FOCUS_SCALE, duration = FOCUS_DURATION_MS) {
+function focusOnNode(node, scale = STYLE.zoom.focusScale, duration = STYLE.zoom.focusDurationMs) {
 	const startOffsetX = view.offsetX;
 	const startOffsetY = view.offsetY;
 	const startScale = view.scale;
@@ -126,38 +173,70 @@ function fitText(ctx, text, maxWidth) {
 	return truncated ? truncated + "…" : "…";
 }
 
+function roundedRectPath(ctx, x, y, w, h, r) {
+	ctx.beginPath();
+	ctx.moveTo(x + r, y);
+	ctx.arcTo(x + w, y, x + w, y + h, r);
+	ctx.arcTo(x + w, y + h, x, y + h, r);
+	ctx.arcTo(x, y + h, x, y, r);
+	ctx.arcTo(x, y, x + w, y, r);
+	ctx.closePath();
+}
+
 function draw() {
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.fillStyle = STYLE.colors.background;
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 	ctx.save();
 	ctx.translate(view.offsetX, view.offsetY);
 	ctx.scale(view.scale, view.scale);
 
-	// Draw connecting Lines
+	// Draw connecting lines
+	ctx.strokeStyle = STYLE.colors.edge;
+	ctx.lineWidth = STYLE.edge.width;
+	ctx.lineCap = "round";
 	function drawLines(node) {
 		node.children.forEach(child => {
 			ctx.beginPath();
 			ctx.moveTo(node.x, node.y);
 			ctx.lineTo(child.x, child.y);
-			ctx.strokeStyle = "#999";
 			ctx.stroke();
 			drawLines(child);
 		});
 	}
 	roots.forEach(root => drawLines(root));
 
-	// Draw circles
+	// Draw nodes
 	nodes.forEach(node => {
-		ctx.beginPath();
-		ctx.arc(node.x,node.y,node.r,0, Math.PI*2);
-		ctx.fillStyle = node === hoveredNode ? "#3f6d97" : "steelblue";
-		ctx.fill();
+		const half = node.size / 2;
+		const isHovered = node === hoveredNode;
+		const nodeX = node.x - half;
+		const nodeY = node.y - half;
 
-		ctx.fillStyle = "white";
-		ctx.font = "10px sans-serif";
+		ctx.save();
+		ctx.shadowColor = STYLE.node.shadowColor;
+		ctx.shadowBlur = STYLE.node.shadowBlur;
+		ctx.shadowOffsetY = STYLE.node.shadowOffsetY;
+
+		const gradient = ctx.createLinearGradient(node.x, nodeY, node.x, nodeY + node.size);
+		gradient.addColorStop(0, isHovered ? STYLE.colors.nodeHoverGradientTop : STYLE.colors.nodeGradientTop);
+		gradient.addColorStop(1, isHovered ? STYLE.colors.nodeHoverGradientBottom : STYLE.colors.nodeGradientBottom);
+
+		roundedRectPath(ctx, nodeX, nodeY, node.size, node.size, STYLE.node.cornerRadius);
+		ctx.fillStyle = gradient;
+		ctx.fill();
+		ctx.restore(); // drop the shadow before stroking the border
+
+		roundedRectPath(ctx, nodeX, nodeY, node.size, node.size, STYLE.node.cornerRadius);
+		ctx.strokeStyle = isHovered ? STYLE.colors.nodeBorderHover : STYLE.colors.nodeBorder;
+		ctx.lineWidth = isHovered ? STYLE.node.borderWidthHover : STYLE.node.borderWidth;
+		ctx.stroke();
+
+		ctx.fillStyle = STYLE.colors.text;
+		ctx.font = STYLE.node.font;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
-		const maxWidth = node.r * 2 - 8;
+		const maxWidth = node.size - STYLE.node.padding * 2;
 		ctx.fillText(fitText(ctx, node.label, maxWidth), node.x, node.y);
 	});
 
@@ -167,19 +246,22 @@ function draw() {
 	// so its text stays a fixed, readable size regardless of zoom level.
 	if (hoveredNode) {
 		const { x: sx, y: sy } = worldToScreen(hoveredNode.x, hoveredNode.y);
-		const sr = hoveredNode.r * view.scale;
+		const halfScreen = (hoveredNode.size / 2) * view.scale;
 
-		ctx.font = "12px sans-serif";
-		const paddingX = 6;
-		const boxW = ctx.measureText(hoveredNode.label).width + paddingX * 2;
-		const boxH = 20;
+		ctx.font = STYLE.tooltip.font;
+		const boxW = ctx.measureText(hoveredNode.label).width + STYLE.tooltip.paddingX * 2;
+		const boxH = STYLE.tooltip.height;
 		const boxX = sx - boxW / 2;
-		const boxY = sy - sr - boxH - 6;
+		const boxY = sy - halfScreen - boxH - STYLE.tooltip.offset;
 
-		ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-		ctx.fillRect(boxX, boxY, boxW, boxH);
+		roundedRectPath(ctx, boxX, boxY, boxW, boxH, STYLE.tooltip.cornerRadius);
+		ctx.fillStyle = STYLE.colors.tooltipBackground;
+		ctx.fill();
+		ctx.strokeStyle = STYLE.colors.tooltipBorder;
+		ctx.lineWidth = 1;
+		ctx.stroke();
 
-		ctx.fillStyle = "white";
+		ctx.fillStyle = STYLE.colors.tooltipText;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
 		ctx.fillText(hoveredNode.label, sx, boxY + boxH / 2);
@@ -203,7 +285,7 @@ canvas.addEventListener("click", (e) => {
 	const rect = canvas.getBoundingClientRect();
 	const { x, y } = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
 
-	const clicked = nodes.find(node => Math.hypot(x - node.x, y - node.y) <= node.r);
+	const clicked = nodes.find(node => hitTest(node, x, y));
 
 	if (clicked) {
 		console.log("Clicked:", clicked.id, clicked.label);
@@ -213,7 +295,7 @@ canvas.addEventListener("click", (e) => {
 canvas.addEventListener("dblclick", (e) => {
 	const rect = canvas.getBoundingClientRect();
 	const { x, y } = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-	const clicked = nodes.find(node => Math.hypot(x - node.x, y - node.y) <= node.r);
+	const clicked = nodes.find(node => hitTest(node, x, y));
 
 	if (clicked) {
 		focusOnNode(clicked);
@@ -254,7 +336,7 @@ canvas.addEventListener("mousemove", (e) => {
 	}
 
 	const { x, y } = screenToWorld(sx, sy);
-	const found = nodes.find(n => Math.hypot(x - n.x, y - n.y) <= n.r);
+	const found = nodes.find(n => hitTest(n, x, y));
 
 	if (found !== hoveredNode) {
 		hoveredNode = found || null;
@@ -272,8 +354,8 @@ canvas.addEventListener("wheel", (e) => {
 	const sy = e.clientY - rect.top;
 
 	const worldBefore = screenToWorld(sx, sy);
-	const zoomFactor = Math.exp(-e.deltaY * ZOOM_SPEED);
-	view.scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, view.scale * zoomFactor));
+	const zoomFactor = Math.exp(-e.deltaY * STYLE.zoom.speed);
+	view.scale = Math.min(STYLE.zoom.max, Math.max(STYLE.zoom.min, view.scale * zoomFactor));
 	view.offsetX = sx - worldBefore.x * view.scale;
 	view.offsetY = sy - worldBefore.y * view.scale;
 
@@ -281,4 +363,5 @@ canvas.addEventListener("wheel", (e) => {
 }, { passive: false })
 
 
+resizeCanvas();
 loadTree();
