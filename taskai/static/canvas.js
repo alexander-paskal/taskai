@@ -47,8 +47,12 @@ const STYLE = {
 		min: 0.1,
 		max: 4,
 		speed: 0.001,
-		focusScale: 1.4,
+		focusScale: 0.85,
 		focusDurationMs: 250,
+		// vertical screen position a focused node lands at, as a fraction of
+		// canvas height from the top (0 = top, 1 = bottom); kept above center
+		// so there's room below to see a focused node's children/grandchildren
+		focusYRatio: 0.2,
 	},
 	tooltip: {
 		font: "12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
@@ -148,14 +152,15 @@ function hitTest(node, x, y) {
 	return Math.abs(x - node.x) <= half && Math.abs(y - node.y) <= half;
 }
 
-// eases the view to center on `node` at `scale`
+// eases the view to `scale`, horizontally centering `node` and placing it
+// at STYLE.zoom.focusYRatio down the screen (not vertically centered)
 function focusOnNode(node, scale = STYLE.zoom.focusScale, duration = STYLE.zoom.focusDurationMs) {
 	const startOffsetX = view.offsetX;
 	const startOffsetY = view.offsetY;
 	const startScale = view.scale;
 
 	const targetOffsetX = canvas.width / 2 - node.x * scale;
-	const targetOffsetY = canvas.height / 2 - node.y * scale;
+	const targetOffsetY = canvas.height * STYLE.zoom.focusYRatio - node.y * scale;
 
 	const startTime = performance.now();
 
