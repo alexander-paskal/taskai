@@ -27,6 +27,7 @@ def _full_tree():
 
 @app.get("/api/tree")
 def get_tree():
+    db.flush()  # reload from disk in case another process (e.g. the CLI) wrote since we last connected
     return _full_tree()
 
 

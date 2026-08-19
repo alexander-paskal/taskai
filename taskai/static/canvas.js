@@ -537,3 +537,7 @@ canvas.addEventListener("wheel", (e) => {
 
 resizeCanvas();
 loadTree();
+
+// refetch on window focus so edits made elsewhere (e.g. the CLI) while this
+// tab was in the background show up without needing a manual reload
+window.addEventListener("focus", loadTree);

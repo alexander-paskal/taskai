@@ -95,6 +95,17 @@ unless you're told to fix them):**
   correctly. The edit panel (1.5) and console both go through `update` and
   will hit this. Likely fix: add the same
   `kwargs = Controller._parse_item_kwargs(kwargs)` call `create_item` makes.
+- **Sync is one-directional: CLI → browser only, not the reverse.**
+  `GET /api/tree` (`browser.py`) reloads from disk (`db.flush()`) on every
+  call, and `canvas.js` refetches on window focus, so browser-side views
+  pick up CLI edits made while the tab was in the background. But a running
+  `task` interactive session holds its own in-memory `db.user_data` loaded
+  once at startup — it has no equivalent reload/refetch, so an edit made in
+  the browser (edit panel or console) isn't visible there until you kill and
+  restart the interactive session. Acceptable for now; the real fix is the
+  planned move to a daemonic backend thread/process with the CLI as a client
+  the same way the browser already is, not a patch on the current
+  per-process-connects-once model.
 
 **Command reference:** don't re-derive this — read
 [taskai/help_menu.py](taskai/help_menu.py)'s `help_general`, it's kept
