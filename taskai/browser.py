@@ -1,5 +1,6 @@
 import contextlib
 import io
+import os
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
@@ -11,11 +12,15 @@ from taskai.cli import Controller, _parse_arg_string, _parse_remaining, db, exec
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="taskai/static"), name="static")
+# get baspath to static
+static_abs_dir = os.path.join(os.path.dirname(__file__), "static")
+
+
+app.mount("/static", StaticFiles(directory=static_abs_dir), name="static")
 
 @app.get("/", response_class=FileResponse)
 def index():
-    return FileResponse("taskai/static/index.html")
+    return FileResponse(os.path.join(static_abs_dir, "index.html"))
 
 
 def _full_tree():
