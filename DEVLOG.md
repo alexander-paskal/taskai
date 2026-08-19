@@ -65,6 +65,45 @@ fresh session doesn't need to re-derive all of this by reading the whole
 codebase. Also added a ground rule to keep this DEVLOG updated going
 forward.
 
+Kept going on the DAG view (`canvas.js`) in the same session, testing
+live against `task browser` running throughout:
+- Labels no longer overflow the node: truncated with an ellipsis to fit,
+  full label shown in a tooltip on hover. Hover also now visibly
+  highlights the node — previously tracked but had no effect.
+- Added pan (drag) and zoom (wheel, zooms toward the cursor) via a `view`
+  {offsetX, offsetY, scale} object and canvas context transforms, not SVG
+  `viewBox` — same reasoning as the earlier canvas-not-SVG call. A drag
+  past a small threshold suppresses the trailing click so panning across
+  a node doesn't also fire its click handler.
+- Added double-click a node to ease the view to center + zoom on it
+  (`focusOnNode`, ease-out cubic, ~250ms). Note: this is *not* the edit
+  menu trigger — double-click is now spoken for by center/zoom, so 1.5's
+  edit menu will open off a single-click "selected node" instead (that
+  selection state doesn't exist yet; today click only `console.log`s).
+- Reworked the whole visual style: nodes went from small fixed circles to
+  much larger rounded squares (currently 160 world units), sized so
+  normal-length labels fit without truncating. Pulled every visual knob
+  (colors, node size/shape/font, spacing, zoom bounds, tooltip) out into
+  a `STYLE` config object at the top of `canvas.js` — deliberately plain
+  data, no functions, so it can later be swapped for a `GET /api/style`
+  response instead of hardcoded constants. Went through two style passes
+  with Alex: first a dark "sleek/modern" theme, then a full swap to a
+  TickTick-inspired light theme (off-white canvas, flat white node cards,
+  soft low-opacity shadow instead of a heavy one, blue accent on
+  hover/select, system font stack). Also made the canvas fill the
+  viewport (was a fixed 800x800 box) with a resize listener.
+- Widened spacing to match the bigger nodes: sibling/parent-child spacing
+  up from 90/100 to 230/230, plus a dedicated extra gap (`treeGap`, 260)
+  inserted only *between* separate root trees in the forest, not between
+  siblings within one tree. Zoom's lower bound dropped 0.2 → 0.1 so a
+  bigger graph can still be zoomed out to fit; upper bound stayed at 4.
+
+Still open for Phase 1, per the updated checklist in DEVPLAN.md: click-
+to-select (persisted selection, needed before the edit menu can piggyback
+off it), dependency/link edges, node coloring by status/completed, the
+`/api/command` mutation endpoint, the edit menu itself, and the console
+panel.
+
 # 6-25
 
 Alright let's start to think a bit about how I want to handle the pomo service.

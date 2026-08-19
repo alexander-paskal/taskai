@@ -1,0 +1,67 @@
+html, body {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+	background: #f5f6f8;
+	overflow: hidden;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+canvas {
+	display: block;
+}
+
+.console-panel {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 10;
+	display: flex;
+	flex-direction: column;
+	background: #ffffff;
+	border-top: 1px solid #e2e4ea;
+	box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.06);
+	height: 44px;
+	overflow: hidden;
+	transition: height 0.2s ease;
+}
+
+.console-panel.expanded {
+	height: 280px;
+}
+
+.console-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 100%;
+	height: 44px;
+	border: none;
+	background: transparent;
+	color: #9aa0ab;
+	cursor: pointer;
+	padding: 0;
+}
+
+.console-toggle:hover {
+	color: #23252b;
+}
+
+.console-toggle svg {
+	transition: transform 0.2s ease;
+}
+
+.console-panel.expanded .console-toggle svg {
+	transform: rotate(180deg);
+}
+
+.console-body {
+	flex: 1;
+	padding: 4px 16px 16px;
+	color: #6b7280;
+	font-size: 13px;
+	overflow: auto;
+}

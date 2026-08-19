@@ -196,29 +196,52 @@ stdlib `http.server` — no new dependency, consistent with "less code."
 
 ### 1.3 — DAG view (v1: static render)
 
-- [ ] `dag.js`: hand-rolled layered layout — depth = distance from a root
+- [x] `dag.js`: hand-rolled layered layout — depth = distance from a root
       via `parent_id`, siblings spread horizontally under `child_ids`. No
       layout library; this tree structure makes a simple recursive x/y
-      assignment sufficient.
-- [ ] Render nodes as SVG `<rect>`/`<text>` groups, parent→child edges as
-      `<line>`/`<path>`. Re-fetch `/api/tree` and re-render on load.
+      assignment sufficient. Lives in `canvas.js` (see toolchain note above),
+      not a separate `dag.js`.
+- [x] Render nodes — done as `<canvas>` 2D shapes (rounded squares + text),
+      not SVG `<rect>`/`<text>`, consistent with the canvas-not-SVG decision
+      already noted above. Re-fetches `/api/tree` and re-renders on load.
 
 ### 1.4 — DAG view (v2: full graph + interaction)
 
 - [ ] Draw `dependency_ids` and `linked_ids` as a second edge style (dashed
       / different color) layered on top of the tree edges — this is what
-      makes it a DAG rather than just a tree view.
-- [ ] Pan (drag) and zoom (wheel) via SVG `viewBox` manipulation — no
-      library needed for this at this scale.
-- [ ] Click to select/highlight a node and its edges.
+      makes it a DAG rather than just a tree view. Still open — only
+      parent/child tree edges render today.
+- [x] Pan (drag) and zoom (wheel) — done via canvas context transforms
+      (`ctx.translate`/`ctx.scale` + a `view` state object), not SVG
+      `viewBox`, same toolchain reasoning as above. Zoom keeps the point
+      under the cursor fixed. Also added beyond the original plan:
+      double-click a node to ease the view to center + zoom on it
+      (`focusOnNode` in `canvas.js`).
+- [ ] Click to select/highlight a node and its edges. Still open — a click
+      currently only `console.log`s the node; no persisted "selected node"
+      state yet. Note double-click is now taken by the center/zoom behavior
+      above, so this will be a single click. **1.5's edit menu is meant to
+      piggyback off this selection** (open by clicking a node, not by
+      double-clicking it), so build the selection state with that in mind.
 - [ ] Color/style nodes by `status` / `completed` (strike-through or dim for
-      completed, matching the existing `views.py` CLI convention).
+      completed, matching the existing `views.py` CLI convention). Still
+      open.
+
+Also done, ahead of plan: hover now highlights the node (border + fill tint)
+and shows a tooltip with its full, untruncated label — labels are truncated
+with an ellipsis to fit inside the node otherwise. Visual styling (colors,
+node size/shape, spacing, zoom bounds, font) is centralized in a `STYLE`
+config object at the top of `canvas.js`, kept as plain data on purpose so it
+can later be served from a `GET /api/style` endpoint instead of hardcoded —
+add new visual knobs there, not inline in `draw()`.
 
 ### 1.5 — Edit menu
 
 - [ ] Collapsible side panel (CSS class toggle, no JS animation library).
-      Double-click a DAG node opens it, populated from that node's tree data
-      already in memory (no extra fetch needed).
+      Click a DAG node to select it (double-click is already used for
+      center/zoom — see 1.4), populated from that node's tree data already
+      in memory (no extra fetch needed). Depends on the click-to-select work
+      in 1.4 actually persisting a selected node first.
 - [ ] Form fields mirror the CLI's `--field value` set from the README table
       (`description`, `due_by`, `priority`, `status`, `completed`,
       `depends_on`).
