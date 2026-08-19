@@ -77,6 +77,8 @@ const view = { offsetX: 0, offsetY: 0, scale: 1 };
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 4;
 const ZOOM_SPEED = 0.001;
+const FOCUS_SCALE = 2;
+const FOCUS_DURATION_MS = 250;
 
 function screenToWorld(sx, sy) {
 	return { x: (sx - view.offsetX) / view.scale, y: (sy - view.offsetY) / view.scale };
@@ -84,6 +86,33 @@ function screenToWorld(sx, sy) {
 
 function worldToScreen(wx, wy) {
 	return { x: wx * view.scale + view.offsetX, y: wy * view.scale + view.offsetY };
+}
+
+// eases the view to center on `node` at `scale`
+function focusOnNode(node, scale = FOCUS_SCALE, duration = FOCUS_DURATION_MS) {
+	const startOffsetX = view.offsetX;
+	const startOffsetY = view.offsetY;
+	const startScale = view.scale;
+
+	const targetOffsetX = canvas.width / 2 - node.x * scale;
+	const targetOffsetY = canvas.height / 2 - node.y * scale;
+
+	const startTime = performance.now();
+
+	function step(now) {
+		const t = Math.min(1, (now - startTime) / duration);
+		const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+
+		view.scale = startScale + (scale - startScale) * eased;
+		view.offsetX = startOffsetX + (targetOffsetX - startOffsetX) * eased;
+		view.offsetY = startOffsetY + (targetOffsetY - startOffsetY) * eased;
+
+		draw();
+
+		if (t < 1) requestAnimationFrame(step);
+	}
+
+	requestAnimationFrame(step);
 }
 
 
@@ -178,6 +207,16 @@ canvas.addEventListener("click", (e) => {
 
 	if (clicked) {
 		console.log("Clicked:", clicked.id, clicked.label);
+	}
+})
+
+canvas.addEventListener("dblclick", (e) => {
+	const rect = canvas.getBoundingClientRect();
+	const { x, y } = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+	const clicked = nodes.find(node => Math.hypot(x - node.x, y - node.y) <= node.r);
+
+	if (clicked) {
+		focusOnNode(clicked);
 	}
 })
 
