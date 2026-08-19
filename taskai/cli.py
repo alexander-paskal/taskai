@@ -511,11 +511,14 @@ def interactive_program():
             # parse commands
             args_remaining = _parse_arg_string(response)
             args, kwargs = _parse_remaining(args_remaining)
-            print("arg_string:", args_remaining)
-            print("args:", args)
-            print("kwargs:", kwargs)
+            if not args:
+                _clear_screen()
+                continue
             if args[0] == "task":
                 args = args[1:]
+            if not args:
+                _clear_screen()
+                continue
 
             # defer show
             if args[0] == "show":
@@ -544,6 +547,7 @@ def entry_point():
 
     if not argv:
         interactive_program()
+        return
 
     if argv[0] in ("help","--help"):
         print(help_menu["general"])
