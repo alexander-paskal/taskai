@@ -121,7 +121,7 @@ def view_item(
     
     if item.dependency_ids:
         console.print(f"\n[bold green]Depends on:[/bold green]{''.join([
-            f'\n{depend_id} - {db.read(depend_id).name}' for depend_id in item.dependency_ids 
+            f'\n{depend_id} - {db.get_item(depend_id).name}' for depend_id in item.dependency_ids
         ])}")
 
     if item.comment_ids:
@@ -151,8 +151,8 @@ def view_items(
     
     items = {}
     for id_ in ids:
-        if id_ in db.items:
-            item = db.read(id_)
+        if int(id_) in db.get_item_ids():
+            item = db.get_item(id_)
             items[id_] = (item)
     
     # sort
@@ -161,7 +161,7 @@ def view_items(
     # view
     for item in items:
         rich.console.Console().rule(style="bold white")
-        view_item(db, item, show_done=show_done)
+        view_item(db, item.id, show_done=show_done)
         print()
 
 

@@ -94,15 +94,16 @@ def ai_natural_language_service(
     
     # recursively build user info
     user_info = []
-    _visited_set = {}
+    _visited_set = set()
 
     def _add_info(item_id, level=0):
-        item: TodoItem = db.get_item(id_)
+        item: TodoItem = db.get_item(item_id)
         user_info.append("  "*level + f"{item.id} {item.name}")
         _visited_set.add(item_id)
         if item.child_ids:
             for child_id in item.child_ids:
-                _add_info(child_id, level+1)
+                if child_id not in _visited_set:
+                    _add_info(child_id, level+1)
 
 
     for id_ in db.get_item_ids(): 
@@ -113,21 +114,38 @@ def ai_natural_language_service(
 
     # build ai prompt
     ai_prompt = f"""
-You are a todo-list agent. Your job is to convert a natural language description from a user into a set
+You are a todo agent. Your job is to convert a natural language description from a user into a set
 of CLI operations using our app. Here are a comprehensive list of operations that can be performed
 
 {help_general}
 
-Here are all of the user's list and task names, each prepended with their id
+Here are all of the user's existing item names, each prepended with their id
 
 {user_info}
 
-Here is the user's prompt: 
+Here is the user's prompt:
 
 {prompt}
 """
-    
+
     ai_prompt += """
+Rules for referencing items (read this carefully, mistakes here will make commands fail):
+- Commands run in the order you list them, top to bottom.
+- There is no separate "list" concept - everything is an item, and items form a tree. 'create' adds
+  a new top-level (root) item. 'add' adds a new item as a child of an EXISTING parent item - the
+  parent must already exist, either in the item names above or created earlier in this same batch.
+- Every id or name you reference as a TARGET (a parent, an item to update/move/link/depend-on/etc.)
+  must be either: (a) an id or exact name from the existing item names above, or (b) an item you
+  create earlier in this same list of commands, referenced afterward by the exact name you gave it
+  in that earlier 'create'/'add' command.
+- If the user mentions an item that does not already exist above, add a 'create' (top-level) or
+  'add' (child of an existing parent) command for it BEFORE any command that references it. Never
+  reference an item that neither exists above nor was created earlier in this batch.
+- Prefer numeric ids over names whenever an id is available - they're unambiguous. The following
+  commands only work correctly with an id, never a name: update, rename, status, comment, complete,
+  done, depend, reorder.
+- Only use the commands and '--field' names listed above. Do not invent new ones.
+
 Your response should be a JSON output with a valid list of commands, as specified by the description above.
 Each command should be structured in the following format:
     {
@@ -138,7 +156,6 @@ Each command should be structured in the following format:
 
 Here is an example of a response that you could return:
 
-```
 [
     {
         "command": "add",
@@ -154,9 +171,10 @@ Here is an example of a response that you could return:
         "args": ["Old Daily List"]
     }
 ]
-```
 
-It is ABSOLUTELY IMPERATIVE that your response be valid json, as your output is going to be parsed directly. Return NOTHING but the json output.
+
+It is ABSOLUTELY IMPERATIVE that your response be valid json, as your output is going to be parsed directly. Return NOTHING but the json output. do NOT wrap it in ``` or any other
+markdown formatting. Just the raw json string.
 
 """
 
@@ -167,16 +185,27 @@ It is ABSOLUTELY IMPERATIVE that your response be valid json, as your output is 
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model=model_name,
-        contents=prompt
+        contents=ai_prompt
     )
 
     try:
         response_json = json.loads(response.text)
-        print(response_json)
     except json.JSONDecodeError:
         print(response.text)
         print("\n\ndecode error")
         import sys
         sys.exit(-1)
 
-        
+    print(response_json)
+
+    from taskai.cli import execute_commands
+
+    for entry in response_json:
+        command = entry["command"]
+        cmd_args = entry.get("args", [])
+        cmd_kwargs = {
+            k.lstrip("-"): v
+            for k, v in entry.get("kwargs", {}).items()
+        }
+        execute_commands(command, *cmd_args, **cmd_kwargs)
+

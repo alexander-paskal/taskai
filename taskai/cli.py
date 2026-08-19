@@ -476,8 +476,7 @@ def execute_commands(*args, **kwargs) -> int:
             case _: Controller.throw_error("unrecognized command", *args, **kwargs)
 
 
-    except Exception as e: 
-        raise e
+    except Exception as e:
         Controller.throw_error(f"encountered exception '{e}'", *args, **kwargs)
 
     return 1
