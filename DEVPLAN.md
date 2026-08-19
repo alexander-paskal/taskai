@@ -343,37 +343,57 @@ through the existing `Controller`.
 
 ## Phase 2 — AI tools
 
-### 2.1 — Finish the natural-language service
+Two entry points, built in stages, not one replacing the other:
+**`task ai <prompt>`** (2.1-2.3 below) is the existing one-shot flow —
+model sees the prompt once, returns a full JSON list of commands up front,
+they execute with no gating, same as today just on `aisuite`. **`task ai
+agent <prompt>`** (2.4, later) is a separate, more elaborate entry point for
+multi-step workflows using a real tool-calling loop, added only after 2.1-2.3
+are working and any kinks (context injection, multi-file support) are worked
+out on the simpler path first.
 
-- [ ] Depends on Phase 0 fixes (prompt bug, `_add_info` bug, actually
-      executing parsed commands).
-- [ ] Add the ability to inject extra context / tools / other agentic framework arguments
-      supported by aisuite. 
-- [ ] Have execution reuse the *same* command-string path as the web console
-      (`execute_commands`, or the `/api/command` handler once it exists) so
-      AI-issued commands and human-issued commands share one code path.
-- [ ] Print the parsed command list before executing it (already partially
-      there via `print(response_json)`) — cheap safety net given the parsed
-      commands can include `delete`/`nuke`. Not a full confirmation prompt,
-      just visibility.
+### 2.1 — `task ai <prompt>` on `aisuite` (no gating, same one-shot shape as today)
 
-### 2.2 — Switch to `aisuite`
-
-- [ ] Add `aisuite` to `pyproject.toml` dependencies; drop the direct
-      `google-genai` import from `services/ai.py`.
-- [ ] Replace both call sites (`ai_headstart_service`,
-      `ai_natural_language_service`) with `aisuite.Client()` and
+- [x] Depended on the Phase 0 fixes (prompt bug, `_add_info` bug, actually
+      executing parsed commands) — done.
+- [ ] Add `aisuite` to `pyproject.toml`; drop the direct `google-genai`
+      import from `services/ai.py`.
+- [ ] Swap both call sites (`ai_headstart_service`,
+      `ai_natural_language_service`) to `aisuite.Client()` +
       `client.chat.completions.create(model=model_name, messages=[...])`.
-      Model strings become `provider:model`, e.g. `google:gemini-2.0-flash`
-      or `openai:gpt-4o-mini` — this is what buys multi-provider support for
-      free.
+      **Scope note:** plain chat completions only, no `tools=`/`max_turns`.
+      The model still returns one JSON list of `{command, args, kwargs}` up
+      front, same shape/contract as today, executed through
+      `execute_commands` with no confirmation step — that's deliberate for
+      this pass, not an oversight. The tool-calling loop is 2.4, later, not
+      here. Model strings become `provider:model` (e.g.
+      `google:gemini-2.0-flash`, `openai:gpt-4o-mini`).
 - [ ] `aisuite` reads provider credentials from standard provider env vars
-      (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, etc.), not from a key you pass in.
-      Drop the `@config("GEMINI_API_KEY", "api_key")` plumbing entirely —
-      one less thing to configure and one less place a secret sits in the
+      (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, etc.), not a key passed in. Drop
+      the `@config("GEMINI_API_KEY", "api_key")` plumbing entirely — one
+      less thing to configure and one less place a secret sits in the
       plaintext user JSON db.
 - [ ] Rename `CLIConfig.GEMINI_MODEL`/`GEMINI_API_KEY` to a single
       `AI_MODEL` field holding the `provider:model` string.
+- [ ] Keep printing the parsed command list before executing it (already
+      partially there via `print(response_json)`) — cheap safety net given
+      the parsed commands can include `delete`/`nuke`. Still just
+      visibility, not a confirmation prompt — real gating is what 2.4 adds.
+
+### 2.2 — Context injection (`--context`), including the multi-file kink
+
+- [ ] `--context <file>` on `task ai <prompt>`: read the file, fold its
+      contents into the prompt/messages sent to `aisuite`.
+      `_parse_remaining` already turns `--context path` into a kwarg for
+      free, so the single-file case needs no new arg-parsing.
+- [ ] Kink to work out during implementation: `_parse_remaining` only keeps
+      the *last* value for a repeated `--flag` (`kwargs[key] = value`,
+      unconditional overwrite), so `--context a.md --context b.md` today
+      would silently drop `a.md`. Default plan: accept a comma-separated
+      list in one `--context a.md,b.md` value rather than changing
+      `_parse_remaining` to support repeated/multi-value flags generally —
+      that's a bigger change affecting every command, not just `ai`. Fall
+      back to it only if the comma-separated approach proves too limiting.
 
 ### 2.3 — Update setup script for `aisuite`
 
@@ -385,6 +405,33 @@ through the existing `Controller`.
 - [ ] Update `help_menu.py` / README wherever `GEMINI_API_KEY`/
       `GEMINI_MODEL` are referenced (`task config set GEMINI_API_KEY ...`
       example in the README) to match the new config shape.
+
+### 2.4 — `task ai agent <prompt>` (later — real tool-calling loop)
+
+A separate entry point, not a replacement for `task ai`. `task ai <prompt>`
+stays the fast, ungated, one-shot-plan-and-execute path from 2.1-2.3;
+`task ai agent <prompt>` is for workflows where the model actually needs to
+see intermediate results (e.g. the real id of an item it just created)
+before deciding the next step, which a one-shot plan can't do.
+
+- [ ] Small, explicitly-typed wrapper functions — one per meaningful
+      command (create, update, complete, delete, comment, depend, link,
+      move; roughly 8-12 total, not one-per-every-CLI-verb) — calling
+      straight into the existing `Controller` methods. Passed to `aisuite`
+      as `tools=[...]` with a `max_turns` cap, so `aisuite` runs the
+      call → execute → feed-result-back → repeat loop itself instead of us
+      hand-rolling one.
+- [ ] Gate destructive tools (`delete`, `nuke`) behind `aisuite`'s Agents
+      API approval mechanism (`RequireApprovalPolicy` / allow-deny lists /
+      custom callable) — a real yes/no gate, not just the print-before-
+      execute visibility 2.1 has.
+- [ ] Print/log the tool-call transcript as it runs (or pull it from
+      `response.choices[0].intermediate_messages` after) so the agent shows
+      its work — same spirit as 2.1's visibility bullet, scaled to a
+      multi-step run.
+- [ ] Flagged, not scoped yet: multi-turn memory across calls in one
+      session, a per-call `--model` override, streaming for plain-text
+      responses (`headstart`). Revisit after 2.4 ships if still wanted.
 
 ---
 
