@@ -141,6 +141,10 @@ function worldToScreen(wx, wy) {
 
 // width (px) reserved on the right for the edit panel — the canvas fills the rest
 let rightPanelWidth = 0;
+let rightPanelWidthAnimId = null;
+
+// keep in sync with the CSS width transition duration on .edit-panel in style.css
+const PANEL_TRANSITION_MS = 200;
 
 function applyCanvasSize() {
 	canvas.width = window.innerWidth - rightPanelWidth;
@@ -153,27 +157,66 @@ function resizeCanvas() {
 }
 window.addEventListener("resize", resizeCanvas);
 
-// changes how much width the right-hand panel reserves and resizes the canvas
-// to fill the rest. Rescales the zoom in proportion to the width change (not
-// just re-panning) so the same amount of world content stays in view instead
-// of getting cropped by the narrower canvas, then re-anchors so whatever was
-// visually centered before stays centered after.
-function setRightPanelWidth(width) {
+// rescales the zoom in proportion to how much the canvas width just changed
+// (not just re-panning) so the same amount of world content stays in view
+// instead of getting cropped by a narrower canvas, then re-anchors so
+// `centerWorld` (whatever was visually centered before the change) stays
+// centered after.
+function _rescaleForWidthChange(oldWidth, startScale, centerWorld) {
+	view.scale = oldWidth > 0
+		? Math.min(STYLE.zoom.max, Math.max(STYLE.zoom.min, startScale * canvas.width / oldWidth))
+		: startScale;
+
+	view.offsetX = canvas.width / 2 - centerWorld.x * view.scale;
+	view.offsetY = canvas.height / 2 - centerWorld.y * view.scale;
+}
+
+// jumps straight to `width` with no animation — for initial setup, where
+// there's nothing on screen yet to transition from
+function setRightPanelWidthInstant(width) {
+	if (rightPanelWidthAnimId !== null) {
+		cancelAnimationFrame(rightPanelWidthAnimId);
+		rightPanelWidthAnimId = null;
+	}
+
 	const oldWidth = canvas.width;
-	const oldCenterWorld = screenToWorld(canvas.width / 2, canvas.height / 2);
+	const startScale = view.scale;
+	const centerWorld = screenToWorld(canvas.width / 2, canvas.height / 2);
 
 	rightPanelWidth = width;
 	applyCanvasSize();
-
-	if (oldWidth > 0) {
-		view.scale *= canvas.width / oldWidth;
-		view.scale = Math.min(STYLE.zoom.max, Math.max(STYLE.zoom.min, view.scale));
-	}
-
-	view.offsetX = canvas.width / 2 - oldCenterWorld.x * view.scale;
-	view.offsetY = canvas.height / 2 - oldCenterWorld.y * view.scale;
+	_rescaleForWidthChange(oldWidth, startScale, centerWorld);
 
 	draw();
+}
+
+// eases the right-panel reservation (and the canvas size/zoom that follow
+// it) to `targetWidth` over `duration`ms, matching the panel's own CSS
+// transition so the graph resizes in step with it rather than snapping.
+function setRightPanelWidth(targetWidth, duration = PANEL_TRANSITION_MS) {
+	if (rightPanelWidthAnimId !== null) cancelAnimationFrame(rightPanelWidthAnimId);
+	if (rightPanelWidth === targetWidth) return;
+
+	const startWidth = rightPanelWidth;
+	const startScale = view.scale;
+	const oldWidth = canvas.width;
+	const centerWorld = screenToWorld(canvas.width / 2, canvas.height / 2);
+	const startTime = performance.now();
+
+	function step(now) {
+		const t = Math.min(1, (now - startTime) / duration);
+		const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+
+		rightPanelWidth = startWidth + (targetWidth - startWidth) * eased;
+		applyCanvasSize();
+		_rescaleForWidthChange(oldWidth, startScale, centerWorld);
+
+		draw();
+
+		rightPanelWidthAnimId = t < 1 ? requestAnimationFrame(step) : null;
+	}
+
+	rightPanelWidthAnimId = requestAnimationFrame(step);
 }
 
 // true if the world point (x, y) falls inside node's square

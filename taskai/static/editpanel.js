@@ -6,8 +6,9 @@ const editToggle = document.getElementById("edit-toggle");
 const EDIT_PANEL_COLLAPSED_WIDTH = 44;
 const EDIT_PANEL_EXPANDED_WIDTH = 320;
 
-// reserve the collapsed strip's width in the canvas from the start
-setRightPanelWidth(EDIT_PANEL_COLLAPSED_WIDTH);
+// reserve the collapsed strip's width in the canvas from the start (instant —
+// there's nothing on screen yet to animate a transition from)
+setRightPanelWidthInstant(EDIT_PANEL_COLLAPSED_WIDTH);
 
 editToggle.addEventListener("click", () => {
 	const expanded = editPanel.classList.toggle("expanded");
