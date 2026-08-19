@@ -47,6 +47,39 @@ consoleInput.addEventListener("keydown", async (e) => {
 		return;
 	}
 
+	// `edit <id|name>` — resolve via show, then select + focus + open panel
+	const editMatch = command.match(/^edit\s+(.+)$/i);
+	if (editMatch) {
+		const target = editMatch[1].trim();
+		let data;
+		try {
+			const res = await fetch("/api/command", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ input: `show ${target}` }),
+			});
+			data = await res.json();
+		} catch (err) {
+			appendLine("Error: " + err.message);
+			return;
+		}
+
+		applyTree(data.tree);
+
+		if (data.focus) {
+			const node = nodes.find(n => n.id === String(data.focus));
+			if (node) {
+				selectedNode = node;
+				if (typeof onNodeSelected === "function") onNodeSelected(latestItemsById[node.id]);
+				focusOnNode(node);
+				if (typeof openEditPanel === "function") openEditPanel();
+			}
+		} else {
+			appendLine(data.output || `No item found matching '${target}'`);
+		}
+		return;
+	}
+
 	let data;
 	try {
 		const res = await fetch("/api/command", {

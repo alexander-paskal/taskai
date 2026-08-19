@@ -168,4 +168,14 @@ function onNodeSelected(item) {
 	renderEditForm(item);
 }
 
+// expands the edit panel if it isn't already — called by the console's
+// `edit` command so the panel opens without the user having to click the toggle
+function openEditPanel() {
+	if (!editPanel.classList.contains("expanded")) {
+		editPanel.classList.add("expanded");
+		editToggle.setAttribute("aria-expanded", "true");
+		setRightPanelWidth(EDIT_PANEL_EXPANDED_WIDTH);
+	}
+}
+
 renderEditForm(null);
