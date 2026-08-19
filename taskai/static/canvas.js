@@ -73,9 +73,19 @@ canvas.width = 800;
 canvas.height = 800;
 
 
+// truncates text with an ellipsis until it fits maxWidth at the ctx's current font
+function fitText(ctx, text, maxWidth) {
+	if (ctx.measureText(text).width <= maxWidth) return text;
+	let truncated = text;
+	while (truncated.length > 0 && ctx.measureText(truncated + "…").width > maxWidth) {
+		truncated = truncated.slice(0, -1);
+	}
+	return truncated ? truncated + "…" : "…";
+}
+
 function draw() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	
+
 	// Draw connecting Lines
 	function drawLines(node) {
 		node.children.forEach(child => {
@@ -88,20 +98,39 @@ function draw() {
 		});
 	}
 	roots.forEach(root => drawLines(root));
-	
+
 	// Draw circles
 	nodes.forEach(node => {
 		ctx.beginPath();
 		ctx.arc(node.x,node.y,node.r,0, Math.PI*2);
-		ctx.fillStyle = "steelblue";
+		ctx.fillStyle = node === hoveredNode ? "#3f6d97" : "steelblue";
 		ctx.fill();
-		
+
 		ctx.fillStyle = "white";
-		ctx.font = "12px sans-serif";
+		ctx.font = "10px sans-serif";
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
-		ctx.fillText(node.label, node.x, node.y);
+		const maxWidth = node.r * 2 - 8;
+		ctx.fillText(fitText(ctx, node.label, maxWidth), node.x, node.y);
 	});
+
+	// Full label tooltip for the hovered node (labels are truncated in-node above)
+	if (hoveredNode) {
+		ctx.font = "12px sans-serif";
+		const paddingX = 6;
+		const boxW = ctx.measureText(hoveredNode.label).width + paddingX * 2;
+		const boxH = 20;
+		const boxX = hoveredNode.x - boxW / 2;
+		const boxY = hoveredNode.y - hoveredNode.r - boxH - 6;
+
+		ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+		ctx.fillRect(boxX, boxY, boxW, boxH);
+
+		ctx.fillStyle = "white";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(hoveredNode.label, hoveredNode.x, boxY + boxH / 2);
+	}
 }
 
 canvas.addEventListener("click", (e) => {
