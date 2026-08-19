@@ -5,24 +5,60 @@ help_general = """
 
 Welcome to Task! Here's what you can do:
 
-'task show all' --> show all of your lists and item names, with their respective IDs prepended
-'task show {id|fnmatch}' --> find the list or item matching your identifier and show it using its respective type's show command
-'task show {id|fnmatch}' --> show the associated item and all of its specified information
-'task show items {id1},{id2},...,{idx}' --> show the associated items and all of their specified information
-'task create {name} {**kwargs}' --> Create a new item for the associated list. Can specify kwargs as --optional cli arguments. 
-'task delete {id}' --> deletes the list or item associated with that id
-'task delete item {id|fnmatch}' --> deletes the item associated with that id
-'task delete completed' --> deletes all items that have been completed
-'task remove ...' --> aliases directly to 'task delete ...
-'task update {item id} {**kwargs}' --> updates the associated attributes on the item
-'task comment {item id} {content}' --> adds a comment to that items comment thread
-'task ai {prompt}' --> Feeds a prompt directly to an LLM, which constructs and executes a series of task commands according to its interpretation of the prompt
-'task ai headstart {item id}' --> Feeds the item context to an LLM, which responds with a concise description of the next step to perform. The response is added as a comment in the items comment thread
-'task nuke' --> deletes all of your task data, letting you have a fresh start
-'task add ...' -> aliases directly to 'task create item ...'
-'task complete {item id}' --> sets the associated item's .completed attribute to true
+Everything is an item - there is no separate concept of a "list". Items form a
+tree: any item can be a parent of any other item, to whatever depth you like.
 
-Run 'task show examples' to print a comprehensive set of examples, and grep for the ones that you're interested in!
+Viewing:
+'task show all' --> show every item, with ids prepended, as a tree
+'task show {id}' --> show full details for the item with that id
+'task show {name|fnmatch pattern}' --> find the first item whose name matches, then show it
+
+Creating:
+'task create {name} {--field value ...}' --> create a new top-level (root) item - use this when there's no existing parent to attach to
+'task add {parent id|name} {name} {--field value ...}' --> create a new item as a child of an EXISTING parent item - the parent must already exist
+
+Updating (these require the item's id, not its name):
+'task update {id} {--field value ...}' --> update fields on an item
+'task rename {id} {new name}' --> rename an item
+'task status {id} {text}' --> set an item's status string
+'task comment {id} {text}' --> add a comment to an item
+'task complete {id}' / 'task done {id}' --> mark an item, and all its descendants, complete
+'task depend {src id} {dst id}' --> mark src as depending on dst (both must be ids)
+'task reorder {id1} before|after {id2}' --> reorder id1 relative to id2 among its siblings (both must be ids)
+
+Updating (these accept either an id or a name):
+'task move {id|name} {new parent id|name}' --> reparent an item; pass an empty string for the new parent to move it to the top level
+'task link {parent id|name} {item id|name}' --> soft-link item under parent, without reparenting it
+
+Deleting:
+'task delete {id}' / 'task delete {name}' --> delete an item, and all its descendants, by id or name
+'task remove ...' --> alias for 'task delete ...'
+'task delete completed' / 'task delete done' --> delete every completed item
+'task clear {parent id|name}' --> delete every completed item under a given parent (omit parent to check everything)
+'task nuke' --> delete ALL data for a fresh start
+
+Item fields (pass as '--field value' to create/add/update):
+  description  string
+  due_by       MM-DD-YYYY
+  priority     integer
+  status       string
+  completed    true|false
+  depends_on   comma-separated ids, e.g. --depends_on 3,7
+
+AI:
+'task ai {prompt}' --> feed a prompt to an LLM, which converts it into a series of the commands above and runs them
+'task ai headstart {id}' --> ask an LLM to suggest the next concrete step for an item; the answer is saved as a comment
+
+Config:
+'task config show' / 'task config list' --> list current config
+'task config set {key} {value}' --> set a config value
+'task config get {key}' --> get a config value
+'task config pop {key}' --> remove a config value
+
+Other:
+'task setup' --> interactive first-run setup
+'task repair' --> attempt to repair a corrupted database
+'task pomo {on_minutes} {off_minutes}' --> start a pomodoro timer
 
 """
 

@@ -18,6 +18,9 @@ incremental phases — each step should leave the app in a runnable state.
 - **Less Manual Testing.** When you're making edits, to save tokens, don't 
   exhaustively test every single change, especially if its a small one. We
   will do larger scale testing at the end of each phase.
+- **Tight Scope.** I don't need you to flag everything that's broken or suboptimal.
+  Doing so will make simple thigns take unnecessarily long. Stay very focused
+  on the explicit task that I said to do.
 
 ---
 
