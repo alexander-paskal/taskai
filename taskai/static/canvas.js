@@ -128,13 +128,6 @@ async function loadTree() {
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d"); // get the canvas context I guess?
 
-function resizeCanvas() {
-	canvas.width = window.innerWidth;
-	canvas.height = window.innerHeight;
-	draw();
-}
-window.addEventListener("resize", resizeCanvas);
-
 // pan/zoom view state: world coordinates map to screen as screen = world * scale + offset
 const view = { offsetX: 0, offsetY: 0, scale: 1 };
 
@@ -144,6 +137,43 @@ function screenToWorld(sx, sy) {
 
 function worldToScreen(wx, wy) {
 	return { x: wx * view.scale + view.offsetX, y: wy * view.scale + view.offsetY };
+}
+
+// width (px) reserved on the right for the edit panel — the canvas fills the rest
+let rightPanelWidth = 0;
+
+function applyCanvasSize() {
+	canvas.width = window.innerWidth - rightPanelWidth;
+	canvas.height = window.innerHeight;
+}
+
+function resizeCanvas() {
+	applyCanvasSize();
+	draw();
+}
+window.addEventListener("resize", resizeCanvas);
+
+// changes how much width the right-hand panel reserves and resizes the canvas
+// to fill the rest. Rescales the zoom in proportion to the width change (not
+// just re-panning) so the same amount of world content stays in view instead
+// of getting cropped by the narrower canvas, then re-anchors so whatever was
+// visually centered before stays centered after.
+function setRightPanelWidth(width) {
+	const oldWidth = canvas.width;
+	const oldCenterWorld = screenToWorld(canvas.width / 2, canvas.height / 2);
+
+	rightPanelWidth = width;
+	applyCanvasSize();
+
+	if (oldWidth > 0) {
+		view.scale *= canvas.width / oldWidth;
+		view.scale = Math.min(STYLE.zoom.max, Math.max(STYLE.zoom.min, view.scale));
+	}
+
+	view.offsetX = canvas.width / 2 - oldCenterWorld.x * view.scale;
+	view.offsetY = canvas.height / 2 - oldCenterWorld.y * view.scale;
+
+	draw();
 }
 
 // true if the world point (x, y) falls inside node's square
