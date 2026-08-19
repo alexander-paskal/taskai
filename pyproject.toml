@@ -9,7 +9,9 @@ dependencies = [
     "pydantic>=2.13",
     "rich>=15",
     "orjson>=3.11",
-    "google-genai>=2.8"
+    "google-genai>=2.8",
+    "fastapi>=0.141.1",
+    "uvicorn>=0.52.3",
 ]
 
 [project.scripts]

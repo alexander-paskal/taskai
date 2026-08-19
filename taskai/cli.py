@@ -276,6 +276,10 @@ class Controller:
         db.update_item(parent.id, linked_ids=parent.linked_ids)
         db.commit()
 
+    def browser_service():
+        subprocess.run(['uvicorn','taskai.browser:app','--reload'])
+        
+
 
 # utilities
 def _parse_arg_string(arg_string: str) -> list[str]:
@@ -428,6 +432,9 @@ def execute_commands(*args, **kwargs) -> int:
 
             case "repair":
                 Controller.repair_service()
+
+            case "browser":
+                Controller.browser_service()
 
             case "clear":
                 if len(args) > 1:
