@@ -6,15 +6,12 @@ help_general = """
 Welcome to Task! Here's what you can do:
 
 'task show all' --> show all of your lists and item names, with their respective IDs prepended
-'task show {id or substring}' --> find the list or item matching your identifier and show it using its respective type's show command
-'task show list {id or substring}' --> show the list and all of its item names
-'task show item {id}' --> show the associated item and all of its specified information
+'task show {id|fnmatch}' --> find the list or item matching your identifier and show it using its respective type's show command
+'task show {id|fnmatch}' --> show the associated item and all of its specified information
 'task show items {id1},{id2},...,{idx}' --> show the associated items and all of their specified information
-'task create item {list id or substring} {name} {**kwargs}' --> Create a new item for the associated list. Can specify kwargs as --optional cli arguments. 
-'task create list {name}' --> create a new list by that name
+'task create {name} {**kwargs}' --> Create a new item for the associated list. Can specify kwargs as --optional cli arguments. 
 'task delete {id}' --> deletes the list or item associated with that id
-'task delete item {id}' --> deletes the item associated with that id
-'task delete list {id}' --> deletes the list associated with that id
+'task delete item {id|fnmatch}' --> deletes the item associated with that id
 'task delete completed' --> deletes all items that have been completed
 'task remove ...' --> aliases directly to 'task delete ...
 'task update {item id} {**kwargs}' --> updates the associated attributes on the item

@@ -94,7 +94,7 @@ def ai_natural_language_service(
     
     # recursively build user info
     user_info = []
-    _visited_set = {}
+    _visited_set = set()
 
     def _add_info(item_id, level=0):
         item: TodoItem = db.get_item(id_)
@@ -102,7 +102,8 @@ def ai_natural_language_service(
         _visited_set.add(item_id)
         if item.child_ids:
             for child_id in item.child_ids:
-                _add_info(child_id, level+1)
+                if child_id not in _visited_set:
+                    _add_info(child_id, level+1)
 
 
     for id_ in db.get_item_ids(): 
@@ -138,7 +139,6 @@ Each command should be structured in the following format:
 
 Here is an example of a response that you could return:
 
-```
 [
     {
         "command": "add",
@@ -154,9 +154,10 @@ Here is an example of a response that you could return:
         "args": ["Old Daily List"]
     }
 ]
-```
 
-It is ABSOLUTELY IMPERATIVE that your response be valid json, as your output is going to be parsed directly. Return NOTHING but the json output.
+
+It is ABSOLUTELY IMPERATIVE that your response be valid json, as your output is going to be parsed directly. Return NOTHING but the json output. do NOT wrap it in ``` or any other
+markdown formatting. Just the raw json string.
 
 """
 
@@ -167,7 +168,7 @@ It is ABSOLUTELY IMPERATIVE that your response be valid json, as your output is 
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model=model_name,
-        contents=prompt
+        contents=ai_prompt
     )
 
     try:
