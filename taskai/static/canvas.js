@@ -3,32 +3,30 @@
 // look can be themed/configured server-side instead of hardcoded here.
 const STYLE = {
 	colors: {
-		background: "#0d0f14",
-		nodeGradientTop: "#242c3d",
-		nodeGradientBottom: "#181d29",
-		nodeHoverGradientTop: "#2e3a52",
-		nodeHoverGradientBottom: "#1f2636",
-		nodeBorder: "#333c52",
-		nodeBorderHover: "#6c9bff",
-		text: "#e8eaf0",
-		edge: "#333c52",
-		tooltipBackground: "#161a22",
-		tooltipBorder: "#333c52",
-		tooltipText: "#e8eaf0",
+		background: "#f5f6f8",
+		nodeFill: "#ffffff",
+		nodeFillHover: "#f3f6ff",
+		nodeBorder: "#e2e4ea",
+		nodeBorderHover: "#4772fa",
+		text: "#23252b",
+		edge: "#dcdfe6",
+		tooltipBackground: "#ffffff",
+		tooltipBorder: "#e2e4ea",
+		tooltipText: "#23252b",
 	},
 	node: {
 		size: 160, // full square side length, in world units
-		cornerRadius: 18,
-		font: "20px sans-serif",
+		cornerRadius: 14,
+		font: "20px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
 		padding: 16,
 		borderWidth: 1.5,
 		borderWidthHover: 2,
-		shadowColor: "rgba(0, 0, 0, 0.45)",
-		shadowBlur: 18,
-		shadowOffsetY: 4,
+		shadowColor: "rgba(15, 23, 42, 0.10)",
+		shadowBlur: 10,
+		shadowOffsetY: 2,
 	},
 	edge: {
-		width: 1.5,
+		width: 1.25,
 	},
 	layout: {
 		xSpacing: 230,
@@ -45,7 +43,7 @@ const STYLE = {
 		focusDurationMs: 250,
 	},
 	tooltip: {
-		font: "12px sans-serif",
+		font: "12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
 		paddingX: 8,
 		height: 24,
 		cornerRadius: 6,
@@ -218,12 +216,8 @@ function draw() {
 		ctx.shadowBlur = STYLE.node.shadowBlur;
 		ctx.shadowOffsetY = STYLE.node.shadowOffsetY;
 
-		const gradient = ctx.createLinearGradient(node.x, nodeY, node.x, nodeY + node.size);
-		gradient.addColorStop(0, isHovered ? STYLE.colors.nodeHoverGradientTop : STYLE.colors.nodeGradientTop);
-		gradient.addColorStop(1, isHovered ? STYLE.colors.nodeHoverGradientBottom : STYLE.colors.nodeGradientBottom);
-
 		roundedRectPath(ctx, nodeX, nodeY, node.size, node.size, STYLE.node.cornerRadius);
-		ctx.fillStyle = gradient;
+		ctx.fillStyle = isHovered ? STYLE.colors.nodeFillHover : STYLE.colors.nodeFill;
 		ctx.fill();
 		ctx.restore(); // drop the shadow before stroking the border
 
