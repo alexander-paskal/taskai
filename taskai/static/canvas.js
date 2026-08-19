@@ -18,6 +18,8 @@ const STYLE = {
 		size: 160, // full square side length, in world units
 		cornerRadius: 14,
 		font: "20px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+		lineHeight: 24,
+		maxLines: 3,
 		padding: 16,
 		borderWidth: 1.5,
 		borderWidthHover: 2,
@@ -167,14 +169,50 @@ function focusOnNode(node, scale = STYLE.zoom.focusScale, duration = STYLE.zoom.
 }
 
 
-// truncates text with an ellipsis until it fits maxWidth at the ctx's current font
-function fitText(ctx, text, maxWidth) {
-	if (ctx.measureText(text).width <= maxWidth) return text;
+// trims text, always appending an ellipsis, until "text…" fits maxWidth
+function truncateWithEllipsis(ctx, text, maxWidth) {
 	let truncated = text;
 	while (truncated.length > 0 && ctx.measureText(truncated + "…").width > maxWidth) {
 		truncated = truncated.slice(0, -1);
 	}
 	return truncated ? truncated + "…" : "…";
+}
+
+// returns text unchanged if it already fits maxWidth, else truncates with an ellipsis
+function fitText(ctx, text, maxWidth) {
+	if (ctx.measureText(text).width <= maxWidth) return text;
+	return truncateWithEllipsis(ctx, text, maxWidth);
+}
+
+// wraps text into up to maxLines lines that each fit maxWidth, ellipsis-
+// truncating the last line if there's still text left over after maxLines
+function wrapText(ctx, text, maxWidth, maxLines) {
+	const words = text.split(/\s+/).filter(Boolean);
+	const lines = [];
+	let currentLine = "";
+	let nextWord = 0;
+
+	while (nextWord < words.length && lines.length < maxLines) {
+		const word = words[nextWord];
+		const candidate = currentLine ? `${currentLine} ${word}` : word;
+
+		if (!currentLine || ctx.measureText(candidate).width <= maxWidth) {
+			currentLine = candidate;
+			nextWord++;
+		} else {
+			lines.push(currentLine);
+			currentLine = "";
+		}
+	}
+
+	const fullyFit = nextWord >= words.length;
+	if (currentLine) lines.push(currentLine);
+
+	if (!fullyFit) {
+		lines[lines.length - 1] = truncateWithEllipsis(ctx, lines[lines.length - 1], maxWidth);
+	}
+
+	return lines;
 }
 
 function roundedRectPath(ctx, x, y, w, h, r) {
@@ -237,7 +275,11 @@ function draw() {
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
 		const maxWidth = node.size - STYLE.node.padding * 2;
-		ctx.fillText(fitText(ctx, node.label, maxWidth), node.x, node.y);
+		const lines = wrapText(ctx, node.label, maxWidth, STYLE.node.maxLines);
+		const startY = node.y - ((lines.length - 1) * STYLE.node.lineHeight) / 2;
+		lines.forEach((line, i) => {
+			ctx.fillText(line, node.x, startY + i * STYLE.node.lineHeight);
+		});
 	});
 
 	ctx.restore();
