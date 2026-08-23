@@ -82,8 +82,6 @@ def ai_natural_language_service(
     prompt from the user. The response is a series of terminal commands
     called directly
     """
-    print(f"Ai prompt: {prompt}")
-    
     # recursively build user info
     user_info = []
     _visited_set = set()
@@ -172,7 +170,6 @@ markdown formatting. Just the raw json string.
 
     import litellm
 
-    print(ai_prompt)
     response = litellm.completion(
         model=model_name,
         messages=[{"role": "user", "content": ai_prompt}],
@@ -187,16 +184,27 @@ markdown formatting. Just the raw json string.
         import sys
         sys.exit(-1)
 
-    print(response_json)
-
     from taskai.cli import execute_commands
 
     for entry in response_json:
         command = entry["command"]
         cmd_args = entry.get("args", [])
+        raw_kwargs = entry.get("kwargs", {})
         cmd_kwargs = {
             k.lstrip("-"): v
-            for k, v in entry.get("kwargs", {}).items()
+            for k, v in raw_kwargs.items()
         }
+        print(f"ai run '{_format_command_str(command, cmd_args, raw_kwargs)}'")
         execute_commands(command, *cmd_args, **cmd_kwargs)
+
+def _format_command_str(command: str, args: list, kwargs: dict) -> str:
+    def quote(value):
+        value = str(value)
+        return f"'{value}'" if " " in value else value
+
+    parts = ["task", command] + [quote(a) for a in args]
+    for k, v in kwargs.items():
+        key = k if k.startswith("--") else f"--{k}"
+        parts.append(f"{key} {quote(v)}")
+    return " ".join(parts)
 
