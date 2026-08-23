@@ -24,10 +24,10 @@ depth, and the same node type is used whether it's acting as a "list" or a
 (`recurs_every`/`recurs_until`/`recur_keep_incomplete`). `Comment` is a
 simple `{content, item_id, created_on}`. `UserData` is the whole-DB
 container: `todo_items: dict[str, dict]`, `comments: dict[str, dict]`,
-`config: dict`, `id_counter`. `CLIConfig` currently holds
-`GEMINI_MODEL`/`GEMINI_API_KEY` (Phase 2 below plans migrating this to a
-single `AI_MODEL` field once `aisuite` lands) plus `DISPLAY_STRING`/
-`DISPLAY_COLORS` for CLI rendering.
+`config: dict`, `id_counter`. `CLIConfig` holds a single `AI_MODEL` field (a
+`provider/model` string, e.g. `gemini/gemini-3.6-flash` — set via `task
+setup`'s two-step provider→model picker, done in Phase 2) plus
+`DISPLAY_STRING`/`DISPLAY_COLORS` for CLI rendering.
 
 **Storage.** [taskai/json_dir_database.py](taskai/json_dir_database.py):
 `JsonDirectoryDatabase` — one JSON file per user under `.taskai/task_db/
@@ -64,9 +64,11 @@ opening a second connection.
 `ai_headstart_service` (single item → LLM suggests a next concrete step,
 saved as a comment) and `ai_natural_language_service` (prompt → LLM returns
 a JSON list of `{command, args, kwargs}` → executed through
-`taskai.cli.execute_commands`, one call per entry). Both currently call
-Gemini directly via `google-genai`; Phase 2 below covers migrating to
-`aisuite`. The natural-language prompt embeds
+`taskai.cli.execute_commands`, one call per entry). Both call
+`litellm.completion(model=model_name, messages=[...])` — provider-agnostic
+per the `AI_MODEL` config value, no more hardcoded Gemini/`google-genai`.
+See [taskai/llm_models.py](taskai/llm_models.py) for the provider→env-var
+and provider→model reference data `task setup` uses. The natural-language prompt embeds
 [taskai/help_menu.py](taskai/help_menu.py)'s `help_general` string as the
 LLM's command reference — **that file is the single source of truth for the
 command surface, shown to humans via `task help` and to the LLM verbatim.
@@ -346,44 +348,53 @@ through the existing `Controller`.
 Two entry points, built in stages, not one replacing the other:
 **`task ai <prompt>`** (2.1-2.3 below) is the existing one-shot flow —
 model sees the prompt once, returns a full JSON list of commands up front,
-they execute with no gating, same as today just on `aisuite`. **`task ai
+they execute with no gating, same as today just on `litellm`. **`task ai
 agent <prompt>`** (2.4, later) is a separate, more elaborate entry point for
 multi-step workflows using a real tool-calling loop, added only after 2.1-2.3
 are working and any kinks (context injection, multi-file support) are worked
 out on the simpler path first.
 
-### 2.1 — `task ai <prompt>` on `aisuite` (no gating, same one-shot shape as today)
+### 2.1 — `task ai <prompt>` on `litellm` (no gating, same one-shot shape as today)
 
 - [x] Depended on the Phase 0 fixes (prompt bug, `_add_info` bug, actually
       executing parsed commands) — done.
-- [ ] Add `aisuite` to `pyproject.toml`; drop the direct `google-genai`
-      import from `services/ai.py`.
-- [ ] Swap both call sites (`ai_headstart_service`,
-      `ai_natural_language_service`) to `aisuite.Client()` +
-      `client.chat.completions.create(model=model_name, messages=[...])`.
-      **Scope note:** plain chat completions only, no `tools=`/`max_turns`.
-      The model still returns one JSON list of `{command, args, kwargs}` up
-      front, same shape/contract as today, executed through
-      `execute_commands` with no confirmation step — that's deliberate for
-      this pass, not an oversight. The tool-calling loop is 2.4, later, not
-      here. Model strings become `provider:model` (e.g.
-      `google:gemini-2.0-flash`, `openai:gpt-4o-mini`).
-- [ ] `aisuite` reads provider credentials from standard provider env vars
-      (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, etc.), not a key passed in. Drop
-      the `@config("GEMINI_API_KEY", "api_key")` plumbing entirely — one
-      less thing to configure and one less place a secret sits in the
+- [x] Originally planned on `aisuite` (below was written for it), but
+      pivoted after reading `aisuite`'s actual provider source: its only
+      Google provider is Vertex AI (`GOOGLE_PROJECT_ID`/`GOOGLE_REGION`/a
+      service-account JSON) — no path to a plain Gemini/AI-Studio API key,
+      which is what the existing setup actually used. `litellm` has a
+      separate `gemini` provider (distinct from its own `vertex_ai`) that
+      reads `GEMINI_API_KEY` directly, so the simple-API-key setup carries
+      over unchanged. Added `litellm>=1.98` to `pyproject.toml`; dropped
+      `google-genai` and the `from google import genai` import from
+      `services/ai.py`.
+- [x] Swapped both call sites (`ai_headstart_service`,
+      `ai_natural_language_service`) to
+      `litellm.completion(model=model_name, messages=[...])`, reading
+      `response.choices[0].message.content`.
+      **Scope note:** plain chat completions only, no `tools=`. The model
+      still returns one JSON list of `{command, args, kwargs}` up front,
+      same shape/contract as today, executed through `execute_commands`
+      with no confirmation step — that's deliberate for this pass, not an
+      oversight. The tool-calling loop is 2.4, later, not here. Model
+      strings are `provider/model` (litellm's separator, e.g.
+      `gemini/gemini-3.6-flash`, `openai/gpt-4o-mini`).
+- [x] `litellm` reads provider credentials from standard provider env vars
+      (`OPENAI_API_KEY`, `GEMINI_API_KEY`, etc.), not a key passed in.
+      Dropped the `@config("GEMINI_API_KEY", "api_key")` plumbing entirely —
+      one less thing to configure and one less place a secret sits in the
       plaintext user JSON db.
-- [ ] Rename `CLIConfig.GEMINI_MODEL`/`GEMINI_API_KEY` to a single
-      `AI_MODEL` field holding the `provider:model` string.
-- [ ] Keep printing the parsed command list before executing it (already
-      partially there via `print(response_json)`) — cheap safety net given
-      the parsed commands can include `delete`/`nuke`. Still just
-      visibility, not a confirmation prompt — real gating is what 2.4 adds.
+- [x] Renamed `CLIConfig.GEMINI_MODEL`/`GEMINI_API_KEY` to a single
+      `AI_MODEL` field holding the `provider/model` string.
+- [x] Kept printing the parsed command list before executing it
+      (`print(response_json)`) — cheap safety net given the parsed commands
+      can include `delete`/`nuke`. Still just visibility, not a confirmation
+      prompt — real gating is what 2.4 adds.
 
 ### 2.2 — Context injection (`--context`), including the multi-file kink
 
 - [ ] `--context <file>` on `task ai <prompt>`: read the file, fold its
-      contents into the prompt/messages sent to `aisuite`.
+      contents into the prompt/messages sent to `litellm`.
       `_parse_remaining` already turns `--context path` into a kwarg for
       free, so the single-file case needs no new arg-parsing.
 - [ ] Kink to work out during implementation: `_parse_remaining` only keeps
@@ -395,16 +406,28 @@ out on the simpler path first.
       that's a bigger change affecting every command, not just `ai`. Fall
       back to it only if the comma-separated approach proves too limiting.
 
-### 2.3 — Update setup script for `aisuite`
+### 2.3 — Update setup script for `litellm`
 
-- [ ] `services/user_setup.py`: replace `_get_gemini_api_key` /
-      `_select_gemini_model` with a single prompt for `AI_MODEL`
-      (`provider:model`), plus a printed reminder to set the matching
-      provider env var (e.g. "set `OPENAI_API_KEY` in your environment")
-      rather than storing a key in the db.
-- [ ] Update `help_menu.py` / README wherever `GEMINI_API_KEY`/
-      `GEMINI_MODEL` are referenced (`task config set GEMINI_API_KEY ...`
-      example in the README) to match the new config shape.
+- [x] `services/user_setup.py` reworked into a two-step picker: select a
+      provider, then select a model, both via a numbered-menu-or-free-text
+      prompt (`_select_from_list`) — typing a number picks from the menu,
+      typing anything else is taken literally, so a stale/missing menu entry
+      never blocks you. Combines to `AI_MODEL = "<provider>/<model>"` and
+      prints the exact env var(s) that provider needs.
+- [x] New [taskai/llm_models.py](taskai/llm_models.py) (top-level, not
+      under `services/`, since it's reference data, not a service):
+      `PROVIDER_ENV_VARS` and `PROVIDER_MODELS`, both keyed by litellm's
+      real provider names, pulled from `litellm.types.utils.LlmProviders`
+      and `litellm.utils.validate_environment` directly rather than
+      guessed. `PROVIDER_MODELS` is a non-exhaustive, best-effort menu —
+      model names go stale fast, confirmed live mid-session: the `gemini`
+      entries needed a web-search correction after `gemini-2.0-flash`
+      turned out to have been shut down 2026-06-01 and `gemini-3.6-flash`
+      didn't exist yet in training data. Re-verify against
+      https://ai.google.dev/gemini-api/docs/models if `task setup`'s Gemini
+      options look off again.
+- [x] Updated README's Config section to match the new `AI_MODEL`
+      `provider/model` shape and point at `task setup`.
 
 ### 2.4 — `task ai agent <prompt>` (later — real tool-calling loop)
 
@@ -414,21 +437,27 @@ stays the fast, ungated, one-shot-plan-and-execute path from 2.1-2.3;
 see intermediate results (e.g. the real id of an item it just created)
 before deciding the next step, which a one-shot plan can't do.
 
+**Note (post-litellm-pivot):** this section was originally scoped around
+`aisuite`'s automatic tool-runner (`tools=[...]` + `max_turns`, which drives
+the call → execute → feed-result-back loop for you). `litellm.completion`
+also accepts `tools=[...]` (OpenAI-style function-calling schema) but has no
+automatic multi-turn runner — the loop below would need to be hand-rolled.
+Re-scope this section before starting 2.4.
+
 - [ ] Small, explicitly-typed wrapper functions — one per meaningful
       command (create, update, complete, delete, comment, depend, link,
       move; roughly 8-12 total, not one-per-every-CLI-verb) — calling
-      straight into the existing `Controller` methods. Passed to `aisuite`
-      as `tools=[...]` with a `max_turns` cap, so `aisuite` runs the
-      call → execute → feed-result-back → repeat loop itself instead of us
-      hand-rolling one.
-- [ ] Gate destructive tools (`delete`, `nuke`) behind `aisuite`'s Agents
-      API approval mechanism (`RequireApprovalPolicy` / allow-deny lists /
-      custom callable) — a real yes/no gate, not just the print-before-
-      execute visibility 2.1 has.
-- [ ] Print/log the tool-call transcript as it runs (or pull it from
-      `response.choices[0].intermediate_messages` after) so the agent shows
-      its work — same spirit as 2.1's visibility bullet, scaled to a
-      multi-step run.
+      straight into the existing `Controller` methods, exposed as
+      `tools=[...]` to `litellm.completion`.
+- [ ] Hand-roll the call → execute → feed-result-back loop (no automatic
+      runner in `litellm`, unlike the originally-planned `aisuite`), capped
+      at some max number of turns.
+- [ ] Gate destructive tools (`delete`, `nuke`) behind an explicit yes/no
+      confirmation before executing — not just the print-before-execute
+      visibility 2.1 has.
+- [ ] Print/log the tool-call transcript as it runs so the agent shows its
+      work — same spirit as 2.1's visibility bullet, scaled to a multi-step
+      run.
 - [ ] Flagged, not scoped yet: multi-turn memory across calls in one
       session, a per-call `--model` override, streaming for plain-text
       responses (`headstart`). Revisit after 2.4 ships if still wanted.

@@ -1,3 +1,64 @@
+# 8-22
+
+Migrated AI backend off direct `google-genai` calls, landing on `litellm`
+after a detour through `aisuite`:
+
+- First tried `aisuite` per DEVPLAN's original Phase 2 plan. Downloaded and
+  read the actual package source before committing to it (not just docs) —
+  found `aisuite`'s only Google provider is Vertex AI
+  (`GOOGLE_PROJECT_ID`/`GOOGLE_REGION`/a service-account JSON), with no path
+  to a plain Gemini/AI-Studio API key. Since the existing setup is just a
+  simple API key, that would've been a real functionality change disguised
+  as a library swap. Flagged it to Alex before writing any code.
+- Alex opted to rework the setup rather than force-fit the old flow, but
+  then asked whether another compat layer supported plain Gemini API keys —
+  it does: `litellm` treats `gemini` and `vertex_ai` as separate providers
+  (confirmed by reading `litellm/utils.py`'s `validate_environment` and
+  `litellm/types/utils.py`'s `LlmProviders` enum directly), so
+  `gemini/<model>` + `GEMINI_API_KEY` keeps the current simple setup working
+  end to end. Redid the migration against `litellm` instead.
+- `pyproject.toml`: `google-genai` → `litellm>=1.98`.
+- `taskai/models.py`: `CLIConfig.GEMINI_MODEL`/`GEMINI_API_KEY` collapsed to
+  a single `AI_MODEL: str` (a `provider/model` string, litellm's own
+  separator).
+- `taskai/services/ai.py`: both `ai_headstart_service` and
+  `ai_natural_language_service` now call
+  `litellm.completion(model=model_name, messages=[...])` instead of
+  `google.genai`; dropped the `api_key`/`@config("GEMINI_API_KEY", ...)`
+  plumbing since litellm reads provider credentials straight from env vars.
+- New [taskai/llm_models.py](taskai/llm_models.py) (top-level, not under
+  `services/` — it's reference data, not a service): `PROVIDER_ENV_VARS`
+  (which env var(s) litellm expects per provider) and `PROVIDER_MODELS` (a
+  best-effort, non-exhaustive menu of known models per provider). Both
+  built by reading litellm's source directly rather than guessing.
+- `services/user_setup.py` reworked into a two-step picker
+  (`_select_from_list`): pick a provider from a numbered menu, then pick a
+  model for that provider from another numbered menu. Either step also
+  accepts free-typed text instead of a number, so a stale/missing
+  `PROVIDER_MODELS` entry (several providers — `azure`, `ollama` — are
+  intentionally empty, since their "models" are a deployment name or
+  whatever you've pulled locally) never blocks setup.
+- Caught a live example of "models go stale fast" mid-session: Alex hit
+  `gemini-3.6-flash` referenced by Google's own tooling, which wasn't in
+  training data. Web-searched Google's current model docs and corrected the
+  `gemini`/`vertex_ai` entries in `llm_models.py` — `gemini-2.0-flash` (the
+  old hardcoded default) was actually shut down 2026-06-01. If `task
+  setup`'s Gemini options look wrong again, re-check against
+  https://ai.google.dev/gemini-api/docs/models rather than trusting the
+  hardcoded list.
+- README's Config section updated to match (`AI_MODEL` as `provider/model`,
+  points at `task setup`).
+- Not yet done: `pip install "litellm>=1.98"` / `pip uninstall google-genai`
+  in `.taskai-venv` — Alex needs to run this manually (environment-mutating
+  commands aren't run unprompted in this project).
+
+DEVPLAN.md's Phase 2 (2.1, 2.3) updated to match — checked off, `aisuite`
+references swapped for `litellm`, and 2.4 (the later tool-calling-loop
+entry point) flagged for re-scoping since it was written around `aisuite`'s
+automatic tool-runner, which `litellm` has no equivalent for.
+
+---
+
 # 8-19
 
 Fixed a typo in `browser.py` that caused uvicorn to fail with "Could not import

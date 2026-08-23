@@ -12,12 +12,10 @@ from taskai.models import TodoItem, Comment
 from taskai.config import config
 from taskai.help_menu import help_general
 
-@config("GEMINI_API_KEY", "api_key")
-@config("GEMINI_MODEL", "model_name")
+@config("AI_MODEL", "model_name")
 def ai_headstart_service(
         db: JsonDirectoryDatabase,
         item_id: str,
-        api_key: str,
         model_name: str
 ):
     """
@@ -32,10 +30,7 @@ def ai_headstart_service(
 
     item:TodoItem = db.get_item(item_id)
 
-    
-    from google import genai
-    
-
+    import litellm
 
     # contruct prompt
     prompt = f"""
@@ -69,20 +64,17 @@ task name: {item.name}
             comment: Comment = db.get_comment(comment_id)
             prompt += f"\n\t- {comment.content}"
     # query model
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
+    response = litellm.completion(
         model=model_name,
-        contents=prompt
+        messages=[{"role": "user", "content": prompt}],
     )
 
-    return response.text
+    return response.choices[0].message.content
 
-@config("GEMINI_API_KEY", "api_key")
-@config("GEMINI_MODEL", "model_name")
+@config("AI_MODEL", "model_name")
 def ai_natural_language_service(
     db: JsonDirectoryDatabase,
     prompt: str,
-    api_key: str,
     model_name: str
 ):
     """
@@ -178,20 +170,19 @@ markdown formatting. Just the raw json string.
 
 """
 
-    
-    from google import genai
+    import litellm
 
     print(ai_prompt)
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
+    response = litellm.completion(
         model=model_name,
-        contents=ai_prompt
+        messages=[{"role": "user", "content": ai_prompt}],
     )
+    response_text = response.choices[0].message.content
 
     try:
-        response_json = json.loads(response.text)
+        response_json = json.loads(response_text)
     except json.JSONDecodeError:
-        print(response.text)
+        print(response_text)
         print("\n\ndecode error")
         import sys
         sys.exit(-1)

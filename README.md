@@ -71,11 +71,12 @@ Pass any of these as `--field value` to `create`, `add`, or `update`:
 
 ## Config
 
-AI features require a Gemini API key:
+AI features require a model, set as a `provider/model` string (via [litellm](https://github.com/BerriAI/litellm)),
+plus that provider's credentials set as environment variables (e.g. `GEMINI_API_KEY`, `OPENAI_API_KEY`).
+`task setup` will walk you through picking a provider and model and tell you which env vars it needs.
 
 ```bash
-task config set GEMINI_API_KEY <your-key>
-task config set GEMINI_MODEL gemini-2.0-flash
+task config set AI_MODEL gemini/gemini-2.0-flash
 ```
 
 ---

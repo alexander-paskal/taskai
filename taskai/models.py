@@ -64,9 +64,8 @@ class Comment(Base):
 
 class CLIConfig(Base):
 
-    # GEMINI
-    GEMINI_MODEL: str = None
-    GEMINI_API_KEY: str = None
+    # AI
+    AI_MODEL: str = None
 
     # VIEW
     DISPLAY_STRING: str = "id name status due_by"
