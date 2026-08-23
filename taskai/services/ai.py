@@ -71,11 +71,21 @@ task name: {item.name}
 
     return response.choices[0].message.content
 
+def _read_context_files(context: str) -> str:
+    """context is a comma-separated list of file paths"""
+    sections = []
+    for path in context.split(","):
+        path = path.strip()
+        with open(path) as f:
+            sections.append(f"--- {path} ---\n{f.read()}")
+    return "\n\n".join(sections)
+
 @config("AI_MODEL", "model_name")
 def ai_natural_language_service(
     db: JsonDirectoryDatabase,
     prompt: str,
-    model_name: str
+    model_name: str,
+    context: str = None
 ):
     """
     This service queries an LLM with a natural language
@@ -102,6 +112,14 @@ def ai_natural_language_service(
 
     user_info = "\n".join(user_info)
 
+    context_block = ""
+    if context:
+        context_block = f"""
+Here is additional context the user has provided:
+
+{_read_context_files(context)}
+"""
+
     # build ai prompt
     ai_prompt = f"""
 You are a todo agent. Your job is to convert a natural language description from a user into a set
@@ -112,7 +130,7 @@ of CLI operations using our app. Here are a comprehensive list of operations tha
 Here are all of the user's existing item names, each prepended with their id
 
 {user_info}
-
+{context_block}
 Here is the user's prompt:
 
 {prompt}

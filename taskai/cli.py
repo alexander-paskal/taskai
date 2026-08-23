@@ -179,8 +179,8 @@ class Controller:
         Controller.create_comment(item.id, comment_content)
         print(comment_content)
 
-    def ai_natural_language(prompt: str):
-        ai_natural_language_service(db, prompt)
+    def ai_natural_language(prompt: str, **kwargs):
+        ai_natural_language_service(db, prompt, context=kwargs.get("context"))
     
     def throw_error(error_description: str, *args, **kwargs):
         print(f"[red]ERROR: {error_description}[/red]\nargs={args}\nkwargs={kwargs}")
@@ -399,7 +399,7 @@ def execute_commands(*args, **kwargs) -> int:
             case "ai":
                 match args[1]:
                     case "headstart": Controller.ai_headstart(*args[2:], **kwargs)
-                    case _: Controller.ai_natural_language(" ".join(args[1:]))
+                    case _: Controller.ai_natural_language(" ".join(args[1:]), **kwargs)
 
             case "nuke":
                 db.remove()
