@@ -85,7 +85,8 @@ def ai_natural_language_service(
     db: JsonDirectoryDatabase,
     prompt: str,
     model_name: str,
-    context: str = None
+    context: str = None,
+    reasoning: str = None
 ):
     """
     This service queries an LLM with a natural language
@@ -188,9 +189,14 @@ markdown formatting. Just the raw json string.
 
     import litellm
 
+    completion_kwargs = {}
+    if reasoning:
+        completion_kwargs["reasoning_effort"] = reasoning
+
     response = litellm.completion(
         model=model_name,
         messages=[{"role": "user", "content": ai_prompt}],
+        **completion_kwargs,
     )
     response_text = response.choices[0].message.content
 

@@ -180,7 +180,11 @@ class Controller:
         print(comment_content)
 
     def ai_natural_language(prompt: str, **kwargs):
-        ai_natural_language_service(db, prompt, context=kwargs.get("context"))
+        ai_natural_language_service(
+            db, prompt,
+            context=kwargs.get("context"),
+            reasoning=kwargs.get("reasoning"),
+        )
     
     def throw_error(error_description: str, *args, **kwargs):
         print(f"[red]ERROR: {error_description}[/red]\nargs={args}\nkwargs={kwargs}")

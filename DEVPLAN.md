@@ -393,18 +393,48 @@ out on the simpler path first.
 
 ### 2.2 — Context injection (`--context`), including the multi-file kink
 
-- [ ] `--context <file>` on `task ai <prompt>`: read the file, fold its
-      contents into the prompt/messages sent to `litellm`.
-      `_parse_remaining` already turns `--context path` into a kwarg for
-      free, so the single-file case needs no new arg-parsing.
-- [ ] Kink to work out during implementation: `_parse_remaining` only keeps
-      the *last* value for a repeated `--flag` (`kwargs[key] = value`,
-      unconditional overwrite), so `--context a.md --context b.md` today
-      would silently drop `a.md`. Default plan: accept a comma-separated
-      list in one `--context a.md,b.md` value rather than changing
-      `_parse_remaining` to support repeated/multi-value flags generally —
-      that's a bigger change affecting every command, not just `ai`. Fall
-      back to it only if the comma-separated approach proves too limiting.
+- [x] `--context <path1,path2,...>` on `task ai <prompt>`: comma-separated
+      as planned (sidesteps the `_parse_remaining` repeated-flag kink
+      entirely — never needed to touch it). `_read_context_files()` in
+      `services/ai.py` reads each file and folds them into the prompt as
+      `--- <path> ---\n<contents>` sections, inserted between the item tree
+      and the user's actual prompt.
+- [x] Real landmine found while wiring this up, not in the original plan:
+      `execute_commands`'s `case "ai":` dispatch built the prompt string
+      from `args[1:]` but never forwarded `**kwargs` to
+      `Controller.ai_natural_language` at all — any `--flag` on `task ai
+      ...` was silently parsed and then dropped on the floor before
+      `--context` even had a chance to matter. Fixed by forwarding
+      `**kwargs` through the `case "ai":` dispatch and having
+      `Controller.ai_natural_language` (`cli.py`) and
+      `ai_natural_language_service` (`services/ai.py`) both accept it
+      explicitly. A missing/misspelled path just raises `FileNotFoundError`
+      naturally, caught by `execute_commands`'s existing catch-all — no new
+      error handling needed.
+- [x] Documented `--context` (and `--reasoning`, below) under `task ai` in
+      `help_menu.py`, which is also the AI's own command reference — this
+      command doesn't affect what the LLM is allowed to emit (it's a
+      human-only flag on the `ai` invocation itself, not a command the
+      model generates), but the doc was out of sync with reality otherwise.
+
+**Also added, not originally scoped:** `--reasoning <level>` on `task ai
+<prompt>`, passed straight through as `reasoning_effort` on the
+`litellm.completion(...)` call — came out of a discussion about `task ai`
+latency. Accepted values (`minimal|low|medium|high|disable|none`) aren't
+validated client-side; an invalid value raises litellm's own
+`Invalid reasoning effort: <value>` error, which already surfaces cleanly
+through the same catch-all. No default is set — omitting the flag means no
+`reasoning_effort` is sent at all, so behavior is whatever the model/provider
+defaults to. (A `"disable"` default was tried and explicitly reverted this
+session — worth knowing if it comes up again.) Confirmed by reading
+litellm's Gemini transformation source directly: on Gemini 2.5-series models
+this maps to a `thinkingBudget` token count and `"none"` genuinely zeroes
+it out, but on Gemini 3.x (the default in `llm_models.py`'s menu) it maps
+to a `thinkingLevel` enum and litellm's own code comment states Gemini 3
+*cannot* fully disable thinking — `"disable"`/`"none"` just fall back to
+the minimum level. Also gated behind `supports_reasoning(model, ...)`
+internally, so it's silently a no-op (or may error) on non-reasoning tiers
+like Flash-Lite.
 
 ### 2.3 — Update setup script for `litellm`
 

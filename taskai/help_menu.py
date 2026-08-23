@@ -47,6 +47,8 @@ Item fields (pass as '--field value' to create/add/update):
 
 AI:
 'task ai {prompt}' --> feed a prompt to an LLM, which converts it into a series of the commands above and runs them
+  --context {path[,path...]}  fold the contents of one or more files into the prompt as extra context
+  --reasoning {level}         how hard the model should think before answering: minimal|low|medium|high|disable|none
 'task ai headstart {id}' --> ask an LLM to suggest the next concrete step for an item; the answer is saved as a comment
 
 Config:

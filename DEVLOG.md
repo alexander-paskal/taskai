@@ -1,5 +1,60 @@
 # 8-22
 
+Found and fixed a real bug from the `litellm` migration earlier today: it
+auto-loads `.env` via `python-dotenv` on import, and the project's `.env`
+had a stray first line (`source .taskai-venv/bin/activate` — not a
+`KEY=VALUE` pair), so every `task ai` run printed a "could not parse
+statement starting at line 1" warning. Non-fatal (`GEMINI_API_KEY` on line
+2 still loaded fine) but confusing. Diagnosed by reading `litellm/__init__.py`
+directly rather than guessing — it calls `_dotenv.load_dotenv(...)` at
+import time. Left the actual `.env` edit to Alex since it holds a live key.
+
+Also stripped two leftover debug `print()`s from `ai_natural_language_service`
+(the raw prompt and the full constructed `ai_prompt` — fine for iterating on
+the prompt, noise now that this is a user-facing command) and reworked the
+"about to run these commands" printout: instead of one `print(response_json)`
+dump of the raw parsed list, it now prints each command right before running
+it, reconstructed as `ai run 'task <command> ...'` (quoting only values with
+spaces) via a small `_format_command_str()` helper — reads like a real
+command instead of a dict dump, and shows progress as it goes rather than
+front-loading everything.
+
+Added `--context` and `--reasoning` to `task ai <prompt>` (DEVPLAN 2.2,
+below, has the durable version of this):
+
+- `--context a.md,b.md` reads file(s) and folds them into the prompt.
+- While wiring it up, found `execute_commands`'s `case "ai":` dispatch
+  never forwarded `**kwargs` to `Controller.ai_natural_language` at all —
+  `--context` would've parsed fine and then been silently dropped before
+  reaching the service. Fixed by threading `**kwargs` through the whole
+  chain (`cli.py`'s dispatch → `Controller.ai_natural_language` →
+  `ai_natural_language_service`).
+- `--reasoning <level>` came out of a tangent about `task ai` latency: Alex
+  asked whether "respond quickly" in the prompt does anything (no — output
+  token generation is sequential/autoregressive, prompt wording can't speed
+  that up) and what actually causes it. Real answer: some Gemini tiers
+  generate a hidden "thinking" pass before the visible output, which is a
+  genuine invisible latency cost. Read litellm's Gemini transformation
+  source directly to confirm the actual knob: `reasoning_effort` is a
+  standard litellm kwarg on `completion()`, mapped per-provider — accepts
+  `minimal|low|medium|high|disable|none`. Confirmed a real wrinkle for this
+  project specifically: on Gemini 2.5-series models it maps to a
+  `thinkingBudget` token count and `"none"` zeroes it out completely, but
+  on Gemini 3.x (what `llm_models.py`'s menu defaults to) it maps to a
+  `thinkingLevel` enum, and litellm's own code comment says Gemini 3
+  *cannot* fully disable thinking — `"disable"`/`"none"` just fall back to
+  the minimum level there. Only exposed for reasoning-capable tiers
+  (`supports_reasoning(...)` gated internally), so it may no-op or error on
+  something like Flash-Lite.
+- Tried defaulting `--reasoning` to `"disable"` when omitted, then Alex
+  reverted that — omitting the flag now sends no `reasoning_effort` at all,
+  leaving it up to whatever the model/provider defaults to.
+- Documented both flags under `task ai` in `help_menu.py` (this file is
+  also the AI's own command reference, so it needs to stay accurate even
+  though neither flag is something the model itself would ever emit).
+
+---
+
 Migrated AI backend off direct `google-genai` calls, landing on `litellm`
 after a detour through `aisuite`:
 
