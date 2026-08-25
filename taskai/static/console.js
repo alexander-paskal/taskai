@@ -32,11 +32,31 @@ const CLIENT_COMMANDS = {
 	"pan down":  () => canvasPan(0, -PAN_AMOUNT),
 };
 
+const commandHistory = [];
+let historyIndex = commandHistory.length; // length = not currently browsing history
+
 consoleInput.addEventListener("keydown", async (e) => {
+	if (e.key === "ArrowUp") {
+		if (historyIndex === 0) return;
+		e.preventDefault();
+		historyIndex--;
+		consoleInput.value = commandHistory[historyIndex];
+		return;
+	}
+	if (e.key === "ArrowDown") {
+		if (historyIndex >= commandHistory.length) return;
+		e.preventDefault();
+		historyIndex++;
+		consoleInput.value = historyIndex < commandHistory.length ? commandHistory[historyIndex] : "";
+		return;
+	}
 	if (e.key !== "Enter") return;
 
 	const command = consoleInput.value.trim();
 	if (!command) return;
+
+	commandHistory.push(command);
+	historyIndex = commandHistory.length;
 
 	appendLine("> " + command);
 	consoleInput.value = "";

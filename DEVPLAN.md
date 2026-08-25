@@ -250,10 +250,11 @@ stdlib `http.server` — no new dependency, consistent with "less code."
 
 ### 1.4 — DAG view (v2: full graph + interaction)
 
-- [ ] Draw `dependency_ids` and `linked_ids` as a second edge style (dashed
-      / different color) layered on top of the tree edges — this is what
-      makes it a DAG rather than just a tree view. Still open — only
-      parent/child tree edges render today.
+- [ ] **Deferred to 2.0.** Draw `dependency_ids` and `linked_ids` as a
+      second edge style (dashed / different color) layered on top of the
+      tree edges — this is what makes it a DAG rather than just a tree
+      view. Only parent/child tree edges render today; out of scope for
+      the current polish pass.
 - [x] Pan (drag) and zoom (wheel) — done via canvas context transforms
       (`ctx.translate`/`ctx.scale` + a `view` state object), not SVG
       `viewBox`, same toolchain reasoning as above. Zoom keeps the point
@@ -335,11 +336,11 @@ purpose, current call.
       of expecting text output.
 - [ ] Up-arrow history — still open, not done.
 
-At the end of Phase 1: dependency/link edges (1.4) and up-arrow console
-history (1.6) are the only pieces left open. The DAG, edit panel, and
-console all funnel through one `/api/command` endpoint and one `/api/tree`
-read, as planned — that's the "less code" payoff of routing everything
-through the existing `Controller`.
+At the end of Phase 1: up-arrow console history (1.6) is the only piece
+left open (dependency/link edges (1.4) deferred to 2.0, see above). The
+DAG, edit panel, and console all funnel through one `/api/command` endpoint
+and one `/api/tree` read, as planned — that's the "less code" payoff of
+routing everything through the existing `Controller`.
 
 ---
 
@@ -459,7 +460,10 @@ like Flash-Lite.
 - [x] Updated README's Config section to match the new `AI_MODEL`
       `provider/model` shape and point at `task setup`.
 
-### 2.4 — `task ai agent <prompt>` (later — real tool-calling loop)
+### 2.4 — `task ai agent <prompt>` (deferred to 2.0 — real tool-calling loop)
+
+**Deferred to 2.0.** Out of scope for the current polish pass; revisit as
+part of the larger 2.0 rework rather than squeezing it in here.
 
 A separate entry point, not a replacement for `task ai`. `task ai <prompt>`
 stays the fast, ungated, one-shot-plan-and-execute path from 2.1-2.3;
@@ -509,7 +513,7 @@ Re-scope this section before starting 2.4.
 - [ ] **UX pass.** Empty/loading state for the DAG when a user has no tasks
       yet (currently the app would just render nothing); a keyboard shortcut
       to toggle the console (e.g. backtick); consistent spacing/typography
-      in `style.css`; visual legend distinguishing tree edges from
-      dependency/link edges.
+      in `style.css`. (Edge legend dropped — depended on 1.4's dependency/
+      link edges, now deferred to 2.0.)
 - [ ] Re-check the Phase 0 fixes are still holding once the web UI is
       exercising more command paths than the CLI alone did.
