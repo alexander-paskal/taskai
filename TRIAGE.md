@@ -36,24 +36,34 @@ is the priority order.
 ## High
 
 - [ ] **`create`/`add`/`rename` silently truncate unquoted multi-word
-      input; `comment` crashes on it instead.** See the walkthrough from
-      this session for the full trace — short version: `create`/`add`/
-      `rename` only ever read a single token (`args[1]`/`args[2]`) for a
-      field that's conceptually free text, silently dropping everything
-      after the first word if you don't quote it; `comment` spreads all
-      remaining words into `create_comment(item_id, content)`, which only
-      accepts two positional args, so it throws a `TypeError` instead.
+      input; `comment` crashes on it instead — and `task ai headstart` has
+      the same underlying problem.** See the walkthrough from this session
+      for the full trace — short version: `create`/`add`/`rename` only
+      ever read a single token (`args[1]`/`args[2]`) for a field that's
+      conceptually free text, silently dropping everything after the
+      first word if you don't quote it; `comment` spreads all remaining
+      words into `create_comment(item_id, content)`, which only accepts
+      two positional args, so it throws a `TypeError` instead. `task ai
+      headstart <prompt>` is the same class of bug from the other
+      direction: `ai_headstart(item_id)` only accepts one positional arg,
+      but `case "headstart":` passes `*args[2:]`, so any prompt with more
+      than one word after "headstart" (e.g. `task ai headstart the
+      report`) throws a `TypeError` — even though the user very plausibly
+      meant a natural-language prompt that happens to start with that
+      word, not the `headstart` subcommand at all.
       **Open design question, not just a mechanical fix:** for `create` and
       `rename`, joining the trailing args (like `task ai` already does) is
       unambiguous — there's exactly one free-text field and nothing after
       it. For `add {parent} {name}`, it's not that simple: the parent
       comes *first*, so if the parent identifier is also given unquoted
       and multi-word, there's no way to tell where the parent reference
-      ends and the item name begins just by splitting on spaces. Needs a
-      decision before implementing — e.g. always require the parent to be
-      quoted/a single token (id or exact single-word name) and join
-      everything after it as the name, or something else. `create` and
-      `rename` can proceed independently of resolving this.
+      ends and the item name begins just by splitting on spaces.
+      `headstart` has a version of the same problem: how many leading
+      words are the id/name argument vs. the start of a natural-language
+      prompt? Needs a decision before implementing — e.g. always require
+      the parent/id argument to be quoted/a single token and join
+      everything after it as the free-text field. `create` and `rename`
+      can proceed independently of resolving this.
 - [x] **Fixed.** **`task config pop <key>` is broken for every key**, and `config
       set`/`config get` fail silently or crash on a bad key.
       `remove_config_value` (`cli.py`) does:
@@ -70,13 +80,6 @@ is the priority order.
       key exists before using it — a typo'd key on `set` prints a false
       "success" message with zero effect (pydantic silently drops unknown
       keys), and on `get` throws an `AttributeError`.
-- [ ] **`task ai headstart <multi-word prompt>` crashes** instead of
-      falling through to natural language. `ai_headstart(item_id)` only
-      accepts one positional arg, but `case "headstart":` passes
-      `*args[2:]` — any prompt with more than one word after "headstart"
-      (e.g. `task ai headstart the report`) throws a `TypeError`, even
-      though the user very plausibly meant a natural-language prompt that
-      happens to start with that word.
 
 ---
 
@@ -88,15 +91,10 @@ is the priority order.
       already does the exact same thing (and with no argument, clears
       everywhere), so the two were redundant. `delete` now always treats
       its argument as an item identifier.
-- [ ] **`depend` allows duplicate entries.** `add_dependency` unconditionally
-      appends to `dependency_ids` with no dedup check, unlike `add_link`
-      (which already guards `if child.id not in parent.linked_ids`).
-      Running `task depend 5 6` twice gives `dependency_ids = [6, 6]`.
-- [ ] **No `undepend`/`unlink`.** Once a dependency or link is added,
-      there's no CLI path to remove it — `update <id> --dependency_ids ...`
-      doesn't work either, since `update_item` never calls
-      `_parse_item_kwargs` (separately known/tracked in DEVPLAN's "known
-      code quirks").
+- [ ] **No `unlink`.** Once a link is added there's no CLI path to remove
+      it — `update <id> --linked_ids ...` doesn't work either, since
+      `update_item` never calls `_parse_item_kwargs` (separately
+      known/tracked in DEVPLAN's "known code quirks").
 - [ ] **`task show <id1>,<id2>,...` is documented but not wired up.**
       README documents it and the implementation
       (`Controller.show_items`/`view_items`) already exists and works —

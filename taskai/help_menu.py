@@ -23,7 +23,6 @@ Updating (these require the item's id, not its name):
 'task status {id} {text}' --> set an item's status string
 'task comment {id} {text}' --> add a comment to an item
 'task complete {id}' / 'task done {id}' --> mark an item, and all its descendants, complete
-'task depend {src id} {dst id}' --> mark src as depending on dst (both must be ids)
 'task reorder {id1} before|after {id2}' --> reorder id1 relative to id2 among its siblings (both must be ids)
 
 Updating (these accept either an id or a name):
@@ -43,7 +42,6 @@ Item fields (pass as '--field value' to create/add/update):
   priority     integer
   status       string
   completed    true|false
-  depends_on   comma-separated ids, e.g. --depends_on 3,7
 
 AI:
 'task ai {prompt}' --> feed a prompt to an LLM, which converts it into a series of the commands above and runs them

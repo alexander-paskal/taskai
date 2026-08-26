@@ -24,11 +24,6 @@ function isoToDateInputValue(iso) {
 	return iso ? iso.slice(0, 10) : "";
 }
 
-// matches the CLI's `--depends_on 3,7` convention (comma-separated ids)
-function idsToText(ids) {
-	return (ids || []).join(",");
-}
-
 // "YYYY-MM-DD" (native <input type="date"> value) -> "MM-DD-YYYY", matching
 // the CLI's documented --due_by format
 function dateInputValueToCliFormat(value) {
@@ -38,8 +33,7 @@ function dateInputValueToCliFormat(value) {
 
 // field -> form element type, mirroring the README's `--field value` table
 // (plus `name`, which the CLI exposes via `rename` rather than `update`).
-// `param` overrides the CLI flag name where it differs from the JSON key
-// (dependency_ids is read from the tree, but written via --depends_on).
+// `param` overrides the CLI flag name where it differs from the JSON key.
 const FIELD_DEFS = [
 	{ key: "name", label: "Name", type: "text" },
 	{ key: "description", label: "Description", type: "textarea" },
@@ -47,7 +41,6 @@ const FIELD_DEFS = [
 	{ key: "priority", label: "Priority", type: "number" },
 	{ key: "due_by", label: "Due by", type: "date", format: isoToDateInputValue },
 	{ key: "completed", label: "Completed", type: "checkbox" },
-	{ key: "dependency_ids", label: "Depends on", type: "text", format: idsToText, param: "depends_on" },
 ];
 
 // debounce field updates so we're not POSTing on every keystroke — only

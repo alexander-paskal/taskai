@@ -119,11 +119,6 @@ def view_item(
     if item.description:
         console.print(f"\n[bold green]Description:[/bold green]\n{item.description}")
     
-    if item.dependency_ids:
-        console.print(f"\n[bold green]Depends on:[/bold green]{''.join([
-            f'\n{depend_id} - {db.get_item(depend_id).name}' for depend_id in item.dependency_ids
-        ])}")
-
     if item.comment_ids:
         console.print("\n[bold green]\nComments:[/bold green]")
         for comment_id in item.comment_ids:
