@@ -221,6 +221,13 @@ class JsonDirectoryDatabase:
         new_config_dict = CLIConfig(**config_dict).model_dump()
         self.user_data.config = new_config_dict
 
+    def remove_config_value(self, key: str) -> bool:
+        # drop the key entirely rather than setting it to None - most
+        # CLIConfig fields aren't Optional, so writing None through
+        # update_config()/CLIConfig(**dict) would fail validation.
+        # Removing the key just falls back to that field's own default.
+        self.user_data.config.pop(key, None)
+
     def get_config(self) -> CLIConfig:
         return CLIConfig(**self.user_data.config)
     

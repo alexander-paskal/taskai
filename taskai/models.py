@@ -65,7 +65,7 @@ class Comment(Base):
 class CLIConfig(Base):
 
     # AI
-    AI_MODEL: str = None
+    AI_MODEL: Optional[str] = None
 
     # VIEW
     DISPLAY_STRING: str = "id name status due_by"
