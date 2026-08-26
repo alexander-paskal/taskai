@@ -24,7 +24,7 @@ from taskai.errors import TaskCLIError
 from rich import print, print_json
 from rich.console import Console
 import rich
-from rich.prompt import Prompt
+from rich.prompt import Prompt, Confirm
 
 # config
 DB_PATH = ".taskai/task_db"
@@ -275,6 +275,13 @@ class Controller:
         db.update_item(parent.id, linked_ids=parent.linked_ids)
         db.commit()
 
+    def nuke_database():
+        if not Confirm.ask("[red]This will permanently delete ALL data. Are you sure?[/red]", default=False):
+            print("Cancelled.")
+            return
+        db.remove()
+        print("Database wiped - starting fresh.")
+
     def browser_service():
         subprocess.run(['uvicorn','taskai.browser:app','--reload'])
         
@@ -406,7 +413,7 @@ def execute_commands(*args, **kwargs) -> int:
                     case _: Controller.ai_natural_language(" ".join(args[1:]), **kwargs)
 
             case "nuke":
-                db.remove()
+                Controller.nuke_database()
             
             case "add":
                 parent_identifier = args[1]

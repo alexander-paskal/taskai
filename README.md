@@ -51,7 +51,7 @@ task config get <key>             get a config value
 task config pop <key>             remove a config value
 
 task repair                       repair the database
-task nuke                         delete all data
+task nuke                         delete all data (asks to confirm)
 ```
 
 ### Item fields
