@@ -82,10 +82,12 @@ is the priority order.
 
 ## Low
 
-- [ ] **`task delete completed`/`done` can never target an item literally
-      named "completed"/"done".** The bulk-cleanup keyword is checked
-      before any attempt to resolve it as an item name — an edge case, but
-      a real dead end if it ever comes up.
+- [x] **Fixed.** ~~`task delete completed`/`done` can never target an item
+      literally named "completed"/"done".~~ Removed `delete completed`/
+      `delete done` outright rather than disambiguating — `task clear`
+      already does the exact same thing (and with no argument, clears
+      everywhere), so the two were redundant. `delete` now always treats
+      its argument as an item identifier.
 - [ ] **`depend` allows duplicate entries.** `add_dependency` unconditionally
       appends to `dependency_ids` with no dedup check, unlike `add_link`
       (which already guards `if child.id not in parent.linked_ids`).
