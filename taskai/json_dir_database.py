@@ -71,6 +71,12 @@ class JsonDirectoryDatabase:
     def remove(self):
         if os.path.exists(self.db_dir):
             shutil.rmtree(self.db_dir)
+        # leave the db in the same valid, connected, empty state a
+        # first-ever run would - otherwise the in-memory user_data is
+        # stale and the next commit() fails (no directory to write into)
+        self._setup_directory()
+        self.user_data = UserData(name=self.user_name)
+        self.commit()
 
     # CRUD
     def get_item(self, id: int) -> TodoItem:
