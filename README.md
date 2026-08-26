@@ -22,7 +22,6 @@ task                              interactive mode
 
 task show all                     show everything
 task show <id|name>               show a specific item
-task show <id1>,<id2>,...         show multiple items
 
 task create <name>                create a top-level item
 task add <parent> <name>          add a child item

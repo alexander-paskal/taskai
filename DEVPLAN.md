@@ -57,7 +57,7 @@ is why `taskai/browser.py` reuses `from taskai.cli import db` rather than
 opening a second connection.
 
 **Views.** [taskai/views.py](taskai/views.py): Rich-based tree rendering
-(`view_lists`, `view_item`, `view_items`), display format configurable via
+(`view_lists`, `view_item`), display format configurable via
 `DISPLAY_STRING`/`DISPLAY_COLORS`.
 
 **AI services.** [taskai/services/ai.py](taskai/services/ai.py):
@@ -90,9 +90,12 @@ unless you're told to fix them):**
   name-only-duplicate methods (`show_by_item_name`, `delete_item_by_name`)
   and several inline `_is_int(...)` dispatch branches in `execute_commands`
   were deleted outright rather than kept alongside the id path.
-- `task show <id1>,<id2>,...` is documented in the README but
+- ~~`task show <id1>,<id2>,...` is documented in the README but
   `execute_commands`'s `show` case never dispatches to
-  `Controller.show_items`/`view_items` — there's no wired path to it.
+  `Controller.show_items`/`view_items` — there's no wired path to it.~~
+  Removed rather than wired up — `Controller.show_items` and `view_items`
+  are gone (CLI audit, see DEVLOG); `task show` only ever takes one target
+  now.
 - `Controller.update_item` never calls `Controller._parse_item_kwargs`
   (`create_item` does) before handing kwargs to `db.update_item`. Confirmed
   effects: `update <id> --due_by MM-DD-YYYY` throws a pydantic validation

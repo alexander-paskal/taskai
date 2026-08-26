@@ -95,10 +95,10 @@ is the priority order.
       it — `update <id> --linked_ids ...` doesn't work either, since
       `update_item` never calls `_parse_item_kwargs` (separately
       known/tracked in DEVPLAN's "known code quirks").
-- [ ] **`task show <id1>,<id2>,...` is documented but not wired up.**
-      README documents it and the implementation
-      (`Controller.show_items`/`view_items`) already exists and works —
-      `execute_commands`'s `show` case just never dispatches to it.
+- [x] **Fixed.** ~~`task show <id1>,<id2>,...` is documented but not wired
+      up.~~ Removed rather than wired up — `Controller.show_items` and
+      `view_items` (`views.py`) deleted entirely, and the README's line for
+      it removed. `task show` only ever takes one target now.
 - [ ] **`task browser` is undocumented and has no `[port]` option.** Not
       mentioned anywhere in `help_menu.py`, so it's undiscoverable short of
       reading source. `Controller.browser_service` hardcodes uvicorn's
