@@ -18,6 +18,7 @@ from taskai.services.repair_database import repair_database_service
 from taskai.services.pomodoro import pomodoro_service
 from taskai.help_menu import help_menu
 from taskai.config import GlobalConfig
+from taskai.errors import TaskCLIError
 
 # external
 from rich import print, print_json
@@ -188,8 +189,7 @@ class Controller:
     
     def throw_error(error_description: str, *args, **kwargs):
         print(f"[red]ERROR: {error_description}[/red]\nargs={args}\nkwargs={kwargs}")
-        import sys
-        sys.exit(-1)
+        raise TaskCLIError(error_description)
     
     def get_config_value(key: str):
         print(getattr(db.get_config(), key))
@@ -467,7 +467,10 @@ def execute_commands(*args, **kwargs) -> int:
 
             case _: Controller.throw_error("unrecognized command", *args, **kwargs)
 
-
+    except TaskCLIError:
+        # already printed by throw_error - just propagate so callers
+        # (interactive REPL, entry_point, the browser) know it failed
+        raise
     except Exception as e:
         Controller.throw_error(f"encountered exception '{e}'", *args, **kwargs)
 
@@ -547,7 +550,10 @@ def entry_point():
 
     args, kwargs = _parse_remaining(argv)
 
-    execute_commands(*args, **kwargs)
+    try:
+        execute_commands(*args, **kwargs)
+    except TaskCLIError:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

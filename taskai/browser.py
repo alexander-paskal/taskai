@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from taskai.cli import Controller, _parse_arg_string, _parse_remaining, db, execute_commands
+from taskai.errors import TaskCLIError
 
 
 app = FastAPI()
@@ -55,8 +56,8 @@ def run_command(request: CommandRequest):
     try:
         with contextlib.redirect_stdout(output):
             execute_commands(*args, **kwargs)
-    except SystemExit:
-        pass  # Controller.throw_error() prints the error, then calls sys.exit(-1)
+    except TaskCLIError:
+        pass  # Controller.throw_error() already printed the error into `output`
 
     return {"output": output.getvalue(), "tree": _full_tree(), "focus": None}
 
