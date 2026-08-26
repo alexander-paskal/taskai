@@ -11,7 +11,7 @@ import getpass
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.views import view_lists, view_item, view_items
-from taskai.models import TodoItem, Comment
+from taskai.models import TodoItem, Comment, CLIConfig
 from taskai.services.ai import ai_headstart_service, ai_natural_language_service
 from taskai.services.user_setup import user_setup_service
 from taskai.services.repair_database import repair_database_service
@@ -192,20 +192,30 @@ class Controller:
         raise TaskCLIError(error_description)
     
     def get_config_value(key: str):
+        if key not in CLIConfig.model_fields:
+            Controller.throw_error(f"Unknown config key '{key}'")
+            return
         print(getattr(db.get_config(), key))
-    
+
     def list_config():
         for k, v in db.get_config().model_dump().items():
             print(f"{k}={v}")
-    
+
     def set_config_value(key: str, value: any):
+        if key not in CLIConfig.model_fields:
+            Controller.throw_error(f"Unknown config key '{key}'")
+            return
         db.update_config(**{key: value})
         db.commit()
         print(f"setting {key}={value}")
-    
+
     def remove_config_value(key: str):
-        db.update_config(**{key: None})
+        if key not in CLIConfig.model_fields:
+            Controller.throw_error(f"Unknown config key '{key}'")
+            return
+        db.remove_config_value(key)
         db.commit()
+        print(f"Reset {key} to its default")
     
     def run_setup_service():
         user_setup_service(db)

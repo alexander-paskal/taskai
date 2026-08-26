@@ -54,7 +54,7 @@ is the priority order.
       quoted/a single token (id or exact single-word name) and join
       everything after it as the name, or something else. `create` and
       `rename` can proceed independently of resolving this.
-- [ ] **`task config pop <key>` is broken for every key**, and `config
+- [x] **Fixed.** **`task config pop <key>` is broken for every key**, and `config
       set`/`config get` fail silently or crash on a bad key.
       `remove_config_value` (`cli.py`) does:
       ```python
