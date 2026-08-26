@@ -402,9 +402,7 @@ def execute_commands(*args, **kwargs) -> int:
                 Controller.reorder(args[1], args[3], args[2])
 
             case "delete" | "remove":
-                match args[1]:
-                    case "completed" | "done": Controller.delete_completed()
-                    case _: Controller.delete_item(args[1])
+                Controller.delete_item(args[1])
 
             case "comment":
                 Controller.create_comment(*args[1:], **kwargs)

@@ -33,8 +33,8 @@ Updating (these accept either an id or a name):
 Deleting:
 'task delete {id}' / 'task delete {name}' --> delete an item, and all its descendants, by id or name
 'task remove ...' --> alias for 'task delete ...'
-'task delete completed' / 'task delete done' --> delete every completed item
-'task clear {parent id|name}' --> delete every completed item under a given parent (omit parent to check everything)
+'task clear' --> delete every completed item
+'task clear {parent id|name}' --> delete every completed item under a given parent
 'task nuke' --> delete ALL data for a fresh start (asks for confirmation)
 
 Item fields (pass as '--field value' to create/add/update):

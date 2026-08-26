@@ -31,7 +31,7 @@ task rename <id> <new name>       rename an item
 task move <item> <new parent>     reparent an item
 task complete <id>                mark complete (recursive)
 task delete <id|name>             delete by id or name
-task delete completed             delete all completed items
+task clear                        delete all completed items
 task clear <parent>               delete completed under a parent
 
 task comment <id> <text>          add a comment
