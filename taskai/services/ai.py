@@ -11,6 +11,7 @@ from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.models import TodoItem, Comment
 from taskai.config import config
 from taskai.help_menu import help_general
+from taskai.errors import TaskCLIError
 
 @config("AI_MODEL", "model_name")
 def ai_headstart_service(
@@ -204,9 +205,7 @@ markdown formatting. Just the raw json string.
         response_json = json.loads(response_text)
     except json.JSONDecodeError:
         print(response_text)
-        print("\n\ndecode error")
-        import sys
-        sys.exit(-1)
+        raise TaskCLIError("AI response was not valid JSON (printed above)")
 
     from taskai.cli import execute_commands
 
