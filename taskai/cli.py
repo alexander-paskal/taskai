@@ -10,7 +10,7 @@ import getpass
 
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
-from taskai.views import view_lists, view_item, view_items
+from taskai.views import view_lists, view_item
 from taskai.models import TodoItem, Comment, CLIConfig
 from taskai.services.ai import ai_headstart_service, ai_natural_language_service
 from taskai.services.user_setup import user_setup_service
@@ -113,10 +113,6 @@ class Controller:
             return
         view_item(db, item.id, **kwargs)
 
-    def show_items(item_ids: str, **kwargs):
-        item_ids = item_ids.split(",")
-        view_items(db, item_ids, **kwargs)
-    
     def show_examples():
         ...
         print("Not implemented yet")

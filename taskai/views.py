@@ -6,7 +6,6 @@ from taskai.config import config
 # external
 from rich import print
 from rich.console import Console
-import rich
 
 
 """
@@ -135,30 +134,6 @@ def view_item(
 
     
         # view_lists(db, item.linked_ids, show_done=show_done, max_level=1, prefix="-->")
-
-def view_items(
-    db: JsonDirectoryDatabase, 
-    ids: list[str],
-    sort_by: str  = "due_by",
-    ascending: bool = False,
-    show_done: bool = True
-):
-    
-    items = {}
-    for id_ in ids:
-        if int(id_) in db.get_item_ids():
-            item = db.get_item(id_)
-            items[id_] = (item)
-    
-    # sort
-    items = sorted(items.values(), key=lambda item: str(getattr(item, sort_by)), reverse=ascending)
-
-    # view
-    for item in items:
-        rich.console.Console().rule(style="bold white")
-        view_item(db, item.id, show_done=show_done)
-        print()
-
 
 
 ### Utils
