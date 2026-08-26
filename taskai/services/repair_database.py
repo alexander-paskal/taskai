@@ -11,11 +11,11 @@ def repair_database_service(
     """
     Reconciles parent/child links and prunes dangling id references.
 
-    Parent/child/dependency/link id-lists are maintained by hand on both
-    sides of every relationship (see json_dir_database.py) - it's easy for
-    a future change to desync them by touching one side and not the other,
-    or to leave a dangling reference behind after a delete. This walks
-    every item and fixes both classes of issue.
+    Parent/child/link id-lists are maintained by hand on both sides of
+    every relationship (see json_dir_database.py) - it's easy for a future
+    change to desync them by touching one side and not the other, or to
+    leave a dangling reference behind after a delete. This walks every
+    item and fixes both classes of issue.
     """
     print("Checking item tree consistency")
     fixed = 0
@@ -36,9 +36,9 @@ def repair_database_service(
                     db.update_item(parent.id, child_ids=parent.child_ids + [item.id])
                     fixed += 1
 
-        # child_ids, dependency_ids, and linked_ids can all be left
-        # dangling after a delete - drop any id that no longer exists
-        for field in ("child_ids", "dependency_ids", "linked_ids"):
+        # child_ids and linked_ids can both be left dangling after a
+        # delete - drop any id that no longer exists
+        for field in ("child_ids", "linked_ids"):
             ids = getattr(item, field)
             valid_ids = [id_ for id_ in ids if id_ in all_ids]
             if valid_ids != ids:

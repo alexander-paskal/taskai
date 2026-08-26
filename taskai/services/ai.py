@@ -23,7 +23,7 @@ def ai_headstart_service(
     This service queries an LLM for your task and asks it to give you
     a headstart on a given task. It will perform the following operations:
 
-    - Compile the context for the query, including task description, dependencies
+    - Compile the context for the query, including task description
     and previous comments
     - Query the LLM
     - Parse and return its response
@@ -37,7 +37,7 @@ def ai_headstart_service(
     prompt = f"""
 Hi Gemini, you're job is to provide a very succinct headstart for a taskai item.
 This will involve the following:
-- parsing the task information, including description, comments and dependencies
+- parsing the task information, including description and comments
 - performing any necessary internet searches in order to acquire relevant information
 - deciding on what the next immediate step to be taken is
 - returning a very succinct command to the user, with the information necessary to execute that command
@@ -144,7 +144,7 @@ Rules for referencing items (read this carefully, mistakes here will make comman
 - There is no separate "list" concept - everything is an item, and items form a tree. 'create' adds
   a new top-level (root) item. 'add' adds a new item as a child of an EXISTING parent item - the
   parent must already exist, either in the item names above or created earlier in this same batch.
-- Every id or name you reference as a TARGET (a parent, an item to update/move/link/depend-on/etc.)
+- Every id or name you reference as a TARGET (a parent, an item to update/move/link/etc.)
   must be either: (a) an id or exact name from the existing item names above, or (b) an item you
   create earlier in this same list of commands, referenced afterward by the exact name you gave it
   in that earlier 'create'/'add' command.
@@ -153,7 +153,7 @@ Rules for referencing items (read this carefully, mistakes here will make comman
   reference an item that neither exists above nor was created earlier in this batch.
 - Prefer numeric ids over names whenever an id is available - they're unambiguous. The following
   commands only work correctly with an id, never a name: update, rename, status, comment, complete,
-  done, depend, reorder.
+  done, reorder.
 - Only use the commands and '--field' names listed above. Do not invent new ones.
 
 Your response should be a JSON output with a valid list of commands, as specified by the description above.

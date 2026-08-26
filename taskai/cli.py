@@ -88,7 +88,6 @@ class Controller:
             match k:
                 case "completed": kwargs["completed"] = bool(v)
                 case "due_by": kwargs["due_by"] = datetime.strptime(v, "%m-%d-%Y")
-                case "depends_on": kwargs["dependency_ids"] = v.split(",")
         return kwargs
 
     def _get_root_ids():
@@ -240,15 +239,6 @@ class Controller:
         if new_parent_id is not None:
             db.add_child_to_parent(item.id, new_parent_id)
 
-        db.commit()
-
-    def add_dependency(src_id: int|str, dst_id: int|str):
-        """Adds a depedency src -> dst, meaning src depends on dst"""
-        src = Controller._resolve_item(src_id)
-        dst = Controller._resolve_item(dst_id)
-        dependency_ids = src.dependency_ids
-        dependency_ids.append(dst.id)
-        db.update_item(src.id, dependency_ids=dependency_ids)
         db.commit()
 
     def reorder(id1: int|str, id2: int|str, position: str):
@@ -457,11 +447,7 @@ def execute_commands(*args, **kwargs) -> int:
 
             case "rename":
                 Controller.update_item(args[1], name=args[2])
-                
-            case "depend":
-                src_id, dst_id = args[1:3]
-                Controller.add_dependency(src_id, dst_id)
-        
+
             case "pomo":
                 pomodoro_service(int(args[1]), int(args[2]))
 

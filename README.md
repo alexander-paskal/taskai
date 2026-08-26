@@ -35,7 +35,6 @@ task clear                        delete all completed items
 task clear <parent>               delete completed under a parent
 
 task comment <id> <text>          add a comment
-task depend <src_id> <dst_id>     src depends on dst
 task link <parent> <item>         soft-link two items
 task reorder <id1> before|after <id2>
 
@@ -65,7 +64,6 @@ Pass any of these as `--field value` to `create`, `add`, or `update`:
 | `priority` | integer | `--priority 2` |
 | `status` | string | `--status "in progress"` |
 | `completed` | bool | `--completed true` |
-| `depends_on` | comma-separated ids | `--depends_on 3,7` |
 
 ---
 
