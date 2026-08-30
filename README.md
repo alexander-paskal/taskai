@@ -131,9 +131,6 @@ Launches a local web server with a canvas view of your item tree:
   there's no save button
 - **console** at the bottom for typing raw `task` commands against the same data
 
-Edits made in the browser aren't picked up by an already-running `task`
-interactive session until you restart it.
-
 ---
 
 ## Examples

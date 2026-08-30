@@ -524,20 +524,26 @@ Re-scope this section before starting 2.4.
       tags loaded in order.
 - [~] **Docs.** README is synced with `execute_commands` (command list,
       `task ai` flags, Web UI section, `task setup` walkthrough);
-      `help_menu.py` lists `task browser` / `task help`. Grew past a
+      `help_menu.py` lists `task browser` / `task help`, and its stale
+      "requires id, not name" grouping was corrected (every item-taking
+      command resolves id-or-name via `_resolve_item` now). Grew past a
       README-only scope into a proper Read the Docs site under `docs/`
-      (Sphinx + MyST + Furo). **Phase A done:** `conf.py` rebuilt (dynamic
-      version from pyproject, Furo, copybutton, sphinx-design; a
-      `builder-inited` hook dumps `help_general` / `help_examples` /
-      `PROVIDER_ENV_VARS` to git-ignored files under `docs/reference/` so the
-      reference pages can't drift from source); `index.md` landing page +
-      toctree; `getting-started.md` tutorial; `reference/commands.md` (
-      `literalinclude` of the generated help text), `reference/item-fields.md`,
-      `reference/config.md`. README links to the site. **Still open:** RTD
-      project slug needs confirming (assumed `taskai` in `conf.py`
-      `html_baseurl` + README); Phase B how-to guides; Phase C
-      explanation/architecture pages; Phase D polish (screenshots, custom
-      404, OpenGraph cards, CI `linkcheck`, tested examples, changelog).
+      (Sphinx + MyST + Furo).
+      **Built:** `conf.py` rebuilt (dynamic version from pyproject, Furo,
+      copybutton, sphinx-design; a `builder-inited` hook dumps `help_general`
+      and the `PROVIDER_ENV_VARS` table to git-ignored files under
+      `docs/_generated/` so the reference/config content can't drift from
+      source). Pages, all `.md`: `index` (gif placeholder + "what you can
+      do" + toctree), `getting-started`, `configuration`,
+      `managing-the-tree`, `item-data`, `interactive-mode`, `browser-mode`,
+      `ai-integration`, `commands` (`literalinclude` of the generated help
+      text). No "notes"/caveats in any user page — gaps go to TRIAGE
+      instead. README links to the site.
+      **Still open:** replace `docs/_static/demo.gif` placeholder with a real
+      recording; confirm the RTD project slug (assumed `taskai` in `conf.py`
+      `html_baseurl` + README); explanation/architecture pages; polish
+      (screenshots for browser-mode, custom 404, OpenGraph cards, CI
+      `linkcheck`, tested examples, changelog).
 - [ ] **UX pass.** Empty/loading state for the DAG when a user has no tasks
       yet (currently the app would just render nothing); a keyboard shortcut
       to toggle the console (e.g. backtick); consistent spacing/typography

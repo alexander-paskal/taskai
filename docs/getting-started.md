@@ -50,8 +50,8 @@ the built-in menu. Then export the credential it told you about:
 export GEMINI_API_KEY=...
 ```
 
-See [Configuration](reference/config.md) for the full provider list and the
-other config keys.
+See [AI integration](ai-integration.md) for the full provider list, and
+[Configuration](configuration.md) for the other config keys.
 
 ## Create your first items
 
@@ -118,21 +118,16 @@ concrete step on one item and saves the answer as a comment.
 task browser
 ```
 
-This starts a local web server and serves a canvas view of your tree:
-
-- **pan and zoom** the graph; completed items are tinted green, and soft-links
-  (`task link`) appear as dashed "shadow" copies under their host item
-- **click a node** to open an edit panel — every field writes back immediately,
-  there is no save button
-- a **console** at the bottom runs raw `task` commands against the same data
-
-Edits made in the browser are not picked up by an already-running interactive
-`task` session until you restart it.
+This starts a local web server and serves a canvas view of your tree — pan and
+zoom the graph, click a node to edit it in place, and use the console at the
+bottom for raw commands. See [Browser mode](browser-mode.md).
 
 ## Where to next
 
-- [Command reference](reference/commands.md) — the complete surface, also
-  available offline as `task help`
-- [Item fields](reference/item-fields.md) — everything you can set with
-  `--field value`
+- [Managing the tree](managing-the-tree.md) — every structural operation
+- [Modifying an item's data](item-data.md) — description, due date, priority,
+  status, comments
+- [AI integration](ai-integration.md) — `task ai`, context files, headstart
+- [Command reference](commands.md) — the complete surface, also available
+  offline as `task help`
 - Run `task examples` for more copy-pasteable command sequences

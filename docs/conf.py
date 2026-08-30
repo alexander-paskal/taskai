@@ -60,7 +60,7 @@ myst_enable_extensions = [
     "deflist",
 ]
 
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "_generated", "Thumbs.db", ".DS_Store"]
 
 # -- HTML output -------------------------------------------------------------
 
@@ -80,12 +80,12 @@ html_theme_options = {
 
 # -- Generated content: single source of truth ------------------------------
 #
-# `taskai/help_menu.py` holds the canonical command surface as plain strings
+# `taskai/help_menu.py` holds the canonical command surface as a plain string
 # (`task help` prints `help_general` verbatim, and the AI layer is shown the
 # same text). `taskai/llm_models.py` holds the provider -> env-var map. Rather
 # than copy any of that into the docs and let it drift, we dump it to files
-# under docs/reference/ at build time and pull those in with `literalinclude` /
-# `{include}`. The generated files are git-ignored (see docs/.gitignore).
+# under docs/_generated/ at build time and pull those in with `literalinclude`
+# / `{include}`. The generated files are git-ignored (see docs/.gitignore).
 #
 # help_menu.py and llm_models.py have no third-party imports and do not touch
 # the database, so importing them here is cheap and side-effect free.
@@ -95,20 +95,19 @@ def _write_generated(app=None) -> None:
     if str(_REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(_REPO_ROOT))
 
-    from taskai.help_menu import help_examples, help_general
+    from taskai.help_menu import help_general
     from taskai.llm_models import PROVIDER_ENV_VARS
 
-    out = Path(__file__).parent / "reference"
+    out = Path(__file__).parent / "_generated"
     out.mkdir(exist_ok=True)
 
-    (out / "_help_general.txt").write_text(help_general.strip() + "\n", "utf-8")
-    (out / "_help_examples.txt").write_text(help_examples.strip() + "\n", "utf-8")
+    (out / "help_general.txt").write_text(help_general.strip() + "\n", "utf-8")
 
     rows = ["| Provider | Environment variable(s) |", "|---|---|"]
     for provider, envs in PROVIDER_ENV_VARS.items():
         cell = ", ".join(f"`{e}`" for e in envs) if envs else "_(none — runs locally)_"
         rows.append(f"| `{provider}` | {cell} |")
-    (out / "_providers.md").write_text("\n".join(rows) + "\n", "utf-8")
+    (out / "providers.md").write_text("\n".join(rows) + "\n", "utf-8")
 
 
 def setup(app):

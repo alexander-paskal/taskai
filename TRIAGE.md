@@ -118,3 +118,18 @@ is the priority order.
       iteration was a pure re-run. The function is now a flat item-only
       lookup; return hint narrowed to `TodoItem|None` and the now-unused
       `Comment` import removed from `cli.py`.
+- [ ] **`dependency_ids` is unreachable from the CLI.** `TodoItem.dependency_ids`
+      still exists on the model (and `_flatten_item_descendants` / views may
+      reference it), but `task depend` was removed in an earlier audit pass and
+      nothing replaced it — there is no command that sets or clears a
+      dependency, and `task update <id> --depends_on ...` no-ops (the
+      `_parse_item_kwargs` gap already tracked in DEVPLAN's known quirks). So
+      the field is dead weight: either wire up a `depend` / `undepend` pair or
+      drop the field. Surfaced while writing user docs (deliberately left
+      undocumented).
+- [ ] **In-memory staleness in the interactive REPL.** `interactive_program()`
+      loads the DB once at startup and never reloads, so changes made from the
+      browser or another terminal aren't visible until it's restarted. Same
+      root cause as the browser↔CLI one-directional sync noted in DEVPLAN's
+      known quirks; real fix is the planned daemon backend. Left out of the
+      user docs per the "no caveats" call.

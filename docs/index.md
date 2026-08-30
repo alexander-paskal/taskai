@@ -2,48 +2,26 @@
 
 A command-line task manager with AI features.
 
-Everything is an **item** — a node in a tree. Any item can be the parent of any
-other, to any depth, so the same tool handles a one-off reminder and a deeply
-nested project without a separate notion of "lists". Optional AI commands turn
-plain English into task operations, and a local web UI renders the whole tree
-as a canvas you can pan, zoom, and edit.
+![taskai on the command line](_static/demo.gif)
 
-```bash
-pip install taskai-cli
-task setup
-```
+<!-- demo.gif: record a short terminal session (create a tree, `task show all`,
+     complete an item, `task ai ...`) and drop it at docs/_static/demo.gif -->
 
-::::{grid} 1 1 2 2
-:gutter: 3
+## What you can do
 
-:::{grid-item-card} 🚀 Getting started
-:link: getting-started
-:link-type: doc
+- **Manage a tree of todo items** — create, view, update, move, and delete
+  items at any depth; there's no separate notion of "lists"
+- **Attach data to each item** — description, due date, priority, status,
+  completion, comments
+- **Soft-link** an item under more than one parent without moving it
+- **Interactive mode** — run `task` with no arguments for a live view that
+  redraws as you type commands
+- **Browser mode** — `task browser` renders the whole tree as a pan/zoom
+  canvas with an inline edit panel and a command console
+- **AI integration** — describe a change in plain English and let a language
+  model carry it out, or ask it for the next step on a given item
 
-Install taskai, point it at a model, and build your first item tree.
-:::
-
-:::{grid-item-card} 📖 Command reference
-:link: reference/commands
-:link-type: doc
-
-Every subcommand, argument, and flag — the same text `task help` prints.
-:::
-
-:::{grid-item-card} 🏷️ Item fields
-:link: reference/item-fields
-:link-type: doc
-
-The `--field value` options `create`, `add`, and `update` accept.
-:::
-
-:::{grid-item-card} ⚙️ Configuration
-:link: reference/config
-:link-type: doc
-
-Config keys, and the environment variable each AI provider needs.
-:::
-::::
+New here? Start with **[Getting started](getting-started.md)**.
 
 ```{toctree}
 :hidden:
@@ -54,9 +32,19 @@ getting-started
 
 ```{toctree}
 :hidden:
+:caption: Using taskai
+
+configuration
+managing-the-tree
+item-data
+interactive-mode
+browser-mode
+ai-integration
+```
+
+```{toctree}
+:hidden:
 :caption: Reference
 
-reference/commands
-reference/item-fields
-reference/config
+commands
 ```
