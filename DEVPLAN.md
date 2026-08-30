@@ -522,12 +522,22 @@ Re-scope this section before starting 2.4.
       `editmenu.js`) and delete anything exploratory left over from getting
       the DAG layout working. Still no bundler — just multiple `<script>`
       tags loaded in order.
-- [~] **Minimalist docs.** README now has a "Web UI" section (`task browser`,
-      what the canvas / edit panel / console do, plus the CLI-session sync
-      caveat), and its command list + `task ai` flag docs are synced with
-      `execute_commands`; `help_menu.py` lists `task browser` / `task help`.
-      Still todo: one screenshot in the README. Only split into a separate
-      `docs/` page if it starts feeling long.
+- [~] **Docs.** README is synced with `execute_commands` (command list,
+      `task ai` flags, Web UI section, `task setup` walkthrough);
+      `help_menu.py` lists `task browser` / `task help`. Grew past a
+      README-only scope into a proper Read the Docs site under `docs/`
+      (Sphinx + MyST + Furo). **Phase A done:** `conf.py` rebuilt (dynamic
+      version from pyproject, Furo, copybutton, sphinx-design; a
+      `builder-inited` hook dumps `help_general` / `help_examples` /
+      `PROVIDER_ENV_VARS` to git-ignored files under `docs/reference/` so the
+      reference pages can't drift from source); `index.md` landing page +
+      toctree; `getting-started.md` tutorial; `reference/commands.md` (
+      `literalinclude` of the generated help text), `reference/item-fields.md`,
+      `reference/config.md`. README links to the site. **Still open:** RTD
+      project slug needs confirming (assumed `taskai` in `conf.py`
+      `html_baseurl` + README); Phase B how-to guides; Phase C
+      explanation/architecture pages; Phase D polish (screenshots, custom
+      404, OpenGraph cards, CI `linkcheck`, tested examples, changelog).
 - [ ] **UX pass.** Empty/loading state for the DAG when a user has no tasks
       yet (currently the app would just render nothing); a keyboard shortcut
       to toggle the console (e.g. backtick); consistent spacing/typography

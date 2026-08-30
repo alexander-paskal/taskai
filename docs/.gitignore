@@ -1,0 +1,8 @@
+# Sphinx build output
+_build/
+
+# Files generated at build time by conf.py (_write_generated) from
+# taskai/help_menu.py and taskai/llm_models.py
+reference/_help_general.txt
+reference/_help_examples.txt
+reference/_providers.md

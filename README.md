@@ -2,6 +2,8 @@
 
 A command-line task manager with AI features.
 
+📖 **Full documentation:** <https://taskai.readthedocs.io>
+
 ```bash
 pip install taskai-cli
 ```
