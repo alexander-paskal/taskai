@@ -283,6 +283,19 @@ class Controller:
         db.update_item(parent.id, linked_ids=parent.linked_ids)
         db.commit()
 
+    def remove_link(parent_id: int|str, child_id: int|str):
+        parent: TodoItem = Controller._resolve_item(parent_id)
+        child: TodoItem = Controller._resolve_item(child_id)
+
+        if child.id not in parent.linked_ids:
+            Controller.throw_error(
+                f"'{child.name}' ({child.id}) is not linked under "
+                f"'{parent.name}' ({parent.id})"
+            )
+        parent.linked_ids.remove(child.id)
+        db.update_item(parent.id, linked_ids=parent.linked_ids)
+        db.commit()
+
     def nuke_database():
         if not Confirm.ask("[red]This will permanently delete ALL data. Are you sure?[/red]", default=False):
             print("Cancelled.")
@@ -430,6 +443,11 @@ def execute_commands(*args, **kwargs) -> int:
                 parent_identifier = args[1]
                 item_identifier = args[2]
                 Controller.add_link(parent_identifier, item_identifier)
+
+            case "unlink":
+                parent_identifier = args[1]
+                item_identifier = args[2]
+                Controller.remove_link(parent_identifier, item_identifier)
 
             case "complete" | "done":
                 Controller.update_item(args[1], completed=True, recursive=True)

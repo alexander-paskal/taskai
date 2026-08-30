@@ -28,6 +28,7 @@ Updating (these require the item's id, not its name):
 Updating (these accept either an id or a name):
 'task move {id|name} {new parent id|name}' --> reparent an item; pass an empty string for the new parent to move it to the top level
 'task link {parent id|name} {item id|name}' --> soft-link item under parent, without reparenting it
+'task unlink {parent id|name} {item id|name}' --> remove a soft-link previously added with 'task link'
 
 Deleting:
 'task delete {id}' / 'task delete {name}' --> delete an item, and all its descendants, by id or name

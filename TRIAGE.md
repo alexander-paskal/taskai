@@ -87,10 +87,14 @@ is the priority order.
       already does the exact same thing (and with no argument, clears
       everywhere), so the two were redundant. `delete` now always treats
       its argument as an item identifier.
-- [ ] **No `unlink`.** Once a link is added there's no CLI path to remove
-      it — `update <id> --linked_ids ...` doesn't work either, since
-      `update_item` never calls `_parse_item_kwargs` (separately
-      known/tracked in DEVPLAN's "known code quirks").
+- [x] **Fixed.** ~~No `unlink`.~~ Added `task unlink {parent} {item}` —
+      `Controller.remove_link` (`cli.py`) mirrors `add_link`: resolves both
+      identifiers, `throw_error`s if the link isn't actually present, else
+      removes `child.id` from `parent.linked_ids` and commits. Dispatched
+      via a `case "unlink":` next to `case "link":`, documented in
+      `help_menu.py` next to `task link`. (The `update <id> --linked_ids`
+      path still doesn't work — that's the separate `_parse_item_kwargs`
+      quirk in DEVPLAN, untouched.)
 - [x] **Fixed.** ~~`task show <id1>,<id2>,...` is documented but not wired
       up.~~ Removed rather than wired up — `Controller.show_items` and
       `view_items` (`views.py`) deleted entirely, and the README's line for
