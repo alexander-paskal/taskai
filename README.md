@@ -75,12 +75,42 @@ Pass any of these as `--field value` to `create`, `add`, or `update`:
 
 ## Config
 
-AI features require a model, set as a `provider/model` string (via [litellm](https://github.com/BerriAI/litellm)),
-plus that provider's credentials set as environment variables (e.g. `GEMINI_API_KEY`, `OPENAI_API_KEY`).
-`task setup` will walk you through picking a provider and model and tell you which env vars it needs.
+AI features need a model. `task setup` walks you through choosing a provider
+and model, then tells you which environment variable(s) to set:
+
+```text
+$ task setup
+Beginning setup
+  1. openai
+  2. anthropic
+  3. gemini
+  4. vertex_ai
+  5. groq
+  ...
+  20. ollama
+
+Select a provider (number or name): 3
+  1. gemini-3.7-flash
+  2. gemini-3.1-pro-preview
+  3. gemini-3.6-flash
+  4. gemini-3.5-flash-lite
+  5. gemini-2.5-pro
+
+Select a model for 'gemini' (number or name): 1
+Storing: gemini/gemini-3.7-flash
+Make sure these environment variables are set:
+  GEMINI_API_KEY
+Setup complete! Use 'task config set|get|list' to interact with your configuration options
+```
+
+Either prompt also accepts free-typed text, so you can pick a model newer than
+the built-in menu.
+
+Or set it directly — a `provider/model` string, using
+[litellm](https://github.com/BerriAI/litellm)'s naming:
 
 ```bash
-task config set AI_MODEL <provider>/<model>   # run `task setup` if you're not sure what to use
+task config set AI_MODEL <provider>/<model>   # e.g. gemini/gemini-3.7-flash
 ```
 
 ---
