@@ -118,8 +118,7 @@ class Controller:
         view_item(db, item.id, **kwargs)
 
     def show_examples():
-        ...
-        print("Not implemented yet")
+        print(help_menu["examples"])
 
     def create_item(name: str, parent_id=None, **kwargs):
         if parent_id is not None:
@@ -395,7 +394,6 @@ def execute_commands(*args, **kwargs) -> int:
             case "show":
                 match args[1]:
                     case "all": Controller.show_all(*args[2:], **kwargs)
-                    case "examples": Controller.show_examples()
                     case _: Controller.show_item(args[1], **kwargs)
 
             case "create":

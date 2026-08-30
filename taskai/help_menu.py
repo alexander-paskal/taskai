@@ -58,12 +58,54 @@ Config:
 
 Other:
 'task setup' --> interactive first-run setup
+'task examples' --> worked, copy/pasteable command sequences for common workflows
 'task repair' --> attempt to repair a corrupted database
 'task pomo {on_minutes} {off_minutes}' --> start a pomodoro timer
 
 """
 
 
+help_examples = """
+
+Worked examples - copy/paste and adapt. Names with spaces must be quoted.
+
+Build a small project tree:
+  task create "Launch blog" --due_by 09-15-2026
+  task add "Launch blog" "Write first post" --priority 1
+  task add "Launch blog" "Set up hosting"
+  task add "Write first post" "Draft outline"
+  task show all
+
+Work an item and finish it:
+  task status 4 "in progress"
+  task comment 4 "stuck on the intro paragraph"
+  task done 4                       # completes item 4 and everything under it
+
+Reorganize (reorder/rename/status take an id; move takes an id or a name):
+  task move "Set up hosting" "Write first post"
+  task reorder 3 before 2
+  task rename 2 "Publish first post"
+
+Soft-link an item in a second place without moving it:
+  task link "Launch blog" 7        # item 7 now also shows under "Launch blog"
+  task unlink "Launch blog" 7
+
+Clean up:
+  task clear "Launch blog"         # delete completed items under that parent
+  task clear                       # delete every completed item, anywhere
+  task delete "Draft outline"      # delete an item and its descendants
+
+Let the AI do it:
+  task ai "add a task under Launch blog to buy a domain, due next Friday"
+  task ai "break Set up hosting into smaller subtasks" --context notes.md
+  task ai headstart 5              # suggest the next concrete step for item 5
+
+Tip: 'task show all' lists ids. A name that matches more than one item is
+rejected - use the id in that case.
+"""
+
+
 help_menu = {
     "general": help_general,
+    "examples": help_examples,
 }
