@@ -15,6 +15,10 @@ const STYLE = {
 		idText: "#b4b9c4",
 		statusText: "#e0924a",
 		edge: "#dcdfe6",
+		shadowNodeFill: "#ffffff", // same card fill as a real node — the dashed border + transparency set it apart, not a tint
+		shadowNodeFillDone: "#eef7f0",
+		shadowNodeBorder: "#c8ccd6", // same grey family as tree edges — the dash carries the meaning, not the colour
+		shadowGlyph: "#a855f7", // the one colour accent kept on a shadow node
 		tooltipBackground: "#ffffff",
 		tooltipBorder: "#e2e4ea",
 		tooltipText: "#23252b",
@@ -33,9 +37,16 @@ const STYLE = {
 		shadowColor: "rgba(15, 23, 42, 0.10)",
 		shadowBlur: 10,
 		shadowOffsetY: 2,
+		ghostOpacity: 0.92, // whole-node alpha for shadow (soft-link) nodes — only slightly transparent; the dashed border does most of the work
+		ghostFont: "italic 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+		ghostDash: [5, 4], // dashed border for shadow nodes
+		glyph: "↗", // ↗ drawn on a shadow node to mark it as a link
 	},
 	edge: {
 		width: 1.25,
+		linkWidth: 1.5,
+		linkDash: [7, 6], // dash pattern (world units) for the parent -> shadow-node edge
+		linkColorRGB: "150, 155, 168", // uncoloured grey; the dash is the cue, not a hue
 	},
 	layout: {
 		xSpacing: 230,
@@ -68,22 +79,53 @@ let roots = [];
 let nodes = [];
 let latestItemsById = {}; // full raw item data keyed by id, from the last /api/tree or /api/command response
 
+// the real item behind a node — for a shadow (soft-link) node that's the
+// linked-to item (node.realId), not the synthetic shadow id
+function itemForNode(node) {
+	return node ? latestItemsById[node.realId || node.id] : null;
+}
+
 function flatten(node, list = []){
 	list.push(node);
 	node.children.forEach(child => flatten(child, list));
 	return list;
 }
 
+// a "shadow" node: a lightweight, non-recursing stand-in for a soft-linked
+// item (linked_ids), shown as a ghost child under the linking node instead
+// of drawing an edge across the graph to the real one. `realId` points back
+// at the actual item so selection/editing act on it, not the shadow.
+function buildShadowNode(item, parentId) {
+	return {
+		id: `link:${parentId}:${item.id}`,
+		realId: String(item.id),
+		isShadow: true,
+		label: item.name,
+		size: STYLE.node.size,
+		completed: item.completed,
+		status: item.status,
+		children: [],
+	};
+}
+
 // builds a renderable node tree from the flat {id: item} map returned by /api/tree
 function buildTree(itemsById, id) {
 	const item = itemsById[id];
+	const children = (item.child_ids || []).map(childId => buildTree(itemsById, childId));
+
+	// soft links render as ghost children appended after the real ones
+	(item.linked_ids || []).forEach(linkedId => {
+		const linked = itemsById[linkedId];
+		if (linked) children.push(buildShadowNode(linked, item.id));
+	});
+
 	return {
 		id: String(item.id),
 		label: item.name,
 		size: STYLE.node.size,
 		completed: item.completed,
 		status: item.status,
-		children: (item.child_ids || []).map(childId => buildTree(itemsById, childId)),
+		children,
 	};
 }
 
@@ -126,7 +168,7 @@ function applyTree(itemsById) {
 	if (selectedNode) {
 		selectedNode = nodes.find(n => n.id === selectedNode.id) || null;
 		if (typeof onNodeSelected === "function") {
-			onNodeSelected(selectedNode ? latestItemsById[selectedNode.id] : null);
+			onNodeSelected(itemForNode(selectedNode));
 		}
 	}
 
@@ -359,6 +401,53 @@ function roundedRectPath(ctx, x, y, w, h, r) {
 	ctx.closePath();
 }
 
+// dashed edges from a node to each of its shadow (soft-link) children. Uncoloured
+// (grey) — the dash pattern alone distinguishes it from the solid tree edges.
+// Each edge is drawn with a gradient stroke that's fully transparent inside
+// either node's square and only opaque in the gap between them, so the line
+// never crosses over node content.
+function drawLinkEdges(ctx) {
+	ctx.save();
+	ctx.lineWidth = STYLE.edge.linkWidth;
+	ctx.lineCap = "butt";
+	ctx.setLineDash(STYLE.edge.linkDash);
+
+	const rgb = STYLE.edge.linkColorRGB;
+	const clear = `rgba(${rgb}, 0)`;
+	const solid = `rgba(${rgb}, 0.9)`;
+
+	function edge(from, to) {
+		const dist = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+		// fraction of the line covered by each node's half-square
+		const fromFrac = Math.min(0.49, (from.size / 2) / dist);
+		const toFrac = Math.min(0.49, (to.size / 2) / dist);
+
+		const grad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+		grad.addColorStop(0, clear);
+		grad.addColorStop(Math.max(0, fromFrac - 0.001), clear);
+		grad.addColorStop(fromFrac, solid);
+		grad.addColorStop(1 - toFrac, solid);
+		grad.addColorStop(Math.min(1, 1 - toFrac + 0.001), clear);
+		grad.addColorStop(1, clear);
+
+		ctx.strokeStyle = grad;
+		ctx.beginPath();
+		ctx.moveTo(from.x, from.y);
+		ctx.lineTo(to.x, to.y);
+		ctx.stroke();
+	}
+
+	function walk(node) {
+		node.children.forEach(child => {
+			if (child.isShadow) edge(node, child);
+			else walk(child);
+		});
+	}
+	roots.forEach(root => walk(root));
+
+	ctx.restore();
+}
+
 function draw() {
 	ctx.fillStyle = STYLE.colors.background;
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -373,6 +462,7 @@ function draw() {
 	ctx.lineCap = "round";
 	function drawLines(node) {
 		node.children.forEach(child => {
+			if (child.isShadow) return; // shadow children get a dashed edge in drawLinkEdges instead
 			ctx.beginPath();
 			ctx.moveTo(node.x, node.y);
 			ctx.lineTo(child.x, child.y);
@@ -382,22 +472,33 @@ function draw() {
 	}
 	roots.forEach(root => drawLines(root));
 
+	// Soft-link edges (linked_ids), layered on top of the tree edges but below the nodes
+	drawLinkEdges(ctx);
+
 	// Draw nodes
 	nodes.forEach(node => {
 		const half = node.size / 2;
+		const isShadow = node.isShadow;
 		const isHovered = node === hoveredNode;
 		const isSelected = node === selectedNode;
 		const nodeX = node.x - half;
 		const nodeY = node.y - half;
 
 		ctx.save();
-		ctx.shadowColor = STYLE.node.shadowColor;
-		ctx.shadowBlur = STYLE.node.shadowBlur;
-		ctx.shadowOffsetY = STYLE.node.shadowOffsetY;
+		if (isShadow) ctx.globalAlpha = STYLE.node.ghostOpacity;
 
-		let fill = STYLE.colors.nodeFill;
-		if (node.completed) fill = isHovered ? STYLE.colors.nodeFillDoneHover : STYLE.colors.nodeFillDone;
-		else if (isHovered) fill = STYLE.colors.nodeFillHover;
+		ctx.save();
+		if (!isShadow) {
+			// shadow nodes stay flat — no drop shadow — so they read as secondary
+			ctx.shadowColor = STYLE.node.shadowColor;
+			ctx.shadowBlur = STYLE.node.shadowBlur;
+			ctx.shadowOffsetY = STYLE.node.shadowOffsetY;
+		}
+
+		let fill;
+		if (isShadow) fill = node.completed ? STYLE.colors.shadowNodeFillDone : STYLE.colors.shadowNodeFill;
+		else if (node.completed) fill = isHovered ? STYLE.colors.nodeFillDoneHover : STYLE.colors.nodeFillDone;
+		else fill = isHovered ? STYLE.colors.nodeFillHover : STYLE.colors.nodeFill;
 
 		roundedRectPath(ctx, nodeX, nodeY, node.size, node.size, STYLE.node.cornerRadius);
 		ctx.fillStyle = fill;
@@ -405,21 +506,31 @@ function draw() {
 		ctx.restore(); // drop the shadow before stroking the border
 
 		let border = STYLE.colors.nodeBorder;
-		if (node.completed) border = STYLE.colors.nodeBorderDone;
+		if (isShadow) border = STYLE.colors.shadowNodeBorder;
+		else if (node.completed) border = STYLE.colors.nodeBorderDone;
 		if (isHovered || isSelected) border = STYLE.colors.nodeBorderHover;
 
+		if (isShadow) ctx.setLineDash(STYLE.node.ghostDash);
 		roundedRectPath(ctx, nodeX, nodeY, node.size, node.size, STYLE.node.cornerRadius);
 		ctx.strokeStyle = border;
 		ctx.lineWidth = (isHovered || isSelected) ? STYLE.node.borderWidthHover : STYLE.node.borderWidth;
 		ctx.stroke();
+		ctx.setLineDash([]);
 
 		ctx.fillStyle = STYLE.colors.idText;
 		ctx.font = STYLE.node.idFont;
 		ctx.textAlign = "left";
 		ctx.textBaseline = "top";
-		ctx.fillText(node.id, nodeX + STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
+		ctx.fillText(isShadow ? node.realId : node.id, nodeX + STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
 
-		if (node.status) {
+		if (isShadow) {
+			// a link glyph in the top-right marks this as a soft-link stand-in, not a real placement
+			ctx.fillStyle = STYLE.colors.shadowGlyph;
+			ctx.font = STYLE.node.idFont;
+			ctx.textAlign = "right";
+			ctx.textBaseline = "top";
+			ctx.fillText(STYLE.node.glyph, nodeX + node.size - STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
+		} else if (node.status) {
 			ctx.fillStyle = STYLE.colors.statusText;
 			ctx.font = STYLE.node.idFont;
 			ctx.textAlign = "right";
@@ -430,7 +541,7 @@ function draw() {
 		}
 
 		ctx.fillStyle = STYLE.colors.text;
-		ctx.font = STYLE.node.font;
+		ctx.font = isShadow ? STYLE.node.ghostFont : STYLE.node.font;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
 		const maxWidth = node.size - STYLE.node.padding * 2;
@@ -439,6 +550,8 @@ function draw() {
 		lines.forEach((line, i) => {
 			ctx.fillText(line, node.x, startY + i * STYLE.node.lineHeight);
 		});
+
+		ctx.restore();
 	});
 
 	ctx.restore();
@@ -494,7 +607,7 @@ canvas.addEventListener("click", (e) => {
 
 	selectedNode = clicked || null;
 	if (typeof onNodeSelected === "function") {
-		onNodeSelected(selectedNode ? latestItemsById[selectedNode.id] : null);
+		onNodeSelected(itemForNode(selectedNode));
 	}
 	draw();
 })

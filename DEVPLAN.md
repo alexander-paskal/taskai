@@ -253,11 +253,25 @@ stdlib `http.server` — no new dependency, consistent with "less code."
 
 ### 1.4 — DAG view (v2: full graph + interaction)
 
-- [ ] **Deferred to 2.0.** Draw `dependency_ids` and `linked_ids` as a
-      second edge style (dashed / different color) layered on top of the
-      tree edges — this is what makes it a DAG rather than just a tree
-      view. Only parent/child tree edges render today; out of scope for
-      the current polish pass.
+- [~] **`linked_ids` done as "shadow" nodes; `dependency_ids` still
+      deferred to 2.0.** A soft link renders as a lightweight *ghost copy*
+      of the linked item, placed as an extra child under the linking node
+      (`buildShadowNode` in `canvas.js` — non-recursing, carries `realId`
+      back to the true item; `buildTree` appends one per `linked_ids`
+      entry). It's styled subtly apart from a real placement: ~0.92 alpha,
+      no drop shadow, dashed grey border, italic label, an `↗` glyph
+      top-right (the one colour accent), and it shows the linked item's
+      real id rather than the synthetic shadow id. The parent→shadow edge
+      is dashed and uncoloured — grey, the dash pattern alone distinguishes
+      it from the solid tree edges — and drawn with a gradient stroke that
+      goes fully transparent inside either node's square so it never
+      crosses node content (`drawLinkEdges`); solid-edge drawing
+      (`drawLines`) skips shadow children. Selecting or editing a shadow
+      acts on the real item (`itemForNode` resolves `realId`), so the edit
+      panel and `update` commands hit the true record. `dependency_ids` edges are still not drawn — and `task
+      depend` was itself removed from the CLI in an earlier audit pass, so
+      there's no dependency data being created right now anyway; revisit
+      both together in 2.0.
 - [x] Pan (drag) and zoom (wheel) — done via canvas context transforms
       (`ctx.translate`/`ctx.scale` + a `view` state object), not SVG
       `viewBox`, same toolchain reasoning as above. Zoom keeps the point
