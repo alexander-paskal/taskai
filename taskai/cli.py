@@ -11,7 +11,7 @@ import getpass
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.views import view_lists, view_item
-from taskai.models import TodoItem, Comment, CLIConfig
+from taskai.models import TodoItem, CLIConfig
 from taskai.services.ai import ai_headstart_service, ai_natural_language_service
 from taskai.services.user_setup import user_setup_service
 from taskai.services.repair_database import repair_database_service
@@ -39,27 +39,22 @@ GlobalConfig.load_dict(db.get_config())
 class Controller:
 
     # utilities
-    def _find_model_by_stringmatch(attr: str, pattern: str) -> TodoItem|Comment|None:
-
-        for record_type in [
-            TodoItem,
-            Comment
-        ]:
-            batch_attrs = db.get_item_batch_attr(attr)
-            matches = [
-                id_ for id_, value in batch_attrs.items()
-                if fnmatch.fnmatch(value, pattern)
-            ]
-            if len(matches) == 1:
-                return db.get_item(matches[0])
-            if len(matches) > 1:
-                listing = "\n".join(
-                    f"    {m}: {batch_attrs[m]}" for m in matches
-                )
-                Controller.throw_error(
-                    f"'{pattern}' matches {len(matches)} items:\n{listing}\n"
-                    f"Please use a unique pattern or the item ID directly"
-                )
+    def _find_model_by_stringmatch(attr: str, pattern: str) -> TodoItem|None:
+        batch_attrs = db.get_item_batch_attr(attr)
+        matches = [
+            id_ for id_, value in batch_attrs.items()
+            if fnmatch.fnmatch(value, pattern)
+        ]
+        if len(matches) == 1:
+            return db.get_item(matches[0])
+        if len(matches) > 1:
+            listing = "\n".join(
+                f"    {m}: {batch_attrs[m]}" for m in matches
+            )
+            Controller.throw_error(
+                f"'{pattern}' matches {len(matches)} items:\n{listing}\n"
+                f"Please use a unique pattern or the item ID directly"
+            )
         return None
 
     def _find_item_by_identifier(identifier: str|int) -> TodoItem:
