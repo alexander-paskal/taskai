@@ -551,3 +551,72 @@ Re-scope this section before starting 2.4.
       link edges, now deferred to 2.0.)
 - [ ] Re-check the Phase 0 fixes are still holding once the web UI is
       exercising more command paths than the CLI alone did.
+
+---
+
+## Phase 4 — Browser view improvements
+
+Builds on Phase 1's canvas / edit panel / console. Still plain HTML/CSS/JS, no
+framework, everything routed through the existing `/api/tree` + `/api/command`
+endpoints.
+
+- [ ] **Show comments.** Items carry `comment_ids` but the browser never
+      surfaces them. Render an item's comments in the edit panel — read-only
+      list at minimum; adding one posts `comment <id> <text>` through
+      `/api/command` like every other field. Consider a comment-count
+      affordance on the canvas node itself.
+- [ ] **Much larger description editor.** The `description` field in the edit
+      panel is a small single-line-ish input today. Make it a real multi-line
+      textarea that dominates the panel (large fixed height or auto-grow), so
+      the panel is usable for actual note-taking — likely widen the panel
+      itself while a node is selected.
+- [ ] **Keyboard shortcuts + a shortcuts panel.** Add real key bindings
+      (toggle console, toggle edit panel, complete / delete the selected
+      node, deselect, focus a search box, zoom/pan, …) and a **left-hand
+      panel listing them**, mirroring the right-hand edit panel and
+      collapsible the same way. Follow the existing `STYLE` object +
+      collapsible-panel machinery (`setRightPanelWidth`); this adds a left
+      equivalent. Supersedes the single console-toggle shortcut noted in
+      Phase 3's UX pass.
+
+---
+
+## Phase 5 — CLI view
+
+- [ ] **Expand what `task show` renders, and its options.** Exact scope TBD —
+      needs a working session with Alex to pin down. Candidates: filter by
+      status / priority / completion, depth limits, flat vs. tree layout,
+      sort order, inline comments / links, format and colour toggles. Prompt
+      before implementing.
+- [ ] **New view-settings config keys.** Extend `CLIConfig` (today just
+      `DISPLAY_STRING` / `DISPLAY_COLORS`) with keys backing whatever the
+      expanded view supports; document them in `docs/configuration.md` and
+      `help_menu.py` alongside the existing ones.
+
+---
+
+## Phase 6 — Comprehensive testing & bugfixing
+
+- [ ] **Broaden the test suite.** Currently 7 tests across `test_cli.py` /
+      `test_execution.py` / `test_json_dir_database.py` / `test_view.py`.
+      Cover every `execute_commands` branch, id/name resolution (including
+      the multi-match error path), `_parse_item_kwargs`, the browser
+      endpoints (`/api/tree`, `/api/command`), and the AI command-execution
+      loop with a mocked LLM.
+- [ ] **Fix what the tests surface**, and clear the still-open TRIAGE items
+      as they come up (multi-word unquoted input, `task browser` `[port]`,
+      `dependency_ids` reachability, interactive-REPL staleness).
+- [ ] **Wire CI.** `pytest` on every PR, plus `sphinx-build -W` +
+      `linkcheck` for the docs.
+
+---
+
+## Phase 7 — Advertising
+
+- [ ] Get the docs site live: confirm the Read the Docs slug, record the
+      `docs/_static/demo.gif` terminal demo.
+- [ ] Polish the PyPI listing — `pyproject.toml` has an empty `description`
+      and no keywords / classifiers / project URLs.
+- [ ] Write a short "show and tell" (what it is, the everything-is-an-item
+      model, the AI layer, the canvas view) built around the gif, and decide
+      on channels (Show HN, r/commandline, r/productivity, GitHub topics).

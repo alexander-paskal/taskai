@@ -1,3 +1,47 @@
+# 8-29
+
+Worked the TRIAGE backlog, then built out the docs.
+
+TRIAGE fixes:
+- **Critical:** `_find_model_by_stringmatch` inverted `{id: name}` -> `{name:
+  id}`, silently collapsing duplicate names to one arbitrary id (so
+  update/delete-by-name could hit the wrong item). Now collects every
+  fnmatch hit; one resolves, zero -> `None`, 2+ -> `throw_error` listing the
+  ids. Also gave `throw_error` a `verbose` flag so it stops dumping
+  `args=/kwargs=` on every error.
+- Added `task unlink {parent} {item}` (mirrors `add_link`).
+- Stripped the dead `for record_type in [TodoItem, Comment]` loop in
+  `_find_model_by_stringmatch` and the now-unused `Comment` import.
+- `show_examples()` now prints a real `help_examples` string (via `task
+  examples`); removed the redundant `task show examples` branch.
+
+Browser: soft links (`linked_ids`) now render as "shadow" nodes — a ghost
+copy of the linked item as an extra child under the linking node (~0.92
+alpha, flat, dashed grey border, italic, `↗` glyph, real id). Edge to it is
+dashed grey with a gradient stroke that goes transparent inside either node.
+Selecting/editing a shadow acts on the real item (`itemForNode` -> `realId`).
+
+Docs: README synced with `execute_commands` and given a `task setup`
+walkthrough + Web UI section; `help_menu.py` gained `task browser` / `task
+help` and lost its stale "requires id, not name" grouping (everything takes
+id-or-name now). Then turned `docs/` into a real Read the Docs site — Sphinx
++ MyST + Furo, dynamic version, a `builder-inited` hook that dumps
+`help_general` and the provider table to git-ignored `_generated/` files so
+the reference pages can't drift. Pages (all `.md`): index (gif placeholder +
+feature bullets), getting-started, configuration, managing-the-tree,
+item-data, interactive-mode, browser-mode, ai-integration, commands. No
+caveats/notes in user pages — gaps went to TRIAGE (`dependency_ids`
+unreachable from the CLI; interactive-REPL staleness).
+
+DEVPLAN: added Phases 4-7 (browser improvements: comments, big description
+editor, keyboard shortcuts + left panel; CLI view expansion + config keys;
+comprehensive testing; advertising).
+
+Still open in TRIAGE: multi-word unquoted input (design-blocked), `task
+browser` `[port]`, the two gaps above.
+
+---
+
 # 8-22
 
 Found and fixed a real bug from the `litellm` migration earlier today: it
