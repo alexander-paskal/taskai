@@ -21,11 +21,9 @@ is the priority order.
       `_resolve_item` for mutating commands); **two or more matches now call
       `throw_error`** listing the colliding ids and telling the user to refer
       to the item by id. Turns the silent wrong-item edit/delete into an
-      explicit, actionable error. (Note: the outer
-      `for record_type in [TodoItem, Comment]` loop is still dead — comments
-      have no `name` and `get_item_batch_attr` only reads `todo_items` —
-      tracked separately under Low / "Dead code in
-      `_find_model_by_stringmatch`".)
+      explicit, actionable error. (The dead
+      `for record_type in [TodoItem, Comment]` wrapper this function also had
+      is now gone too — see Low / "Dead code in `_find_model_by_stringmatch`".)
 
 ---
 
@@ -108,10 +106,10 @@ is the priority order.
       route to the same unimplemented `show_examples()`, which just prints
       `"Not implemented yet"` — not documented in help_menu either. Either
       implement it once or delete both entry points.
-- [ ] **Dead code in `_find_model_by_stringmatch`.** Beyond the Critical
-      item above, the function also loops over `[TodoItem, Comment]`
-      intending to fall back to searching comments by name, but
-      `db.get_item_batch_attr(attr)` only ever reads `todo_items` — the
-      second loop iteration just re-runs the identical lookup. Comments
-      don't even have a `name` field, so the premise doesn't apply. Marked
-      in the code itself as `# TODO this is hacky`.
+- [x] **Fixed.** ~~Dead code in `_find_model_by_stringmatch`.~~ Dropped the
+      `for record_type in [TodoItem, Comment]` wrapper entirely — `record_type`
+      was never used in the body, `get_item_batch_attr` only reads
+      `todo_items`, and `Comment` has no `name` field, so the second
+      iteration was a pure re-run. The function is now a flat item-only
+      lookup; return hint narrowed to `TodoItem|None` and the now-unused
+      `Comment` import removed from `cli.py`.
