@@ -522,11 +522,12 @@ Re-scope this section before starting 2.4.
       `editmenu.js`) and delete anything exploratory left over from getting
       the DAG layout working. Still no bundler — just multiple `<script>`
       tags loaded in order.
-- [ ] **Minimalist docs.** A short "Web UI" section in the README (how to
-      run `task web`, one screenshot) covers most of it; only split into a
-      separate `docs/` page if the README starts feeling long. Keep the
-      "less code" principle applied to prose too — this doesn't need to be
-      exhaustive.
+- [~] **Minimalist docs.** README now has a "Web UI" section (`task browser`,
+      what the canvas / edit panel / console do, plus the CLI-session sync
+      caveat), and its command list + `task ai` flag docs are synced with
+      `execute_commands`; `help_menu.py` lists `task browser` / `task help`.
+      Still todo: one screenshot in the README. Only split into a separate
+      `docs/` page if it starts feeling long.
 - [ ] **UX pass.** Empty/loading state for the DAG when a user has no tasks
       yet (currently the app would just render nothing); a keyboard shortcut
       to toggle the console (e.g. backtick); consistent spacing/typography

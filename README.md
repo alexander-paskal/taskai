@@ -19,6 +19,8 @@ task setup
 
 ```
 task                              interactive mode
+task help                         show every command
+task examples                     worked command sequences for common workflows
 
 task show all                     show everything
 task show <id|name>               show a specific item
@@ -34,14 +36,19 @@ task clear                        delete all completed items
 task clear <parent>               delete completed under a parent
 
 task comment <id> <text>          add a comment
-task link <parent> <item>         soft-link two items
+task link <parent> <item>         soft-link an item under a second parent
+task unlink <parent> <item>       remove a soft-link
 task reorder <id1> before|after <id2>
 
 task status <id> <text>           set a status string
 task pomo <on_mins> <off_mins>    pomodoro timer
 
 task ai <prompt>                  natural language → commands
+  --context <path[,path...]>      fold file contents into the prompt
+  --reasoning <level>             model thinking effort: minimal|low|medium|high|disable|none
 task ai headstart <id>            AI suggests next step, saved as comment
+
+task browser                      launch the web UI (see below)
 
 task config show                  list current config
 task config set <key> <value>     set a config value
@@ -73,33 +80,31 @@ plus that provider's credentials set as environment variables (e.g. `GEMINI_API_
 `task setup` will walk you through picking a provider and model and tell you which env vars it needs.
 
 ```bash
-task config set AI_MODEL gemini/gemini-2.0-flash
+task config set AI_MODEL <provider>/<model>   # run `task setup` if you're not sure what to use
 ```
 
 ---
 
-## Example
-
-```
-task create "Today"
-task add "Today" "Morning run"
-task add "Today" "Review pull requests" --status "blocked"
-task add "Today" "Call dentist" --due_by 08-02-2026
-task show "Today"
-task complete 4
-task show "Today"
-task exit
-```
-
-Or:
+## Web UI
 
 ```bash
-task ai "add a task called 'Reply to Alex' under Today, and mark the dentist task as done"
+task browser
 ```
+
+Launches a local web server with a canvas view of your item tree:
+
+- **pan / zoom** the graph; completed items are tinted green, and soft-links
+  (`task link`) show as dashed "shadow" copies under their host item
+- **click a node** to open an edit panel — each field writes back immediately,
+  there's no save button
+- **console** at the bottom for typing raw `task` commands against the same data
+
+Edits made in the browser aren't picked up by an already-running `task`
+interactive session until you restart it.
 
 ---
 
-## Another Example
+## Examples
 
 ```bash
 task create "Launch website"
@@ -119,3 +124,11 @@ task ai headstart 3
 task complete 2
 task clear "Launch website"
 ```
+
+Or drive it entirely from a prompt:
+
+```bash
+task ai "add a task called 'Reply to Alex' under Launch website, and mark the hosting task as done"
+```
+
+Run `task examples` for more worked sequences.

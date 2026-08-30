@@ -97,11 +97,12 @@ is the priority order.
       up.~~ Removed rather than wired up — `Controller.show_items` and
       `view_items` (`views.py`) deleted entirely, and the README's line for
       it removed. `task show` only ever takes one target now.
-- [ ] **`task browser` is undocumented and has no `[port]` option.** Not
-      mentioned anywhere in `help_menu.py`, so it's undiscoverable short of
-      reading source. `Controller.browser_service` hardcodes uvicorn's
-      default port with no override, despite DEVPLAN's original Phase 1.1
-      scoping a `task web [port]`.
+- [~] **`task browser` had no docs and no `[port]` option.** Docs half
+      done: now listed in `help_menu.py` ("Other" section) and given its own
+      "Web UI" section in the README. Still open: `Controller.browser_service`
+      hardcodes uvicorn's default port with no override, despite DEVPLAN's
+      original Phase 1.1 scoping a `task web [port]` — a code change, left for
+      later.
 - [x] **Fixed.** ~~`examples`/`show examples` are two redundant dead ends.~~
       `show_examples()` now prints a real `help_examples` string (added to
       `help_menu.py` as `help_menu["examples"]`) — worked, copy/pasteable
