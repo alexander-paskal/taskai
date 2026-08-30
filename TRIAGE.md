@@ -102,10 +102,14 @@ is the priority order.
       reading source. `Controller.browser_service` hardcodes uvicorn's
       default port with no override, despite DEVPLAN's original Phase 1.1
       scoping a `task web [port]`.
-- [ ] **`examples`/`show examples` are two redundant dead ends.** Both
-      route to the same unimplemented `show_examples()`, which just prints
-      `"Not implemented yet"` — not documented in help_menu either. Either
-      implement it once or delete both entry points.
+- [x] **Fixed.** ~~`examples`/`show examples` are two redundant dead ends.~~
+      `show_examples()` now prints a real `help_examples` string (added to
+      `help_menu.py` as `help_menu["examples"]`) — worked, copy/pasteable
+      command sequences for the common workflows. Deduped the entry points:
+      `task examples` is the one way in (and is now listed under "Other" in
+      `help_general`); the `case "examples":` branch under `task show` was
+      removed, so `task show examples` just falls through to the normal
+      name-match path.
 - [x] **Fixed.** ~~Dead code in `_find_model_by_stringmatch`.~~ Dropped the
       `for record_type in [TodoItem, Comment]` wrapper entirely — `record_type`
       was never used in the body, `get_item_batch_attr` only reads
