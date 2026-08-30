@@ -11,25 +11,21 @@ is the priority order.
 
 ## Critical
 
-- [ ] **Name-based item lookup can silently resolve to the wrong item.**
-      `Controller._find_model_by_stringmatch` (`cli.py`) inverts an
-      `{id: name}` dict into `{name: id}` before matching:
-      ```python
-      inside_out = {v: k for k, v in batch_attrs.items()}  # TODO this is hacky
-      results = fnmatch.filter(batch_attrs.values(), pattern)
-      if results:
-          id_ = inside_out[results[0]]  # might be duplication
-      ```
-      Inverting the dict silently drops all but one id whenever two items
-      share the same name — the one that survives is whichever happened to
-      be last in iteration order, not necessarily the one you'd expect.
-      Item names aren't required to be unique anywhere in the model, so
-      this is reachable any time you have two same-named items (e.g. two
-      subtasks both named "Notes" under different parents) and refer to
-      one by name in `update`/`delete`/`move`/etc. — no error, just a
-      silent edit/delete of the wrong item. Worth fixing before anything
-      else on this list because it's the only item here with no visible
-      symptom at all.
+- [x] **Fixed.** ~~Name-based item lookup can silently resolve to the wrong
+      item.~~ `Controller._find_model_by_stringmatch` (`cli.py`) no longer
+      inverts `{id: name}` into `{name: id}` (which silently dropped all but
+      one id whenever two items shared a name). It now iterates
+      `batch_attrs.items()` directly, `fnmatch`-matching each name and
+      collecting *every* matching id. Exactly one match resolves as before;
+      zero matches still returns `None` (soft-fail for `show`, hard error via
+      `_resolve_item` for mutating commands); **two or more matches now call
+      `throw_error`** listing the colliding ids and telling the user to refer
+      to the item by id. Turns the silent wrong-item edit/delete into an
+      explicit, actionable error. (Note: the outer
+      `for record_type in [TodoItem, Comment]` loop is still dead — comments
+      have no `name` and `get_item_batch_attr` only reads `todo_items` —
+      tracked separately under Low / "Dead code in
+      `_find_model_by_stringmatch`".)
 
 ---
 

@@ -46,11 +46,20 @@ class Controller:
             Comment
         ]:
             batch_attrs = db.get_item_batch_attr(attr)
-            inside_out = {v: k for k, v in batch_attrs.items()}  # TODO this is hacky
-            results = fnmatch.filter(batch_attrs.values(), pattern)
-            if results:
-                id_ = inside_out[results[0]]  # might be duplication
-                return db.get_item(id_)
+            matches = [
+                id_ for id_, value in batch_attrs.items()
+                if fnmatch.fnmatch(value, pattern)
+            ]
+            if len(matches) == 1:
+                return db.get_item(matches[0])
+            if len(matches) > 1:
+                listing = "\n".join(
+                    f"    {m}: {batch_attrs[m]}" for m in matches
+                )
+                Controller.throw_error(
+                    f"'{pattern}' matches {len(matches)} items:\n{listing}\n"
+                    f"Please use a unique pattern or the item ID directly"
+                )
         return None
 
     def _find_item_by_identifier(identifier: str|int) -> TodoItem:
@@ -182,8 +191,11 @@ class Controller:
             reasoning=kwargs.get("reasoning"),
         )
     
-    def throw_error(error_description: str, *args, **kwargs):
-        print(f"[red]ERROR: {error_description}[/red]\nargs={args}\nkwargs={kwargs}")
+    def throw_error(error_description: str, *args, verbose: bool = False, **kwargs):
+        message = f"[red]ERROR: {error_description}[/red]"
+        if verbose:
+            message += f"\nargs={args}\nkwargs={kwargs}"
+        print(message)
         raise TaskCLIError(error_description)
     
     def get_config_value(key: str):
