@@ -126,7 +126,7 @@ function buildTree(itemsById, id) {
 		if (linked) children.push(buildShadowNode(linked, item.id));
 	});
 
-	return {
+	const node = {
 		id: String(item.id),
 		label: item.name,
 		size: STYLE.node.size,
@@ -134,6 +134,11 @@ function buildTree(itemsById, id) {
 		status: item.status,
 		children,
 	};
+
+	// back-reference so navigation (navigate()) can walk up as well as down
+	children.forEach(child => { child.parent = node; });
+
+	return node;
 }
 
 // depth-first layout: y from depth, x from a running leaf counter shared across the whole forest,
@@ -173,6 +178,7 @@ function applyTree(itemsById) {
 	// keep the synthetic root pointing at the freshly-built real roots, and
 	// park it just above them so it works as a nav origin
 	rootNode.children = roots;
+	roots.forEach(r => { r.parent = rootNode; });
 	if (roots.length) {
 		rootNode.x = roots.reduce((sum, r) => sum + r.x, 0) / roots.length;
 		rootNode.y = Math.min(...roots.map(r => r.y)) - STYLE.layout.ySpacing;
@@ -391,6 +397,42 @@ function fitAll(duration = STYLE.zoom.focusDurationMs) {
 	const cx = (minX + maxX) / 2;
 	const cy = (minY + maxY) / 2;
 	easeView(canvas.width / 2 - cx * scale, canvas.height / 2 - cy * scale, scale, duration);
+}
+
+// moves the selection relative to the current node along the node tree.
+// The move is equivalent to a `show <target>`: the node becomes selected and
+// the view eases + zooms to it (focusOnNode). Wraps around on both axes —
+// past the last sibling loops to the first, past the bottom leaf loops back
+// to rootNode (the top), and `up` from rootNode drops to the deepest node.
+function navigate(direction) {
+	const cur = selectedNode || rootNode;
+	let target = null;
+
+	if (direction === "down") {
+		target = cur.children[0] || rootNode; // past the bottom -> wrap to the top
+	} else if (direction === "up") {
+		if (cur.parent) {
+			target = cur.parent;
+		} else {
+			// at rootNode (the top) -> wrap to the bottom: follow the
+			// first-child chain down to the deepest leaf
+			target = cur;
+			while (target.children[0]) target = target.children[0];
+		}
+	} else if (direction === "left" || direction === "right") {
+		const sibs = cur.parent && cur.parent.children;
+		if (!sibs || !sibs.length) return;
+		const n = sibs.length;
+		target = sibs[(sibs.indexOf(cur) + (direction === "right" ? 1 : -1) + n) % n];
+	}
+
+	if (!target || target === cur) return;
+
+	selectedNode = target;
+	if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(target));
+	if (target === rootNode) fitAll();
+	else focusOnNode(target);
+	draw();
 }
 
 // trims text, always appending an ellipsis, until "text…" fits maxWidth

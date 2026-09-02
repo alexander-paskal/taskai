@@ -30,6 +30,10 @@ const CLIENT_COMMANDS = {
 	"pan right": () => canvasPan(-PAN_AMOUNT, 0),
 	"pan up":    () => canvasPan(0, PAN_AMOUNT),
 	"pan down":  () => canvasPan(0, -PAN_AMOUNT),
+	"up":        () => navigate("up"),
+	"down":      () => navigate("down"),
+	"left":      () => navigate("left"),
+	"right":     () => navigate("right"),
 };
 
 const commandHistory = [];
