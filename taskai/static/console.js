@@ -67,6 +67,56 @@ consoleInput.addEventListener("keydown", async (e) => {
 		return;
 	}
 
+	// `show all` / bare `show` — select the synthetic root and fit the forest
+	if (/^show(\s+all)?$/i.test(command)) {
+		let tree;
+		try {
+			const res = await fetch("/api/tree");
+			tree = await res.json();
+		} catch (err) {
+			appendLine("Error: " + err.message);
+			return;
+		}
+		applyTree(tree);
+		selectedNode = rootNode;
+		if (typeof onNodeSelected === "function") onNodeSelected(null);
+		fitAll();
+		return;
+	}
+
+	// `show <id|name>` — select + focus the resolved node. Does NOT open the
+	// edit panel (that's `edit <id|name>`), mirroring click vs. double-click.
+	const showMatch = command.match(/^show\s+(.+)$/i);
+	if (showMatch) {
+		const target = showMatch[1].trim();
+		let data;
+		try {
+			const res = await fetch("/api/command", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ input: command }),
+			});
+			data = await res.json();
+		} catch (err) {
+			appendLine("Error: " + err.message);
+			return;
+		}
+
+		applyTree(data.tree);
+
+		if (data.focus) {
+			const node = nodes.find(n => n.id === String(data.focus));
+			if (node) {
+				selectedNode = node;
+				if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(node));
+				focusOnNode(node);
+			}
+		} else {
+			appendLine(data.output || `No item found matching '${target}'`);
+		}
+		return;
+	}
+
 	// `edit <id|name>` — resolve via show, then select + focus + open panel
 	const editMatch = command.match(/^edit\s+(.+)$/i);
 	if (editMatch) {

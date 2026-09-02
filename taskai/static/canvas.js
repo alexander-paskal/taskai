@@ -79,6 +79,13 @@ let roots = [];
 let nodes = [];
 let latestItemsById = {}; // full raw item data keyed by id, from the last /api/tree or /api/command response
 
+// synthetic, never-drawn node sitting above the real root items. It's the
+// nav anchor for top-level movement and the "selection" that means "the whole
+// tree / nothing specific" — e.g. after `show all`, or clicking empty canvas.
+// Never added to `nodes`, so it's never hit-tested, drawn, or bordered.
+const ROOT_NODE_ID = "__root__";
+const rootNode = { id: ROOT_NODE_ID, isRoot: true, label: "", size: 0, children: [], x: 0, y: 0 };
+
 // the real item behind a node — for a shadow (soft-link) node that's the
 // linked-to item (node.realId), not the synthetic shadow id
 function itemForNode(node) {
@@ -163,10 +170,23 @@ function applyTree(itemsById) {
 
 	nodes = roots.flatMap(root => flatten(root));
 
+	// keep the synthetic root pointing at the freshly-built real roots, and
+	// park it just above them so it works as a nav origin
+	rootNode.children = roots;
+	if (roots.length) {
+		rootNode.x = roots.reduce((sum, r) => sum + r.x, 0) / roots.length;
+		rootNode.y = Math.min(...roots.map(r => r.y)) - STYLE.layout.ySpacing;
+	} else {
+		rootNode.x = 0;
+		rootNode.y = 0;
+	}
+
 	// the previously-selected node was rebuilt as a new object (or may no
 	// longer exist) — re-resolve by id so selection survives a tree refresh
 	if (selectedNode) {
-		selectedNode = nodes.find(n => n.id === selectedNode.id) || null;
+		selectedNode = selectedNode.id === ROOT_NODE_ID
+			? rootNode
+			: nodes.find(n => n.id === selectedNode.id) || rootNode;
 		if (typeof onNodeSelected === "function") {
 			onNodeSelected(itemForNode(selectedNode));
 		}
@@ -343,6 +363,34 @@ function canvasZoom(factor) {
 // pan by dx/dy screen pixels (positive dx = camera moves left, revealing content to the right)
 function canvasPan(dx, dy) {
 	easeView(view.offsetX + dx, view.offsetY + dy, view.scale);
+}
+
+// eases the view out until every real node fits on screen, with padding —
+// used by `show all` / bare `show`
+function fitAll(duration = STYLE.zoom.focusDurationMs) {
+	if (!nodes.length) return;
+
+	const half = STYLE.node.size / 2;
+	const minX = Math.min(...nodes.map(n => n.x)) - half;
+	const maxX = Math.max(...nodes.map(n => n.x)) + half;
+	const minY = Math.min(...nodes.map(n => n.y)) - half;
+	const maxY = Math.max(...nodes.map(n => n.y)) + half;
+
+	const pad = 60; // screen px of breathing room around the content
+	const scale = Math.min(
+		STYLE.zoom.max,
+		Math.max(
+			STYLE.zoom.min,
+			Math.min(
+				(canvas.width - pad * 2) / (maxX - minX),
+				(canvas.height - pad * 2) / (maxY - minY),
+			),
+		),
+	);
+
+	const cx = (minX + maxX) / 2;
+	const cy = (minY + maxY) / 2;
+	easeView(canvas.width / 2 - cx * scale, canvas.height / 2 - cy * scale, scale, duration);
 }
 
 // trims text, always appending an ellipsis, until "text…" fits maxWidth
@@ -586,8 +634,9 @@ function draw() {
 let hoveredNode = null;
 
 // selection — persists across hover and drives the edit panel (see
-// onNodeSelected, defined in editpanel.js)
-let selectedNode = null;
+// onNodeSelected, defined in editpanel.js). Never null: an empty/whole-tree
+// selection is the synthetic rootNode.
+let selectedNode = rootNode;
 
 // panning state
 let isPanning = false;
@@ -605,7 +654,7 @@ canvas.addEventListener("click", (e) => {
 
 	const clicked = nodes.find(node => hitTest(node, x, y));
 
-	selectedNode = clicked || null;
+	selectedNode = clicked || rootNode; // empty canvas -> whole-tree selection
 	if (typeof onNodeSelected === "function") {
 		onNodeSelected(itemForNode(selectedNode));
 	}
