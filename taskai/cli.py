@@ -443,7 +443,13 @@ def execute_commands(*args, **kwargs) -> int:
                 Controller.remove_link(parent_identifier, item_identifier)
 
             case "complete" | "done":
-                Controller.update_item(args[1], completed=True, recursive=True)
+                recursive = "-r" in args or "-recursive" in args
+                Controller.update_item(args[1], completed=True, recursive=recursive)
+
+            case "undone":
+                recursive = "-r" in args or "-recursive" in args
+                Controller.update_item(args[1], completed=False, recursive=recursive)
+
 
             case "examples":
                 Controller.show_examples()
