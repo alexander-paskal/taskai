@@ -36,11 +36,14 @@ function dateInputValueToCliFormat(value) {
 // `param` overrides the CLI flag name where it differs from the JSON key.
 const FIELD_DEFS = [
 	{ key: "name", label: "Name", type: "text" },
-	{ key: "description", label: "Description", type: "textarea" },
 	{ key: "status", label: "Status", type: "text" },
 	{ key: "priority", label: "Priority", type: "number" },
 	{ key: "due_by", label: "Due by", type: "date", format: isoToDateInputValue },
 	{ key: "completed", label: "Completed", type: "checkbox" },
+	// description goes last and is flagged `grow`: it's the big free-text
+	// field, so it sits at the bottom and stretches to fill whatever panel
+	// height is left (see .edit-field-grow in style.css)
+	{ key: "description", label: "Description", type: "textarea", grow: true },
 ];
 
 // debounce field updates so we're not POSTing on every keystroke — only
@@ -98,6 +101,7 @@ function handleFieldChange(item, def, value) {
 function buildField(item, def) {
 	const wrapper = document.createElement("label");
 	wrapper.className = "edit-field";
+	if (def.grow) wrapper.classList.add("edit-field-grow");
 
 	const labelText = document.createElement("span");
 	labelText.className = "edit-field-label";
