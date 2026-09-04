@@ -86,6 +86,45 @@ Panel layout:
 
 Not done: comment count on the canvas node (still "consider" in the plan).
 
+Keyboard shortcuts + left-hand shortcuts panel (Phase 4, last bullet). New
+`shortcuts.js` — one `SHORTCUTS` registry feeds both a global `keydown`
+handler and the rows of `#shortcut-panel`, a left-side mirror of the edit
+panel (44px chevron / 300px white panel, same `:root` var + `:has()`
+console-clash handling, same inline-label rows).
+
+Alex flagged two risks up front; the design answers each with one mechanism:
+
+- Don't wreck typing. The handler returns early with no `preventDefault`
+  whenever `document.activeElement` is an input/textarea/select/CE — so
+  arrows and letters behave normally while editing. The only `whileTyping`
+  entries are backtick (and only when the console input itself has focus, so
+  it can close it) and `Esc`.
+- Don't shadow OS/browser keys. Only modifier-free keys and `Shift+<key>`
+  are bound — nothing with Ctrl/Cmd/Alt or F-keys. So browser zoom stays on
+  `Cmd/Ctrl` `+/-/0` and we use bare `+`/`-`/`0`; tab/window/menu combos are
+  all untouched.
+
+Bindings: `` ` `` terminal (focuses cmdline; also closes from inside), `?`
+shortcuts panel, `e` edit panel, `Esc` (leave field / deselect / show-all,
+context-dependent), arrows navigate, `Shift`+arrows pan, `+`/`-` zoom, `0`
+fit, `a` add child + open edit panel with the name field focused+selected,
+`d` toggle done/undone, `Delete` delete (with `confirm()`). Client-only
+shortcuts leave no console trace; `a`/`d`/`Delete` go through `/api/command`
+and print only their `output` line, no `> echo`. A shortcut never moves
+focus except terminal-open and add-node.
+
+Supporting refactors:
+
+- `canvas.js`: right-panel width plumbing generalised to a `side` param —
+  `setPanelWidth(side, …)` / `setPanelWidthInstant(side, …)`,
+  `panelWidthAnimId {left,right}`, and `applyCanvasSize` subtracts both
+  reservations + `margin-left`s the canvas past the left panel.
+  `setRightPanelWidth[Instant]` kept as wrappers so `editpanel.js` didn't
+  change.
+- `console.js`: pulled out `toggleConsole(force)` (focus on open, blur on
+  close so the shortcut layer revives), `showAll()`, and `postCommand()`,
+  all reused by `shortcuts.js`.
+
 ---
 
 # 8-29

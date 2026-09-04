@@ -343,3 +343,122 @@ body:has(.console-panel.expanded) .comment-list {
 .comment-add-input:focus {
 	border-color: #4772fa;
 }
+
+/* ── shortcuts panel ──────────────────────────────────────────────────────
+   left-side mirror of the edit panel: collapsed is a bare chevron button,
+   expanded is a white reference panel. Same collapse/clash rules. */
+.shortcut-panel {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 10;
+	display: flex;
+	flex-direction: column;
+	background: transparent;
+	border-right: none;
+	box-shadow: none;
+	width: 44px;
+	height: 44px;
+	overflow: hidden;
+	transition: width 0.2s ease, height 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.shortcut-panel.expanded {
+	width: 300px;
+	height: calc(100vh - var(--console-h-collapsed));
+	background: #ffffff;
+	border-right: 1px solid #e2e4ea;
+	box-shadow: 2px 0 10px rgba(15, 23, 42, 0.06);
+}
+
+body:has(.console-panel.expanded) .shortcut-panel.expanded {
+	height: calc(100vh - var(--console-h-expanded));
+}
+
+.shortcut-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 44px;
+	height: 44px;
+	border: none;
+	background: transparent;
+	color: #9aa0ab;
+	cursor: pointer;
+	padding: 0;
+}
+
+.shortcut-toggle:hover {
+	color: #23252b;
+	background: rgba(15, 23, 42, 0.05);
+	border-radius: 10px;
+}
+
+.shortcut-toggle svg {
+	transition: transform 0.2s ease;
+}
+
+.shortcut-panel.expanded .shortcut-toggle svg {
+	transform: rotate(180deg);
+}
+
+.shortcut-body {
+	flex: 1;
+	overflow: auto;
+}
+
+.shortcut-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 12px 14px;
+}
+
+.shortcut-section {
+	font-weight: 600;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #9aa0ab;
+	margin-top: 8px;
+}
+
+.shortcut-section:first-child {
+	margin-top: 0;
+}
+
+/* same inline-label shape as .edit-field: keys in a fixed left column */
+.shortcut-row {
+	display: flex;
+	flex-direction: row;
+	align-items: baseline;
+	gap: 10px;
+	font-size: 12px;
+	color: #6b7280;
+}
+
+.shortcut-keys {
+	flex: none;
+	width: 92px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.shortcut-key {
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+	font-size: 11px;
+	line-height: 1.4;
+	color: #23252b;
+	background: #f5f6f8;
+	border: 1px solid #e2e4ea;
+	border-radius: 5px;
+	padding: 0 5px;
+	white-space: nowrap;
+}
+
+.shortcut-desc {
+	flex: 1;
+	min-width: 0;
+}

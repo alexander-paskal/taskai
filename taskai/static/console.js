@@ -7,10 +7,19 @@ const consoleToggle = document.getElementById("console-toggle");
 const consoleInput = document.getElementById("console-input");
 const consoleScrollback = document.getElementById("console-scrollback");
 
-consoleToggle.addEventListener("click", () => {
-	const expanded = consolePanel.classList.toggle("expanded");
+// `force` omitted = toggle; true/false = force that state. Opening focuses
+// the command line so you can type straight away; closing blurs it so the
+// keyboard-shortcut layer (which ignores keys while a field is focused)
+// comes back to life.
+function toggleConsole(force) {
+	const expanded = typeof force === "boolean" ? force : !consolePanel.classList.contains("expanded");
+	consolePanel.classList.toggle("expanded", expanded);
 	consoleToggle.setAttribute("aria-expanded", String(expanded));
-});
+	if (expanded) consoleInput.focus();
+	else consoleInput.blur();
+}
+
+consoleToggle.addEventListener("click", () => toggleConsole());
 
 function appendLine(text) {
 	const line = document.createElement("div");
@@ -48,6 +57,34 @@ function resolveDotRefs(command) {
 		return null;
 	}
 	return command.replace(/(^|\s)\.(?=\s|$)/g, `$1${selectedNode.id}`);
+}
+
+// POST a raw command string to the shared endpoint; returns the parsed
+// { output, tree, focus } (or throws). Callers decide what to echo.
+async function postCommand(input) {
+	const res = await fetch("/api/command", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ input }),
+	});
+	return res.json();
+}
+
+// select the synthetic root and ease the view out to fit the whole forest —
+// the `show` / `show all` console command and the keyboard shortcut share this
+async function showAll() {
+	let tree;
+	try {
+		const res = await fetch("/api/tree");
+		tree = await res.json();
+	} catch (err) {
+		appendLine("Error: " + err.message);
+		return;
+	}
+	applyTree(tree);
+	selectedNode = rootNode;
+	if (typeof onNodeSelected === "function") onNodeSelected(null);
+	fitAll();
 }
 
 const commandHistory = [];
@@ -90,18 +127,7 @@ consoleInput.addEventListener("keydown", async (e) => {
 
 	// `show all` / bare `show` — select the synthetic root and fit the forest
 	if (/^show(\s+all)?$/i.test(command)) {
-		let tree;
-		try {
-			const res = await fetch("/api/tree");
-			tree = await res.json();
-		} catch (err) {
-			appendLine("Error: " + err.message);
-			return;
-		}
-		applyTree(tree);
-		selectedNode = rootNode;
-		if (typeof onNodeSelected === "function") onNodeSelected(null);
-		fitAll();
+		await showAll();
 		return;
 	}
 

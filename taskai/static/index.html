@@ -8,6 +8,16 @@
 <body>
 	<canvas id="myCanvas"></canvas>
 
+	<div id="shortcut-panel" class="shortcut-panel">
+		<button id="shortcut-toggle" class="shortcut-toggle" aria-label="Toggle shortcuts panel" aria-expanded="false">
+			<svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+				<path d="M6 1L13 8L6 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+				<path d="M0 1L7 8L0 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+			</svg>
+		</button>
+		<div class="shortcut-body"></div>
+	</div>
+
 	<div id="edit-panel" class="edit-panel">
 		<button id="edit-toggle" class="edit-toggle" aria-label="Toggle edit panel" aria-expanded="false">
 			<svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -34,5 +44,6 @@
 	<script src="/static/canvas.js"></script>
 	<script src="/static/editpanel.js"></script>
 	<script src="/static/console.js"></script>
+	<script src="/static/shortcuts.js"></script>
 </body>
 </html>

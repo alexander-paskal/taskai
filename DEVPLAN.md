@@ -680,14 +680,41 @@ endpoints.
       `renderedItemId` and does an in-place `refreshFieldValues` for a
       same-item refresh, skipping whatever field is `document.activeElement`
       (value logic shared through a new `fieldDisplayValue`).
-- [ ] **Keyboard shortcuts + a shortcuts panel.** Add real key bindings
-      (toggle console, toggle edit panel, complete / delete the selected
-      node, deselect, focus a search box, zoom/pan, …) and a **left-hand
-      panel listing them**, mirroring the right-hand edit panel and
-      collapsible the same way. Follow the existing `STYLE` object +
-      collapsible-panel machinery (`setRightPanelWidth`); this adds a left
-      equivalent. Supersedes the single console-toggle shortcut noted in
-      Phase 3's UX pass.
+- [x] **Keyboard shortcuts + a shortcuts panel.** New `shortcuts.js`: one
+      `SHORTCUTS` registry drives both a global `keydown` handler and the
+      rows of a left-hand reference panel (`#shortcut-panel` in
+      `index.html`, `.shortcut-panel` in `style.css`) — a mirror of the
+      edit panel: 44px chevron collapsed, 300px white panel expanded, same
+      `:root` var / `body:has(.console-panel.expanded)` height-clash
+      handling, same inline-label row shape.
+      **Two rules keep it from fighting the browser or the text fields**
+      (see the DEVLOG discussion): (1) the handler bails with no
+      `preventDefault` whenever a field is focused — so arrows/letters type
+      normally while editing — except entries flagged `whileTyping` (just
+      backtick, and only when the console input itself is focused, so it can
+      close it; plus `Esc`); (2) only modifier-free keys and `Shift+<key>`
+      are ever bound — nothing with Ctrl/Cmd/Alt or a function key — so
+      browser zoom (`Cmd/Ctrl` `+/-/0`), tab/window combos, the menu bar,
+      etc. are never shadowed. Bindings: `` ` `` terminal (focuses the
+      command line; also closes from inside), `?` this panel, `e` edit
+      panel, `Esc` (leave field / deselect / show-all, context-dependent),
+      arrows navigate the tree, `Shift`+arrows pan, `+`/`-` zoom, `0`
+      fit/show-all, `a` add a child + open the edit panel with the name
+      field focused, `d` toggle done/undone, `Delete` delete (with a
+      `confirm()`). Client-only shortcuts (zoom/pan/nav/show-all) leave no
+      console trace; the mutating ones (`a`/`d`/`Delete`) run through the
+      same `/api/command` path and surface only their `output` line — no
+      `> echo`. A shortcut never moves focus except the two that should
+      (terminal open, add-node).
+      **`canvas.js` change:** the right-panel width plumbing was
+      generalised to a `side` param — `setPanelWidth(side, …)` /
+      `setPanelWidthInstant(side, …)`, with `panelWidthAnimId {left,right}`
+      and `applyCanvasSize` now subtracting both reservations and shoving
+      the canvas over with `margin-left`. `setRightPanelWidth[Instant]`
+      kept as thin wrappers so `editpanel.js` was untouched.
+      **`console.js` change:** extracted `toggleConsole(force)` (focus on
+      open / blur on close), `showAll()`, and a `postCommand(input)` helper,
+      all reused by `shortcuts.js`.
 
 ---
 

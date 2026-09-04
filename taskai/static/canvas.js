@@ -221,16 +221,19 @@ function worldToScreen(wx, wy) {
 	return { x: wx * view.scale + view.offsetX, y: wy * view.scale + view.offsetY };
 }
 
-// width (px) reserved on the right for the edit panel — the canvas fills the rest
+// width (px) reserved on each side — right for the edit panel, left for the
+// shortcuts panel; the canvas fills what's between them
 let rightPanelWidth = 0;
-let rightPanelWidthAnimId = null;
+let leftPanelWidth = 0;
+const panelWidthAnimId = { left: null, right: null };
 
-// keep in sync with the CSS width transition duration on .edit-panel in style.css
+// keep in sync with the CSS width transition on .edit-panel / .shortcut-panel
 const PANEL_TRANSITION_MS = 200;
 
 function applyCanvasSize() {
-	canvas.width = window.innerWidth - rightPanelWidth;
+	canvas.width = window.innerWidth - rightPanelWidth - leftPanelWidth;
 	canvas.height = window.innerHeight;
+	canvas.style.marginLeft = leftPanelWidth + "px"; // shove the canvas past the left panel
 }
 
 function resizeCanvas() {
@@ -253,33 +256,39 @@ function _rescaleForWidthChange(oldWidth, startScale, centerWorld) {
 	view.offsetY = canvas.height / 2 - centerWorld.y * view.scale;
 }
 
-// jumps straight to `width` with no animation — for initial setup, where
-// there's nothing on screen yet to transition from
-function setRightPanelWidthInstant(width) {
-	if (rightPanelWidthAnimId !== null) {
-		cancelAnimationFrame(rightPanelWidthAnimId);
-		rightPanelWidthAnimId = null;
+function _panelWidth(side) { return side === "left" ? leftPanelWidth : rightPanelWidth; }
+function _setPanelWidthVar(side, w) {
+	if (side === "left") leftPanelWidth = w;
+	else rightPanelWidth = w;
+}
+
+// jumps a side's reservation straight to `width` with no animation — for
+// initial setup, where there's nothing on screen yet to transition from
+function setPanelWidthInstant(side, width) {
+	if (panelWidthAnimId[side] !== null) {
+		cancelAnimationFrame(panelWidthAnimId[side]);
+		panelWidthAnimId[side] = null;
 	}
 
 	const oldWidth = canvas.width;
 	const startScale = view.scale;
 	const centerWorld = screenToWorld(canvas.width / 2, canvas.height / 2);
 
-	rightPanelWidth = width;
+	_setPanelWidthVar(side, width);
 	applyCanvasSize();
 	_rescaleForWidthChange(oldWidth, startScale, centerWorld);
 
 	draw();
 }
 
-// eases the right-panel reservation (and the canvas size/zoom that follow
-// it) to `targetWidth` over `duration`ms, matching the panel's own CSS
-// transition so the graph resizes in step with it rather than snapping.
-function setRightPanelWidth(targetWidth, duration = PANEL_TRANSITION_MS) {
-	if (rightPanelWidthAnimId !== null) cancelAnimationFrame(rightPanelWidthAnimId);
-	if (rightPanelWidth === targetWidth) return;
+// eases a side's reservation (and the canvas size/zoom that follow it) to
+// `targetWidth` over `duration`ms, matching the panel's own CSS transition
+// so the graph resizes in step with it rather than snapping.
+function setPanelWidth(side, targetWidth, duration = PANEL_TRANSITION_MS) {
+	if (panelWidthAnimId[side] !== null) cancelAnimationFrame(panelWidthAnimId[side]);
+	if (_panelWidth(side) === targetWidth) return;
 
-	const startWidth = rightPanelWidth;
+	const startWidth = _panelWidth(side);
 	const startScale = view.scale;
 	const oldWidth = canvas.width;
 	const centerWorld = screenToWorld(canvas.width / 2, canvas.height / 2);
@@ -289,17 +298,21 @@ function setRightPanelWidth(targetWidth, duration = PANEL_TRANSITION_MS) {
 		const t = Math.min(1, (now - startTime) / duration);
 		const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
 
-		rightPanelWidth = startWidth + (targetWidth - startWidth) * eased;
+		_setPanelWidthVar(side, startWidth + (targetWidth - startWidth) * eased);
 		applyCanvasSize();
 		_rescaleForWidthChange(oldWidth, startScale, centerWorld);
 
 		draw();
 
-		rightPanelWidthAnimId = t < 1 ? requestAnimationFrame(step) : null;
+		panelWidthAnimId[side] = t < 1 ? requestAnimationFrame(step) : null;
 	}
 
-	rightPanelWidthAnimId = requestAnimationFrame(step);
+	panelWidthAnimId[side] = requestAnimationFrame(step);
 }
+
+// back-compat wrappers — editpanel.js drives the right side through these
+function setRightPanelWidthInstant(width) { setPanelWidthInstant("right", width); }
+function setRightPanelWidth(width, duration) { setPanelWidth("right", width, duration); }
 
 // true if the world point (x, y) falls inside node's square
 function hitTest(node, x, y) {
