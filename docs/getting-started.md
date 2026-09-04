@@ -88,10 +88,12 @@ task show 2
 task status 2 "in progress"
 task comment 2 "outline done, drafting the intro"
 task done 2
+task done 2 -r   # also complete everything under item 2
 ```
 
-`task done` (alias: `task complete`) marks the item **and everything under it**
-complete. Clean finished work up with `task clear`:
+`task done` (alias: `task complete`) marks just that item complete; add `-r`
+(or `-recursive`) to complete all its descendants too. `task undone` reverses
+it and takes the same `-r` flag. Clean finished work up with `task clear`:
 
 ```bash
 task clear "Launch blog"   # delete completed items under that parent

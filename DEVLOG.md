@@ -23,8 +23,10 @@ original Phase 1 scope (DEVPLAN 1.7 has the durable version):
 
 CLI (not browser): added `task undone <id>`, and made recursion on
 `complete`/`done` an opt-in `-r` / `-recursive` flag instead of always-on.
-`help_menu.py` not yet resynced for either — logged as an open item under
-DEVPLAN Phase 3.
+Resynced the docs for it — `help_menu.py` (`help_general` + `help_examples`,
+which is also the AI's command reference) and the hand-written mentions in
+`docs/getting-started.md` / `docs/item-data.md`. `docs/commands.md` is a
+`literalinclude` of generated help text, so it tracks automatically.
 
 Fixed the long-standing `update_item` quirk: it now calls
 `_parse_item_kwargs` before `db.update_item` (like `create_item` does), so

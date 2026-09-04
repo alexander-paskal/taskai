@@ -596,12 +596,14 @@ Re-scope this section before starting 2.4.
       `html_baseurl` + README); explanation/architecture pages; polish
       (screenshots for browser-mode, custom 404, OpenGraph cards, CI
       `linkcheck`, tested examples, changelog).
-- [ ] **`help_menu.py` drift from `execute_commands`.** The CLI gained
+- [x] **`help_menu.py` drift from `execute_commands`.** The CLI gained
       `task undone <id>` and an opt-in `-r` / `-recursive` flag on
-      `complete` / `done` (recursion used to be unconditional). `help_menu.py`
-      still documents `done` as "mark an item, and all its descendants,
-      complete", has no `undone` entry, and its `task done 4` example is now
-      wrong. Resync it — it's also the AI's verbatim command reference.
+      `complete` / `done` (recursion used to be unconditional). Resynced:
+      `help_general` and `help_examples` in `help_menu.py` (also the AI's
+      verbatim command reference), plus the two hand-written mentions in
+      `docs/getting-started.md` and `docs/item-data.md`. `docs/commands.md`
+      needs no edit — it `literalinclude`s the `builder-inited`-generated
+      dump of `help_general`.
 - [ ] **UX pass.** Empty/loading state for the DAG when a user has no tasks
       yet (currently the app would just render nothing); a keyboard shortcut
       to toggle the console (e.g. backtick); consistent spacing/typography

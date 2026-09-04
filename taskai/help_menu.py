@@ -22,7 +22,8 @@ Modifying items (an id or a name works everywhere):
 'task rename {id|name} {new name}' --> rename an item
 'task status {id|name} {text}' --> set an item's status string
 'task comment {id|name} {text}' --> add a comment to an item
-'task complete {id|name}' / 'task done {id|name}' --> mark an item, and all its descendants, complete
+'task complete {id|name}' / 'task done {id|name}' --> mark an item complete; add -r (or -recursive) to also complete all its descendants
+'task undone {id|name}' --> mark an item not complete; add -r (or -recursive) to also un-complete all its descendants
 'task reorder {id1|name} before|after {id2|name}' --> reorder one item relative to a sibling
 'task move {id|name} {new parent id|name}' --> reparent an item; pass an empty string for the new parent to move it to the top level
 'task link {parent id|name} {item id|name}' --> soft-link item under parent, without reparenting it
@@ -79,7 +80,9 @@ Build a small project tree:
 Work an item and finish it:
   task status 4 "in progress"
   task comment 4 "stuck on the intro paragraph"
-  task done 4                       # completes item 4 and everything under it
+  task done 4                       # completes just item 4
+  task done 4 -r                    # completes item 4 and everything under it
+  task undone 4                     # reopen it
 
 Reorganize (reorder/rename/status take an id; move takes an id or a name):
   task move "Set up hosting" "Write first post"

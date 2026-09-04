@@ -25,13 +25,16 @@ Some changes have their own command instead of an option:
 task rename 4 "Ship v2.1"
 task status 4 "in review"           # same as --status, as its own verb
 task comment 4 "waiting on QA sign-off"
-task complete 4                     # mark done — also completes descendants
+task complete 4                     # mark item 4 done
 task done 4                         # alias for complete
+task done 4 -r                      # also complete every descendant
 ```
 
-`task complete` / `task done` mark the item **and everything under it**
-complete. To reopen something, set it back explicitly:
+`task complete` / `task done` mark just that item complete; add `-r` (or
+`-recursive`) to include all its descendants. To reopen something, use
+`task undone` (which takes the same `-r` flag) or set the field explicitly:
 
 ```bash
+task undone 4
 task update 4 --completed false
 ```
