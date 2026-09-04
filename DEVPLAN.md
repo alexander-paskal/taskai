@@ -98,17 +98,20 @@ unless you're told to fix them):**
   Removed rather than wired up — `Controller.show_items` and `view_items`
   are gone (CLI audit, see DEVLOG); `task show` only ever takes one target
   now.
-- `Controller.update_item` never calls `Controller._parse_item_kwargs`
-  (`create_item` does) before handing kwargs to `db.update_item`. Confirmed
-  effects: `update <id> --due_by MM-DD-YYYY` throws a pydantic validation
-  error (the string never gets converted to a `datetime`, unlike on
-  `create`), and `update <id> --depends_on 1,2` silently no-ops (never
-  remapped to the model's real `dependency_ids` field, so pydantic just
-  drops it as an unrecognized extra key — no error, no effect). Every other
-  field (`name`, `description`, `status`, `priority`, `completed`) updates
-  correctly. The edit panel (1.5) and console both go through `update` and
-  will hit this. Likely fix: add the same
-  `kwargs = Controller._parse_item_kwargs(kwargs)` call `create_item` makes.
+- ~~`Controller.update_item` never calls `Controller._parse_item_kwargs`
+  (`create_item` does) before handing kwargs to `db.update_item`, so
+  `update <id> --due_by MM-DD-YYYY` threw a pydantic validation error and
+  `update <id> --depends_on 1,2` silently no-op'd.~~ **Fixed.**
+  `update_item` now runs `kwargs = Controller._parse_item_kwargs(kwargs)`
+  before `db.update_item`, same as `create_item`. `_parse_item_kwargs` was
+  extended in the same pass: it now also maps the CLI-facing `depends_on`
+  (a comma-separated id string, `"1,2,3"`) to the model's real
+  `dependency_ids: list[int]` — so `create --depends_on ...` works now too,
+  not just `update` — and its `due_by` branch is guarded with
+  `isinstance(v, str)` so the helper is idempotent (safe for the
+  already-parsed kwargs `update_item`'s `recursive=True` branch passes back
+  down). Edit panel's **Due by** and **Depends on** fields now round-trip
+  end to end.
 - **Sync is one-directional: CLI → browser only, not the reverse.**
   `GET /api/tree` (`browser.py`) reloads from disk (`db.flush()`) on every
   call, and `canvas.js` refetches on window focus, so browser-side views
@@ -338,9 +341,9 @@ add new visual knobs there, not inline in `draw()`.
 
 While wiring this up, confirmed against a throwaway test item (created and
 deleted, not real data): `name`/`description`/`priority`/`completed` all
-update correctly end to end. `due_by` and `depends_on` hit the
-`update_item`/`_parse_item_kwargs` bug documented above — left unfixed on
-purpose, current call.
+update correctly end to end. `due_by` and `depends_on` originally hit the
+`update_item`/`_parse_item_kwargs` bug documented above — **now fixed** (see
+that entry), so all seven fields round-trip.
 
 ### 1.6 — Console
 

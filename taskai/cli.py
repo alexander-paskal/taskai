@@ -86,12 +86,23 @@ class Controller:
 
 
     def _parse_item_kwargs(kwargs):
+        # idempotent: also called on the already-parsed kwargs that
+        # update_item()'s recursive branch passes back down
         for k, v in kwargs.copy().items():
             if v is None:
                 continue
             match k:
                 case "completed": kwargs["completed"] = bool(v)
-                case "due_by": kwargs["due_by"] = datetime.strptime(v, "%m-%d-%Y")
+                case "due_by":
+                    if isinstance(v, str):
+                        kwargs["due_by"] = datetime.strptime(v, "%m-%d-%Y")
+                case "depends_on":
+                    # CLI-facing alias for the model's dependency_ids field;
+                    # accepts a comma-separated id list ("1,2,3") or one id
+                    kwargs["dependency_ids"] = [
+                        int(x) for x in str(v).split(",") if str(x).strip()
+                    ]
+                    del kwargs["depends_on"]
         return kwargs
 
     def _get_root_ids():
@@ -137,6 +148,7 @@ class Controller:
 
     def update_item(item_id: int|str, recursive=False, **kwargs):
         item_id = Controller._resolve_item(item_id).id
+        kwargs = Controller._parse_item_kwargs(kwargs)
         db.update_item(item_id, **kwargs)
         print(f"Updated item {item_id}")
 

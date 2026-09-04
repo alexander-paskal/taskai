@@ -26,6 +26,14 @@ CLI (not browser): added `task undone <id>`, and made recursion on
 `help_menu.py` not yet resynced for either — logged as an open item under
 DEVPLAN Phase 3.
 
+Fixed the long-standing `update_item` quirk: it now calls
+`_parse_item_kwargs` before `db.update_item` (like `create_item` does), so
+`update <id> --due_by MM-DD-YYYY` no longer throws. Extended
+`_parse_item_kwargs` in the same pass — maps `depends_on` (`"1,2,3"`) to
+`dependency_ids`, and guarded the `due_by` branch with `isinstance(v, str)`
+so it's idempotent for the recursive re-parse. Edit panel's Due by /
+Depends on fields round-trip now.
+
 ---
 
 # 8-29
