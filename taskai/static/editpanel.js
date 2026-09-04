@@ -98,6 +98,16 @@ function handleFieldChange(item, def, value) {
 	}, FIELD_UPDATE_DEBOUNCE_MS);
 }
 
+// the value to show in a field's input for the given item — checkbox uses
+// the boolean directly (assigned to .checked), the rest get a string .value
+function fieldDisplayValue(item, def) {
+	const raw = item[def.key];
+	if (def.type === "checkbox") return Boolean(raw);
+	if (def.type === "textarea") return raw || "";
+	if (def.format) return def.format(raw);
+	return raw ?? "";
+}
+
 function buildField(item, def) {
 	const wrapper = document.createElement("label");
 	wrapper.className = "edit-field";
@@ -108,27 +118,28 @@ function buildField(item, def) {
 	labelText.textContent = def.label;
 	wrapper.appendChild(labelText);
 
-	const rawValue = item[def.key];
 	let input;
 
 	if (def.type === "textarea") {
 		input = document.createElement("textarea");
-		input.value = rawValue || "";
+		input.value = fieldDisplayValue(item, def);
 		wrapper.appendChild(input);
 	} else if (def.type === "checkbox") {
 		const row = document.createElement("div");
 		row.className = "edit-field-checkbox-row";
 		input = document.createElement("input");
 		input.type = "checkbox";
-		input.checked = Boolean(rawValue);
+		input.checked = fieldDisplayValue(item, def);
 		row.appendChild(input);
 		wrapper.appendChild(row);
 	} else {
 		input = document.createElement("input");
 		input.type = def.type; // "text", "number", or "date"
-		input.value = def.format ? def.format(rawValue) : (rawValue ?? "");
+		input.value = fieldDisplayValue(item, def);
 		wrapper.appendChild(input);
 	}
+
+	input.dataset.fieldKey = def.key; // for the in-place refresh in renderEditForm
 
 	// checkboxes are a single discrete action (send immediately); everything
 	// else listens on "input" so the debounce in handleFieldChange can wait
@@ -142,7 +153,30 @@ function buildField(item, def) {
 	return wrapper;
 }
 
+// id of the item the form is currently showing, so a same-item refresh
+// (e.g. the applyTree after our own debounced field POST) can update values
+// in place instead of tearing the form down and unfocusing the live field
+let renderedItemId = null;
+
+// push fresh values into the existing inputs without rebuilding them — skips
+// whichever field the user is currently editing so we don't stomp their input
+function refreshFieldValues(item) {
+	editBody.querySelectorAll("[data-field-key]").forEach(input => {
+		if (input === document.activeElement) return;
+		const def = FIELD_DEFS.find(d => d.key === input.dataset.fieldKey);
+		if (!def) return;
+		if (def.type === "checkbox") input.checked = fieldDisplayValue(item, def);
+		else input.value = fieldDisplayValue(item, def);
+	});
+}
+
 function renderEditForm(item) {
+	if (item && String(item.id) === renderedItemId && editBody.querySelector(".edit-form")) {
+		refreshFieldValues(item);
+		return;
+	}
+
+	renderedItemId = item ? String(item.id) : null;
 	editBody.innerHTML = "";
 
 	if (!item) {

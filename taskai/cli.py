@@ -92,7 +92,14 @@ class Controller:
             if v is None:
                 continue
             match k:
-                case "completed": kwargs["completed"] = bool(v)
+                case "completed":
+                    # note: bool("false") is True — parse the string, don't
+                    # cast it. Real bools (the recursive re-parse, and the
+                    # complete/done/undone dispatch) pass straight through.
+                    if isinstance(v, bool):
+                        kwargs["completed"] = v
+                    else:
+                        kwargs["completed"] = str(v).strip().lower() in ("true", "1", "yes")
                 case "due_by":
                     if isinstance(v, str):
                         kwargs["due_by"] = datetime.strptime(v, "%m-%d-%Y")
