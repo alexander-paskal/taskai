@@ -34,7 +34,21 @@ const CLIENT_COMMANDS = {
 	"down":      () => navigate("down"),
 	"left":      () => navigate("left"),
 	"right":     () => navigate("right"),
+	"hide edit": () => closeEditPanel(),
 };
+
+// `.` as a standalone token refers to the currently selected node — swap it
+// for that node's id before the command is matched or sent on. Only matches a
+// bare `.` (spaces or string ends on both sides), so `a.md` / `3.5` are left
+// alone. Returns null (and reports) if `.` is used with no real selection.
+function resolveDotRefs(command) {
+	if (!/(^|\s)\.(\s|$)/.test(command)) return command;
+	if (!selectedNode || selectedNode === rootNode) {
+		appendLine("No node selected — `.` refers to the selected node");
+		return null;
+	}
+	return command.replace(/(^|\s)\.(?=\s|$)/g, `$1${selectedNode.id}`);
+}
 
 const commandHistory = [];
 let historyIndex = commandHistory.length; // length = not currently browsing history
@@ -56,7 +70,7 @@ consoleInput.addEventListener("keydown", async (e) => {
 	}
 	if (e.key !== "Enter") return;
 
-	const command = consoleInput.value.trim();
+	let command = consoleInput.value.trim();
 	if (!command) return;
 
 	commandHistory.push(command);
@@ -64,6 +78,9 @@ consoleInput.addEventListener("keydown", async (e) => {
 
 	appendLine("> " + command);
 	consoleInput.value = "";
+
+	command = resolveDotRefs(command); // `.` -> selected node's id
+	if (command === null) return;
 
 	const clientHandler = CLIENT_COMMANDS[command.toLowerCase()];
 	if (clientHandler) {
@@ -144,7 +161,7 @@ consoleInput.addEventListener("keydown", async (e) => {
 			const node = nodes.find(n => n.id === String(data.focus));
 			if (node) {
 				selectedNode = node;
-				if (typeof onNodeSelected === "function") onNodeSelected(latestItemsById[node.id]);
+				if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(node));
 				focusOnNode(node);
 				if (typeof openEditPanel === "function") openEditPanel();
 			}
