@@ -110,8 +110,14 @@ unless you're told to fix them):**
   not just `update` — and its `due_by` branch is guarded with
   `isinstance(v, str)` so the helper is idempotent (safe for the
   already-parsed kwargs `update_item`'s `recursive=True` branch passes back
-  down). Edit panel's **Due by** and **Depends on** fields now round-trip
-  end to end.
+  down). The edit panel's **Due by** field and `--depends_on` from the
+  console/CLI now round-trip end to end (there's no "Depends on" field in
+  the panel any more). Follow-up the same session: the `completed` branch was
+  `bool(v)`, and `bool("false")` is `True` — so once `update` started going
+  through `_parse_item_kwargs`, unchecking the edit panel's Completed box
+  (which POSTs `--completed "false"`) always re-checked it. Now parses the
+  string (`"true"/"1"/"yes"`), with real bools passing straight through for
+  the `done`/`undone` dispatch and the recursive re-parse.
 - **Sync is one-directional: CLI → browser only, not the reverse.**
   `GET /api/tree` (`browser.py`) reloads from disk (`db.flush()`) on every
   call, and `canvas.js` refetches on window focus, so browser-side views
@@ -330,6 +336,10 @@ add new visual knobs there, not inline in `draw()`.
       trips `<input type="date">`'s `YYYY-MM-DD` to/from the CLI's
       `MM-DD-YYYY`; `dependency_ids` round-trips to/from the CLI's
       comma-separated `depends_on` id list.
+      (Later: the `dependency_ids` / "Depends on" field was dropped from
+      `FIELD_DEFS` — there's no CLI `depend` command creating that data
+      anyway, see 1.4 / TRIAGE — and the field order changed so
+      `description` sits last, above the Phase 4 comment feed.)
 - [x] **No Save button** — deliberate deviation from the original plan.
       Every field change posts straight to `/api/command` as
       `update <id> --<field> <value>`. Checkbox sends immediately on toggle;
@@ -341,9 +351,10 @@ add new visual knobs there, not inline in `draw()`.
 
 While wiring this up, confirmed against a throwaway test item (created and
 deleted, not real data): `name`/`description`/`priority`/`completed` all
-update correctly end to end. `due_by` and `depends_on` originally hit the
-`update_item`/`_parse_item_kwargs` bug documented above — **now fixed** (see
-that entry), so all seven fields round-trip.
+update correctly end to end. `due_by` (and `--depends_on` from the console
+/ CLI) originally hit the `update_item`/`_parse_item_kwargs` bug documented
+above — **now fixed** (see that entry), so every field the panel exposes
+round-trips.
 
 ### 1.6 — Console
 
@@ -620,16 +631,55 @@ Builds on Phase 1's canvas / edit panel / console. Still plain HTML/CSS/JS, no
 framework, everything routed through the existing `/api/tree` + `/api/command`
 endpoints.
 
-- [ ] **Show comments.** Items carry `comment_ids` but the browser never
-      surfaces them. Render an item's comments in the edit panel — read-only
-      list at minimum; adding one posts `comment <id> <text>` through
-      `/api/command` like every other field. Consider a comment-count
-      affordance on the canvas node itself.
-- [ ] **Much larger description editor.** The `description` field in the edit
-      panel is a small single-line-ish input today. Make it a real multi-line
-      textarea that dominates the panel (large fixed height or auto-grow), so
-      the panel is usable for actual note-taking — likely widen the panel
-      itself while a node is selected.
+- [x] **Show comments.** Backend: `_full_tree()` (`browser.py`) attaches a
+      resolved `comments` array to each item dump via `_resolve_comments`
+      (skips a dangling comment id rather than 500-ing the tree) — not a
+      `TodoItem` field, it just rides along on the same `/api/tree` read.
+      Frontend (`editpanel.js`): `buildCommentsSection` renders a flat,
+      read-only feed below the description box — no cards, each row is the
+      date (left, muted) and the comment text (right-aligned, wraps under
+      itself), oldest→newest. The add box is a 2-row `<textarea>` (fixed
+      52px, `resize: none`); **Enter** sends `comment <id> "<text>"` through
+      `/api/command` like every other field, **Shift+Enter** is a newline.
+      The list is a fixed `height` (200px, a `:root` var) with a scrollbar
+      on overflow; it opens pinned to the newest comment and stays there on
+      add, but preserves scroll position if you've scrolled up into the
+      history (`stickToBottom` check + `requestAnimationFrame` for the first
+      render). Comment count on the canvas node itself is **not** done —
+      still just "consider".
+- [x] **Much larger description editor.** `description` moved to the *bottom*
+      of the field list (`FIELD_DEFS` in `editpanel.js`), flagged
+      `grow: true` → an `.edit-field-grow` class whose `textarea` flexes to
+      fill the vertical space the fixed fields + comment feed leave
+      (`min-height: 96px` floor, `resize: vertical` kept). It was always a
+      `<textarea>` — just no longer a 60px slit. Also this pass, on the same
+      panel:
+      - **Inline labels.** `.edit-field` went from stacked to a row layout —
+        a fixed 76px label column on the left, control fills the rest — so
+        each fixed field is one line instead of two. Description and the
+        comment feed opt back out to stacked (`.edit-field-grow`,
+        `.edit-comments`).
+      - **Wider panel.** `EDIT_PANEL_EXPANDED_WIDTH` 320 → 448 (JS constant
+        + `.edit-panel.expanded` in `style.css`).
+      - **No clash with the console.** Both panels are `position: fixed` and
+        were overlapping in the bottom-right. Console heights are now `:root`
+        vars (`--console-h-collapsed/expanded`); `.edit-panel.expanded`
+        height is `calc(100vh - <console height>)`, switched via
+        `body:has(.console-panel.expanded) …`, so the edit panel stops
+        exactly at the console's top edge in both states and animates with
+        it. The height the edit panel loses when the console opens is split
+        evenly — half off the description box, half off the comment list
+        (`body:has(.console-panel.expanded) .comment-list` shrinks by half
+        the delta, ~200→82px).
+      - Panel-widen-*further*-on-select was considered and skipped; revisit
+        if 448px still feels tight for note-taking.
+      Two edit-panel bugs fixed in passing: the Completed checkbox not
+      un-checking (see the `_parse_item_kwargs` `completed` note under
+      "Known code quirks"), and every debounced field POST tearing down and
+      unfocusing the field being typed in — `renderEditForm` now tracks
+      `renderedItemId` and does an in-place `refreshFieldValues` for a
+      same-item refresh, skipping whatever field is `document.activeElement`
+      (value logic shared through a new `fieldDisplayValue`).
 - [ ] **Keyboard shortcuts + a shortcuts panel.** Add real key bindings
       (toggle console, toggle edit panel, complete / delete the selected
       node, deselect, focus a search box, zoom/pan, …) and a **left-hand

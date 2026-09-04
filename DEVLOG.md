@@ -33,8 +33,58 @@ Fixed the long-standing `update_item` quirk: it now calls
 `update <id> --due_by MM-DD-YYYY` no longer throws. Extended
 `_parse_item_kwargs` in the same pass — maps `depends_on` (`"1,2,3"`) to
 `dependency_ids`, and guarded the `due_by` branch with `isinstance(v, str)`
-so it's idempotent for the recursive re-parse. Edit panel's Due by /
-Depends on fields round-trip now.
+so it's idempotent for the recursive re-parse. `update <id> --due_by` /
+`--depends_on` round-trip now.
+
+Then a long edit-panel pass (DEVPLAN Phase 4). Two bugs first:
+
+- Completed checkbox wouldn't uncheck. `_parse_item_kwargs`'s `completed`
+  case was `bool(v)`, and `bool("false")` is `True` — a regression from
+  routing `update` through `_parse_item_kwargs` above (pydantic used to
+  coerce the `"false"` string fine downstream). Now parses the string; real
+  bools (`done`/`undone`, the recursive re-parse) pass straight through.
+- Every debounced field POST was unfocusing the field mid-type.
+  `renderEditForm` did `innerHTML = ""` and rebuilt the whole form on every
+  `applyTree` — including the one after its own debounced update. Now tracks
+  `renderedItemId`; a same-item refresh does an in-place `refreshFieldValues`
+  that skips whatever field is `document.activeElement`. Value logic pulled
+  into a shared `fieldDisplayValue`.
+
+Description editor: moved `description` to the bottom of `FIELD_DEFS` and
+made its `textarea` flex to fill the space the fixed fields + comment feed
+leave (`min-height: 96px` floor). Density pass on the form too — gaps and
+paddings pulled in (16→10 / 6→3 / 8·10→5·8), radius 8→6.
+
+Comments (Phase 4, "Show comments"):
+
+- `browser.py`: `_full_tree()` attaches a resolved `comments` array to each
+  item dump (`_resolve_comments`, skips a dangling id). Not a `TodoItem`
+  field — rides the same `/api/tree` read.
+- `editpanel.js`: `buildCommentsSection` — flat feed (no cards), each row is
+  date on the left + comment right-aligned and wrapping, oldest→newest,
+  below the description box. Add box is a 2-row `<textarea>` (fixed 52px,
+  `resize: none`): Enter sends `comment <id> "<text>"` through
+  `/api/command`, Shift+Enter is a newline. List is a fixed `height` (200px,
+  a `:root` var) with a scrollbar on overflow; opens pinned to the newest
+  and sticks there on add, but keeps your place if you've scrolled up
+  (`stickToBottom` check + `requestAnimationFrame` so it also works on the
+  first render).
+
+Panel layout:
+
+- Labels moved inline — `.edit-field` is a row now, fixed 76px label column
+  on the left, control fills the rest; each fixed field is one line.
+  `description` / `.edit-comments` opt back out to stacked.
+- Panel width 320 → 448 (`EDIT_PANEL_EXPANDED_WIDTH` + `.edit-panel.expanded`).
+- Panel/console clash: both are `position: fixed` and overlapped bottom-right.
+  Console heights are `:root` vars now; `.edit-panel.expanded` height is
+  `calc(100vh - <console height>)` toggled by
+  `body:has(.console-panel.expanded)`, so it stops exactly at the console's
+  top edge and animates with it. The height lost when the console opens is
+  split evenly — half off description, half off the comment list
+  (`body:has(.console-panel.expanded) .comment-list` shrinks ~200→82px).
+
+Not done: comment count on the canvas node (still "consider" in the plan).
 
 ---
 
