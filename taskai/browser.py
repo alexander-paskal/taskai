@@ -24,11 +24,29 @@ def index():
     return FileResponse(os.path.join(static_abs_dir, "index.html"))
 
 
+def _resolve_comments(item):
+    """Full comment objects for an item, in comment_ids order. Skips any
+    dangling id rather than 500-ing the whole tree (id-lists are maintained
+    by hand on both sides, so a desync is possible)."""
+    comments = []
+    for cid in item.comment_ids:
+        try:
+            comments.append(db.get_comment(cid).model_dump(mode="json"))
+        except Exception:
+            continue
+    return comments
+
+
 def _full_tree():
-    return {
-        item_id: db.get_item(item_id).model_dump(mode="json")
-        for item_id in db.get_item_ids()
-    }
+    tree = {}
+    for item_id in db.get_item_ids():
+        item = db.get_item(item_id)
+        dump = item.model_dump(mode="json")
+        # not a TodoItem field — resolved here so the frontend gets comment
+        # text from the same /api/tree read as everything else
+        dump["comments"] = _resolve_comments(item)
+        tree[item_id] = dump
+    return tree
 
 
 @app.get("/api/tree")

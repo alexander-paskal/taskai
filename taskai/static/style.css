@@ -115,7 +115,7 @@ canvas {
 }
 
 .edit-panel.expanded {
-	width: 320px;
+	width: 448px;
 	height: 100vh;
 	background: #ffffff;
 	border-left: 1px solid #e2e4ea;
@@ -170,27 +170,51 @@ canvas {
 	box-sizing: border-box;
 }
 
+/* label sits inline on the left, control fills the rest — packs the form
+   in much tighter vertically than stacked label/control did */
 .edit-field {
 	display: flex;
-	flex-direction: column;
-	gap: 3px;
+	flex-direction: row;
+	align-items: center;
+	gap: 10px;
 	font-size: 12px;
 	color: #6b7280;
 }
 
-/* description: stretch to fill whatever vertical space the fixed-height
-   fields above it leave, so it's a real writing area rather than a slit */
+.edit-field-label {
+	font-weight: 500;
+	flex: none;
+	width: 76px;
+}
+
+/* description + comments break the row rule: label back on top, full width */
+.edit-field-grow,
+.edit-comments {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 6px;
+}
+
+.edit-field-grow > .edit-field-label,
+.edit-comments > .edit-field-label {
+	width: auto;
+}
+
+/* description takes whatever vertical space is left; the comment feed below
+   it is a fixed-size block (list scrolls on overflow, add box is a couple
+   of lines) so it doesn't fight the description for room */
 .edit-field-grow {
 	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.edit-comments {
+	flex: none;
 }
 
 .edit-field-grow textarea {
 	flex: 1;
-	min-height: 130px;
-}
-
-.edit-field-label {
-	font-weight: 500;
+	min-height: 96px;
 }
 
 .edit-field input[type="text"],
@@ -205,7 +229,8 @@ canvas {
 	border-radius: 6px;
 	padding: 5px 8px;
 	box-sizing: border-box;
-	width: 100%;
+	flex: 1 1 auto;
+	min-width: 0;
 	outline: none;
 }
 
@@ -224,10 +249,73 @@ canvas {
 .edit-field-checkbox-row {
 	display: flex;
 	align-items: center;
+	flex: 1 1 auto;
 }
 
 .edit-field-checkbox-row input[type="checkbox"] {
 	width: 16px;
 	height: 16px;
 	accent-color: #4772fa;
+}
+
+/* comments: a flat read-only feed (no cards — straight on the panel) plus
+   an add input, sitting below description */
+.comment-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	height: 200px;
+	overflow-y: auto;
+}
+
+/* date pinned left, comment text pinned right and wrapping under itself */
+.comment-item {
+	display: flex;
+	gap: 12px;
+	align-items: baseline;
+}
+
+.comment-date {
+	flex: none;
+	font-size: 11px;
+	color: #9aa0ab;
+}
+
+.comment-body {
+	flex: 1;
+	min-width: 0;
+	text-align: right;
+	font-size: 12.5px;
+	color: #23252b;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.comment-empty {
+	font-size: 12px;
+	color: #9aa0ab;
+	font-style: italic;
+}
+
+.comment-add-input {
+	flex: none;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	font-size: 13px;
+	color: #23252b;
+	background: #f5f6f8;
+	border: 1px solid #e2e4ea;
+	border-radius: 6px;
+	padding: 5px 8px;
+	box-sizing: border-box;
+	width: 100%;
+	height: 52px;
+	resize: none;
+	outline: none;
+}
+
+.comment-add-input:focus {
+	border-color: #4772fa;
 }

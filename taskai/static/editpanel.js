@@ -7,7 +7,7 @@ const editToggle = document.getElementById("edit-toggle");
 const editBody = document.querySelector("#edit-panel .edit-body");
 
 const EDIT_PANEL_COLLAPSED_WIDTH = 44;
-const EDIT_PANEL_EXPANDED_WIDTH = 320;
+const EDIT_PANEL_EXPANDED_WIDTH = 448;
 
 // reserve the collapsed strip's width in the canvas from the start (instant —
 // there's nothing on screen yet to animate a transition from)
@@ -72,6 +72,29 @@ async function sendFieldUpdate(item, def, value) {
 		data = await res.json();
 	} catch (err) {
 		appendLine(`Error updating item ${item.id}: ${err.message}`);
+		return;
+	}
+
+	if (data.output) appendLine(data.output);
+	applyTree(data.tree);
+}
+
+// adds a comment via the same command pipeline as everything else —
+// `comment <id> "<text>"`. The returned tree carries the new comment (see
+// _resolve_comments in browser.py), so applyTree refreshes the list.
+async function sendComment(itemId, text) {
+	const command = `comment ${itemId} ${quoteArg(text)}`;
+
+	let data;
+	try {
+		const res = await fetch("/api/command", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ input: command }),
+		});
+		data = await res.json();
+	} catch (err) {
+		appendLine(`Error adding comment to item ${itemId}: ${err.message}`);
 		return;
 	}
 
@@ -153,6 +176,95 @@ function buildField(item, def) {
 	return wrapper;
 }
 
+// "YYYY-MM-DDTHH:MM:SS..." -> "Sep 3, 2026"; empty string if unparseable
+function formatCommentDate(iso) {
+	if (!iso) return "";
+	const d = new Date(iso);
+	if (isNaN(d.getTime())) return "";
+	return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+// (re)fill a <ul.comment-list> from an item's resolved `comments` array.
+// Oldest first, newest at the bottom; keeps the view pinned to the bottom
+// (newest) unless the user has deliberately scrolled up into the history.
+function renderCommentList(listEl, comments) {
+	const prevScrollTop = listEl.scrollTop;
+	const stickToBottom =
+		listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 8;
+
+	listEl.innerHTML = "";
+
+	if (!comments || !comments.length) {
+		const empty = document.createElement("li");
+		empty.className = "comment-empty";
+		empty.textContent = "No comments yet.";
+		listEl.appendChild(empty);
+		return;
+	}
+
+	comments.forEach(c => {
+		const li = document.createElement("li");
+		li.className = "comment-item";
+
+		// date first so it lands on the left; body second, right-aligned
+		const when = formatCommentDate(c.created_on);
+		if (when) {
+			const time = document.createElement("time");
+			time.className = "comment-date";
+			time.textContent = when;
+			li.appendChild(time);
+		}
+
+		const body = document.createElement("span");
+		body.className = "comment-body";
+		body.textContent = c.content;
+		li.appendChild(body);
+
+		listEl.appendChild(li);
+	});
+
+	// defer to next frame so scrollHeight is valid even on the first render
+	// (the <ul> isn't laid out yet when buildCommentsSection calls this)
+	if (stickToBottom) {
+		requestAnimationFrame(() => { listEl.scrollTop = listEl.scrollHeight; });
+	} else {
+		listEl.scrollTop = prevScrollTop; // keep the reader where they were
+	}
+}
+
+// read-only comment list + an "add" input, styled like an .edit-field
+function buildCommentsSection(item) {
+	const section = document.createElement("div");
+	section.className = "edit-field edit-comments";
+
+	const label = document.createElement("span");
+	label.className = "edit-field-label";
+	label.textContent = "Comments";
+	section.appendChild(label);
+
+	const list = document.createElement("ul");
+	list.className = "comment-list";
+	renderCommentList(list, item.comments);
+	section.appendChild(list);
+
+	const addInput = document.createElement("textarea");
+	addInput.className = "comment-add-input";
+	addInput.rows = 2;
+	addInput.placeholder = "Add a comment…";
+	// Enter sends, Shift+Enter inserts a newline
+	addInput.addEventListener("keydown", e => {
+		if (e.key !== "Enter" || e.shiftKey) return;
+		e.preventDefault();
+		const text = addInput.value.trim();
+		if (!text) return;
+		addInput.value = "";
+		sendComment(item.id, text);
+	});
+	section.appendChild(addInput);
+
+	return section;
+}
+
 // id of the item the form is currently showing, so a same-item refresh
 // (e.g. the applyTree after our own debounced field POST) can update values
 // in place instead of tearing the form down and unfocusing the live field
@@ -173,6 +285,8 @@ function refreshFieldValues(item) {
 function renderEditForm(item) {
 	if (item && String(item.id) === renderedItemId && editBody.querySelector(".edit-form")) {
 		refreshFieldValues(item);
+		const list = editBody.querySelector(".comment-list");
+		if (list) renderCommentList(list, item.comments);
 		return;
 	}
 
@@ -190,6 +304,7 @@ function renderEditForm(item) {
 	const form = document.createElement("div");
 	form.className = "edit-form";
 	FIELD_DEFS.forEach(def => form.appendChild(buildField(item, def)));
+	form.appendChild(buildCommentsSection(item)); // comment feed at the bottom
 	editBody.appendChild(form);
 }
 
