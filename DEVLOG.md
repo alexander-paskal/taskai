@@ -1,3 +1,33 @@
+# 9-3
+
+Browser session — console-driven navigation and selection, mostly beyond the
+original Phase 1 scope (DEVPLAN 1.7 has the durable version):
+
+- Synthetic invisible root node (`canvas.js`, `rootNode` / `"__root__"`) —
+  never drawn or hit-tested, sits above the real roots as the nav anchor and
+  the "whole tree / nothing specific" selection. `selectedNode` is now never
+  null: defaults to `rootNode`, and an empty-canvas click selects it.
+- `show all` / bare `show` — client-side console command: refetch `/api/tree`,
+  select the root, `fitAll()` (eases the view out until the whole forest fits
+  with padding). `show <id|name>` selects + focuses the resolved node without
+  opening the edit panel (that's `edit <id|name>`).
+- Tree navigation — `navigate(direction)` + `up`/`down`/`left`/`right` console
+  commands. Nodes got a `parent` back-ref; walks up/down/across siblings,
+  wraps on both axes. Each move acts like `show <target>`.
+- `.` as a standalone console token → selected node's id (`resolveDotRefs`),
+  so `update . --priority 3`, `done .`, `edit .` work. Leaves `a.md` / `3.5`
+  alone; errors if nothing real is selected.
+- `hide edit` console command → `closeEditPanel()`, complements `edit <id>`.
+- Up-arrow console history (was the last open Phase 1.6 item) — done earlier
+  (`commandHistory` in `console.js`), just now checked off in DEVPLAN.
+
+CLI (not browser): added `task undone <id>`, and made recursion on
+`complete`/`done` an opt-in `-r` / `-recursive` flag instead of always-on.
+`help_menu.py` not yet resynced for either — logged as an open item under
+DEVPLAN Phase 3.
+
+---
+
 # 8-29
 
 Worked the TRIAGE backlog, then built out the docs.

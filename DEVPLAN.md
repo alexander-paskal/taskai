@@ -45,9 +45,11 @@ testing — don't `nuke` it.
 (methods intentionally take no `self` — called as `Controller.foo(...)`, not
 instantiated) holds all the CRUD/business logic. `execute_commands(*args,
 **kwargs)` is one big `match` statement mapping subcommands (`show`,
-`create`, `add`, `update`, `move`, `rename`, `delete`, `complete`/`done`,
-`comment`, `depend`, `link`, `reorder`, `clear`, `status`, `config`, `ai`,
-`pomo`, `repair`, `nuke`, `browser`, ...) to `Controller` calls. There's a
+`create`, `add`, `update`, `move`, `rename`, `delete`,
+`complete`/`done`/`undone`, `comment`, `link`, `reorder`, `clear`,
+`status`, `config`, `ai`, `pomo`, `repair`, `nuke`, `browser`, ...) to
+`Controller` calls. `complete`/`done`/`undone` take an opt-in `-r` /
+`-recursive` flag to apply down the subtree. There's a
 hand-rolled arg/kwarg parser (`_parse_arg_string`, `_parse_remaining`)
 instead of `argparse`. `interactive_program()` is the REPL entered when
 `task` runs with no arguments. The module connects to the database and loads
@@ -286,6 +288,8 @@ stdlib `http.server` — no new dependency, consistent with "less code."
       break after any mutation). Drawn with the same accent-blue
       border/thicker stroke as hover. This is exactly the state 1.5's edit
       menu piggybacks off — not edge highlighting yet, just the node.
+      (Later, in 1.7: `selectedNode` became **never-null** — an empty
+      selection is now the synthetic `rootNode`, not `null`.)
 - [x] Color/style nodes by `completed` — soft green fill + border (see
       `STYLE.colors.nodeFill/BorderDone`), not strike-through/dim like the
       CLI. `status` ended up as a small orange text label in the node's
@@ -351,13 +355,58 @@ purpose, current call.
       response already carries the fresh tree. Also handles the `focus`
       field `show` commands return: calls `focusOnNode` on that id instead
       of expecting text output.
-- [ ] Up-arrow history — still open, not done.
+- [x] Up-arrow history — done (`console.js`). `commandHistory` array, every
+      submitted line pushed on; `ArrowUp`/`ArrowDown` walk it, an index at
+      `length` meaning "not currently browsing history", and `ArrowDown`
+      past the end restores an empty input.
 
-At the end of Phase 1: up-arrow console history (1.6) is the only piece
-left open (dependency/link edges (1.4) deferred to 2.0, see above). The
-DAG, edit panel, and console all funnel through one `/api/command` endpoint
-and one `/api/tree` read, as planned — that's the "less code" payoff of
-routing everything through the existing `Controller`.
+At the end of Phase 1: the whole 1.1–1.6 checklist is done
+(dependency/link edges (1.4) deferred to 2.0, see above). The DAG, edit
+panel, and console all funnel through one `/api/command` endpoint and one
+`/api/tree` read, as planned — that's the "less code" payoff of routing
+everything through the existing `Controller`. Console-driven canvas
+navigation then grew past the original Phase 1 scope — see 1.7.
+
+### 1.7 — Console-driven navigation & selection (post-plan, beyond original scope)
+
+Grew out of Phase 1's console + selection machinery; none of this was in
+the original checklist.
+
+- [x] **Synthetic invisible root node** (`canvas.js`, `rootNode` /
+      `"__root__"`). Never added to `nodes`, so never drawn, hit-tested, or
+      bordered. It's the nav anchor above the real root items and the
+      "nothing specific / the whole tree" selection. `selectedNode` is now
+      **never null** — it defaults to `rootNode`, and a click on empty
+      canvas selects `rootNode` rather than clearing the selection.
+      `applyTree` re-parents it over the freshly-built roots and parks it
+      one `ySpacing` above them on every refresh.
+- [x] **`show all` / bare `show`** (console, client-side). Refetches
+      `/api/tree`, selects the synthetic root, and calls `fitAll()` — eases
+      the view out until every real node fits on screen with padding,
+      clamped to `STYLE.zoom` bounds.
+- [x] **`show <id|name>`** (console, client-side). POSTs the command,
+      applies the returned tree, then selects + `focusOnNode`s the resolved
+      node. Deliberately does *not* open the edit panel — that's
+      `edit <id|name>`, mirroring the canvas's single-click vs. double-click
+      split.
+- [x] **Tree navigation** — `navigate(direction)` in `canvas.js`, wired to
+      `up` / `down` / `left` / `right` console commands. Nodes carry a
+      `parent` back-reference (set in `buildTree` / `applyTree`) so the walk
+      goes up as well as down: `down` → first child, `up` → parent,
+      `left`/`right` → previous/next sibling. Wraps on both axes — past the
+      last sibling loops to the first; `down` past the deepest leaf and `up`
+      from `rootNode` loop between the top and the deepest first-child leaf.
+      Each move behaves like a `show <target>` (select + ease/zoom; `fitAll`
+      when the target is `rootNode`).
+- [x] **`.` = the selected node** (`resolveDotRefs` in `console.js`). A bare
+      `.` token in any console command is swapped for `selectedNode.id`
+      before dispatch, so `update . --priority 3`, `done .`, `edit .` act on
+      the current selection. Only matches a standalone `.` (whitespace or
+      string end on both sides), so `a.md` / `3.5` are untouched; errors if
+      `.` is used with nothing real selected.
+- [x] **`hide edit`** (console) → `closeEditPanel()` in `editpanel.js`,
+      collapsing the right panel and restoring canvas width. Complements the
+      existing `edit <id|name>` that opens it.
 
 ---
 
@@ -544,6 +593,12 @@ Re-scope this section before starting 2.4.
       `html_baseurl` + README); explanation/architecture pages; polish
       (screenshots for browser-mode, custom 404, OpenGraph cards, CI
       `linkcheck`, tested examples, changelog).
+- [ ] **`help_menu.py` drift from `execute_commands`.** The CLI gained
+      `task undone <id>` and an opt-in `-r` / `-recursive` flag on
+      `complete` / `done` (recursion used to be unconditional). `help_menu.py`
+      still documents `done` as "mark an item, and all its descendants,
+      complete", has no `undone` entry, and its `task done 4` example is now
+      wrong. Resync it — it's also the AI's verbatim command reference.
 - [ ] **UX pass.** Empty/loading state for the DAG when a user has no tasks
       yet (currently the app would just render nothing); a keyboard shortcut
       to toggle the console (e.g. backtick); consistent spacing/typography
