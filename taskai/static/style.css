@@ -1,3 +1,10 @@
+:root {
+	/* console panel heights — also used to keep the edit panel clear of it */
+	--console-h-collapsed: 44px;
+	--console-h-expanded: 280px;
+	--comment-list-h: 200px;
+}
+
 html, body {
 	margin: 0;
 	padding: 0;
@@ -17,19 +24,19 @@ canvas {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	z-index: 11; /* stay above the edit panel in the shared bottom-right corner */
+	z-index: 11; /* above the edit panel (which now stops short of it anyway) */
 	display: flex;
 	flex-direction: column;
 	background: #ffffff;
 	border-top: 1px solid #e2e4ea;
 	box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.06);
-	height: 44px;
+	height: var(--console-h-collapsed);
 	overflow: hidden;
 	transition: height 0.2s ease;
 }
 
 .console-panel.expanded {
-	height: 280px;
+	height: var(--console-h-expanded);
 }
 
 .console-toggle {
@@ -114,12 +121,18 @@ canvas {
 	transition: width 0.2s ease, height 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* stop short of the console so the two panels never overlap in the
+   bottom-right corner — height tracks the console's collapsed/expanded state */
 .edit-panel.expanded {
 	width: 448px;
-	height: 100vh;
+	height: calc(100vh - var(--console-h-collapsed));
 	background: #ffffff;
 	border-left: 1px solid #e2e4ea;
 	box-shadow: -2px 0 10px rgba(15, 23, 42, 0.06);
+}
+
+body:has(.console-panel.expanded) .edit-panel.expanded {
+	height: calc(100vh - var(--console-h-expanded));
 }
 
 .edit-toggle {
@@ -267,8 +280,19 @@ canvas {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
-	height: 200px;
+	height: var(--comment-list-h);
 	overflow-y: auto;
+	transition: height 0.2s ease;
+}
+
+/* when the console is open the edit panel is shorter — split that loss
+   evenly between the description box and the comment list rather than
+   taking it all out of the description */
+body:has(.console-panel.expanded) .comment-list {
+	height: calc(
+		var(--comment-list-h)
+		- (var(--console-h-expanded) - var(--console-h-collapsed)) / 2
+	);
 }
 
 /* date pinned left, comment text pinned right and wrapping under itself */
