@@ -421,8 +421,9 @@ function fitAll(duration = STYLE.zoom.focusDurationMs) {
 // moves the selection relative to the current node along the node tree.
 // The move is equivalent to a `show <target>`: the node becomes selected and
 // the view eases + zooms to it (focusOnNode). Wraps around on both axes —
-// past the last sibling loops to the first, past the bottom leaf loops back
-// to rootNode (the top), and `up` from rootNode drops to the deepest node.
+// left/right past the end of a depth level loops to that level's first node,
+// past the bottom leaf loops back to rootNode (the top), and `up` from
+// rootNode drops to the deepest node.
 function navigate(direction) {
 	const cur = selectedNode || rootNode;
 	let target = null;
@@ -439,10 +440,19 @@ function navigate(direction) {
 			while (target.children[0]) target = target.children[0];
 		}
 	} else if (direction === "left" || direction === "right") {
-		const sibs = cur.parent && cur.parent.children;
-		if (!sibs || !sibs.length) return;
-		const n = sibs.length;
-		target = sibs[(sibs.indexOf(cur) + (direction === "right" ? 1 : -1) + n) % n];
+		// step to the node immediately left/right at the same depth, across
+		// the whole level — so you cross into a cousin subtree rather than
+		// wrapping inside the current parent. The layout gives every node at a
+		// given depth the same y, so the level is just "nodes sharing cur.y"
+		// sorted by x; no explicit depth/level bookkeeping. Wrap to the first
+		// (or last) node of the level only when you run off its end.
+		const row = nodes
+			.filter(n => Math.abs(n.y - cur.y) < 1)
+			.sort((a, b) => a.x - b.x);
+		const i = row.indexOf(cur);
+		if (i === -1 || row.length < 2) return;
+		const step = direction === "right" ? 1 : -1;
+		target = row[(i + step + row.length) % row.length];
 	}
 
 	if (!target || target === cur) return;
