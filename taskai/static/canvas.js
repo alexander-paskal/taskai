@@ -741,10 +741,13 @@ canvas.addEventListener("dblclick", (e) => {
 	const rect = canvas.getBoundingClientRect();
 	const { x, y } = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
 	const clicked = nodes.find(node => hitTest(node, x, y));
+	if (!clicked) return;
 
-	if (clicked) {
-		focusOnNode(clicked);
-	}
+	// single click already selected it; double click also opens the editor
+	selectedNode = clicked;
+	if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(clicked));
+	if (typeof openEditPanel === "function") openEditPanel();
+	focusOnNode(clicked); // after openEditPanel so the ease tracks the narrowed canvas
 })
 
 canvas.addEventListener("mousedown", (e) => {

@@ -115,6 +115,10 @@ function handleEscape() {
 		el.blur();
 		return;
 	}
+	if (editPanel.classList.contains("expanded")) {
+		closeEditPanel();
+		return;
+	}
 	// deselect, but leave the camera where it is — Esc shouldn't move/zoom
 	selectedNode = rootNode;
 	if (typeof onNodeSelected === "function") onNodeSelected(null);
@@ -130,9 +134,13 @@ const PAN_VEC = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [1, 0], ArrowR
 const SHORTCUTS = [
 	{ section: "Panels" },
 	{
-		combos: [{ key: "`" }], glyphs: ["`"], desc: "Toggle terminal",
+		combos: [{ key: "`" }, { key: "~" }], glyphs: ["`"], desc: "Terminal (focus / close)",
 		whileTyping: (el) => el === consoleInput, // also closes it from inside
-		run: () => toggleConsole(),
+		run: () => {
+			if (document.activeElement === consoleInput) toggleConsole(false); // close from inside
+			else if (consolePanel.classList.contains("expanded")) consoleInput.focus(); // open but unfocused -> jump in
+			else toggleConsole(true); // closed -> open (focuses input)
+		},
 	},
 	{
 		combos: [{ key: "?" }], glyphs: ["?"], desc: "Toggle this panel",
