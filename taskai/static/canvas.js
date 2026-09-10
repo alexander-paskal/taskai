@@ -418,6 +418,12 @@ function fitAll(duration = STYLE.zoom.focusDurationMs) {
 	easeView(canvas.width / 2 - cx * scale, canvas.height / 2 - cy * scale, scale, duration);
 }
 
+// per-parent memory of the last child navigated to, keyed by parent id (node
+// objects are rebuilt on every applyTree, so ids not references). Lets `down`
+// return to where you last were under a parent; stale ids are harmless — the
+// lookup just misses and falls back to the first child.
+const lastChildByParent = {};
+
 // moves the selection relative to the current node along the node tree.
 // The move is equivalent to a `show <target>`: the node becomes selected and
 // the view eases + zooms to it (focusOnNode). Wraps around on both axes —
@@ -429,7 +435,13 @@ function navigate(direction) {
 	let target = null;
 
 	if (direction === "down") {
-		target = cur.children[0] || rootNode; // past the bottom -> wrap to the top
+		if (cur.children.length) {
+			// return to the last child visited under `cur`, else its first child
+			const remembered = lastChildByParent[cur.id];
+			target = cur.children.find(c => c.id === remembered) || cur.children[0];
+		} else {
+			target = rootNode; // past the bottom -> wrap to the top
+		}
 	} else if (direction === "up") {
 		if (cur.parent) {
 			target = cur.parent;
@@ -456,6 +468,9 @@ function navigate(direction) {
 	}
 
 	if (!target || target === cur) return;
+
+	// remember this child so a later `down` into its parent returns here
+	if (target.parent) lastChildByParent[target.parent.id] = target.id;
 
 	selectedNode = target;
 	if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(target));
