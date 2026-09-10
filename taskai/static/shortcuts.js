@@ -115,7 +115,10 @@ function handleEscape() {
 		el.blur();
 		return;
 	}
-	showAll(); // deselects (selectedNode = rootNode) and fits the whole forest
+	// deselect, but leave the camera where it is — Esc shouldn't move/zoom
+	selectedNode = rootNode;
+	if (typeof onNodeSelected === "function") onNodeSelected(null);
+	draw();
 }
 
 // --- registry ------------------------------------------------------------
@@ -140,7 +143,7 @@ const SHORTCUTS = [
 		run: () => toggleEditPanel(),
 	},
 	{
-		combos: [{ key: "Escape" }], glyphs: ["Esc"], desc: "Leave field · deselect · show all",
+		combos: [{ key: "Escape" }], glyphs: ["Esc"], desc: "Leave field · deselect",
 		whileTyping: true, keepDefault: true,
 		run: handleEscape,
 	},
