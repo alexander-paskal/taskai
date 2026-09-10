@@ -18,6 +18,7 @@ redraws with the updated tree.
 
 - A `show` command sets the view that stays on screen — `task show "Launch
   blog"` keeps that subtree visible as you keep working; `show all` goes back to
-  the whole tree.
+  the whole tree. A [filter](managing-the-tree.md) such as `show 'priority>=2'`
+  works here too, and stays applied as the view redraws.
 - Every other command runs, then the view refreshes.
 - Leave with `exit`, `quit`, or Ctrl-C.

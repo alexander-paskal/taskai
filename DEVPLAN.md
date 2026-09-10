@@ -60,7 +60,14 @@ opening a second connection.
 
 **Views.** [taskai/views.py](taskai/views.py): Rich-based tree rendering
 (`view_lists`, `view_item`), display format configurable via
-`DISPLAY_STRING`/`DISPLAY_COLORS`.
+`DISPLAY_STRING`/`DISPLAY_COLORS`. `view_lists` takes an optional `only_ids`
+set to prune the walk (used by `task show`'s filters).
+
+**Filters.** [taskai/filters.py](taskai/filters.py): parsing + evaluation for
+`task show 'attr<op>value' ...` — `looks_like_filters` / `parse_filters`
+(→ `FilterExpr`, `FilterError`), `match_items(db, exprs)`, and
+`with_ancestors(db, ids)` which pads a match set out with parent chains so it
+renders as a coherent tree. Pure; imported by both `cli.py` and `browser.py`.
 
 **AI services.** [taskai/services/ai.py](taskai/services/ai.py):
 `ai_headstart_service` (single item → LLM suggests a next concrete step,
@@ -404,14 +411,26 @@ the original checklist.
       `edit <id|name>`, mirroring the canvas's single-click vs. double-click
       split.
 - [x] **Tree navigation** — `navigate(direction)` in `canvas.js`, wired to
-      `up` / `down` / `left` / `right` console commands. Nodes carry a
-      `parent` back-reference (set in `buildTree` / `applyTree`) so the walk
-      goes up as well as down: `down` → first child, `up` → parent,
-      `left`/`right` → previous/next sibling. Wraps on both axes — past the
-      last sibling loops to the first; `down` past the deepest leaf and `up`
-      from `rootNode` loop between the top and the deepest first-child leaf.
-      Each move behaves like a `show <target>` (select + ease/zoom; `fitAll`
-      when the target is `rootNode`).
+      `up` / `down` / `left` / `right` console commands and the arrow keys.
+      Nodes carry a `parent` back-reference (set in `buildTree` / `applyTree`)
+      so the walk goes up as well as down. Each move behaves like a `show
+      <target>` (select + ease/zoom; `fitAll` when the target is `rootNode`).
+      Reworked 9-10:
+      - `up` → parent, `down` → a child. **No wrap** — `down` from a leaf and
+        `up` from the top do nothing (was: loop to rootNode / dive to the
+        deepest leaf).
+      - `down` consults **`lastChildByParent`** (a `parentId → childId` map
+        every arrow move updates) and returns to the last child visited under
+        that node, else `children[0]`. Also keyed for `__root__`.
+      - `left`/`right` step through the **whole depth level**, not just direct
+        siblings — the level is `nodes` sharing `selectedNode.y` (the layout
+        gives one `y` per depth) sorted by `x`, so `→` crosses into a cousin
+        subtree. Wrap only at the ends of the level.
+      - `focusOnNode` recomputes its target every frame from the live canvas
+        size, so an ease that overlaps a panel width animation still lands
+        centred. `fitAll` caps zoom-in at `STYLE.zoom.focusScale`.
+      - Double-click a node also opens the edit panel now; `Esc` no longer
+        moves the camera (leave field → close panel + re-centre → deselect).
 - [x] **`.` = the selected node** (`resolveDotRefs` in `console.js`). A bare
       `.` token in any console command is swapped for `selectedNode.id`
       before dispatch, so `update . --priority 3`, `done .`, `edit .` act on
@@ -616,10 +635,10 @@ Re-scope this section before starting 2.4.
       needs no edit — it `literalinclude`s the `builder-inited`-generated
       dump of `help_general`.
 - [ ] **UX pass.** Empty/loading state for the DAG when a user has no tasks
-      yet (currently the app would just render nothing); a keyboard shortcut
-      to toggle the console (e.g. backtick); consistent spacing/typography
-      in `style.css`. (Edge legend dropped — depended on 1.4's dependency/
-      link edges, now deferred to 2.0.)
+      yet (currently the app would just render nothing); consistent
+      spacing/typography in `style.css`. (Console-toggle keybind — done in
+      Phase 4's `shortcuts.js` (backtick). Edge legend dropped — depended on
+      1.4's dependency/link edges, now deferred to 2.0.)
 - [ ] Re-check the Phase 0 fixes are still holding once the web UI is
       exercising more command paths than the CLI alone did.
 
@@ -715,16 +734,30 @@ endpoints.
       **`console.js` change:** extracted `toggleConsole(force)` (focus on
       open / blur on close), `showAll()`, and a `postCommand(input)` helper,
       all reused by `shortcuts.js`.
+      **Refinements (9-10):** `Delete` lost its `confirm()` (broke the flow);
+      `Esc` no longer moves the camera (leave field → close edit panel with a
+      re-centre → deselect), and `e` closing the panel shares that path;
+      backtick focuses the console input when the console is open but
+      unfocused rather than toggling it shut; double-click a node opens the
+      edit panel; `Enter` in a single-line edit-panel field commits + blurs.
+      `sendFieldUpdate` / `sendComment` moved onto `postCommand`, which now
+      also carries the active `show` filter (see Phase 5).
 
 ---
 
 ## Phase 5 — CLI view
 
-- [ ] **Expand what `task show` renders, and its options.** Exact scope TBD —
-      needs a working session with Alex to pin down. Candidates: filter by
-      status / priority / completion, depth limits, flat vs. tree layout,
-      sort order, inline comments / links, format and colour toggles. Prompt
-      before implementing.
+- [~] **Expand what `task show` renders, and its options.** Attribute
+      **filtering landed early** (9-10), out of band, driven by a concrete
+      ask: `task show 'attr<op>value' ...` in `taskai/filters.py` —
+      AND-ed tests, ops `= > < >= <=`, `=` on text is fnmatch, matches shown
+      with their parent chain (`view_lists` gained `only_ids`). Wired through
+      the CLI (`Controller.show_filtered`, `show` dispatch) and the browser
+      (`_run_show` → `_run_filter` → pruned tree + `filtered` flag, plus a
+      persisted `activeFilter` on `/api/command` so mutations keep the view).
+      Still open, and still needs a session with Alex to scope: depth limits,
+      flat vs. tree layout, sort order, inline comments / links, format and
+      colour toggles.
 - [ ] **New view-settings config keys.** Extend `CLIConfig` (today just
       `DISPLAY_STRING` / `DISPLAY_COLORS`) with keys backing whatever the
       expanded view supports; document them in `docs/configuration.md` and

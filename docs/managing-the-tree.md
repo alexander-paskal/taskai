@@ -32,6 +32,22 @@ task show 4                # one item in full, by id
 task show "Set up hosting" # one item in full, by name
 ```
 
+## Filter the tree
+
+Give `task show` one or more `attribute<operator>value` tests and it prints only
+the items matching *all* of them, each with its parent chain for context:
+
+```bash
+task show 'name=Write*'                     # = on text is a glob match
+task show 'priority>=2' 'completed=false'
+task show 'status=in review' 'due_by<10-01-2026'
+```
+
+Operators are `=`, `>`, `<`, `>=`, `<=`. Text fields (`name`, `description`,
+`status`) glob-match on `=`; `priority`, `due_by`, `created_on`, and `id`
+compare numerically / by date. Put no space around the operator, and quote each
+test so your shell doesn't treat `>` and `<` as redirects.
+
 ## Move items
 
 ```bash

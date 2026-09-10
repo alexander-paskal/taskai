@@ -82,6 +82,15 @@ task show "Write first post"
 task show 2
 ```
 
+Or narrow the tree to items matching a set of attribute tests (each shown with
+its parents for context):
+
+```bash
+task show 'priority>=2' 'completed=false'
+```
+
+See [Managing the tree](managing-the-tree.md) for the operators.
+
 ## Work an item and finish it
 
 ```bash

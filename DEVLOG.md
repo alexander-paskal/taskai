@@ -1,3 +1,95 @@
+# 9-10
+
+Browser navigation polish, then a new feature: attribute filters for `task
+show`. Durable versions in DEVPLAN 1.7 (nav) and Phase 5 (filters).
+
+## Canvas navigation (`canvas.js`)
+
+- **Arrow left/right walks the whole depth level, not just direct siblings.**
+  The layout gives every node at a given depth the same `y`, so the "level" is
+  just `nodes` sharing `selectedNode.y` sorted by `x` — no explicit depth
+  bookkeeping. `→` off the last child of a parent now crosses into the next
+  cousin subtree instead of wrapping; wrap happens only at the ends of the
+  level (right off the last → level's first node, left off the first → last).
+- **Arrow up/down has per-parent memory.** `lastChildByParent` (a plain
+  `parentId → childId` map, ids not refs since nodes are rebuilt each
+  `applyTree`) records every arrow move against its parent; `down` returns to
+  the last child visited under that node, falling back to `children[0]`. Also
+  keyed for the synthetic `__root__`, so `down` from the top re-enters the
+  root subtree you were last in. Stale ids just miss and fall back.
+- **Removed up/down wrap-around.** `down` from a leaf and `up` from the top
+  now do nothing (were: wrap to rootNode / dive to the deepest leaf).
+  Left/right still wrap within a level.
+- **`focusOnNode` recomputes its target every frame** from the current
+  `canvas.width/height` instead of once up front. A side panel opening in
+  step with the ease (the `a` shortcut, closing the edit panel) resizes the
+  canvas mid-animation; a target captured once left the node cut off at the
+  edge.
+- **`fitAll` (show all / `0`) clamps zoom-in to `STYLE.zoom.focusScale`**
+  (0.85). A filtered `show` on a handful of nodes was blowing them up to fill
+  the screen; the user can still wheel in past that.
+- **Double-click a node opens the edit panel** (+ selects + eases to it), not
+  just center/zoom.
+
+## Edit panel (`editpanel.js`) + shortcuts (`shortcuts.js`)
+
+- **`Enter` on a single-line field** (name/status/priority/due_by) flushes the
+  1s debounce immediately and blurs — the edit is done. `handleFieldChange`
+  got an `immediate` flag; textarea and checkbox are excluded.
+- **`a` (add child): open the edit panel before `focusOnNode`** so the ease
+  tracks the narrowing canvas and lands centred (pairs with the per-frame
+  target change above).
+- **`Esc` no longer moves the camera.** Was `showAll()` → `fitAll()`. Now:
+  leave a focused field → close the edit panel (with `focusOnNode` on the
+  selection so it re-centres as the canvas widens) → clear the selection.
+  Closing the panel with `e` routes through the same
+  `closeEditPanelAndRefocus()` helper, so `e` and `Esc` behave identically.
+- **Backtick when the console is open but unfocused → focus the input**
+  instead of toggling it closed. Also bound `~`.
+- **`Delete` shortcut: no more `confirm()` dialog** — it broke the flow.
+
+## `task show` attribute filters — new `taskai/filters.py`
+
+    task show 'status=IN PROGRESS' 'priority>=2' 'due_by<12-31-2026'
+
+Implemented logic → CLI → browser, in that order.
+
+- **Logic** (`filters.py`): each arg is one `attr<op>value` test, AND-ed. Ops
+  `= > < >= <=`. `=` on a text attr (`name`/`description`/`status`) is an
+  fnmatch; `priority`/`id`/`parent_id` → int, `due_by`/`created_on` → date
+  (`MM-DD-YYYY`, time dropped), `completed` → bool. `None` never satisfies an
+  ordering op. `looks_like_filters(tokens)` decides filter-query vs. plain
+  id/name target (structural: known attr + operator). `match_items(db, exprs)`
+  → matching ids; `with_ancestors(db, ids)` pads with every match's parent
+  chain so the result is a set of complete root-to-node paths. `FilterError`
+  (a `ValueError`) for a bad token/value.
+- **Renderer** (`views.py`): `view_lists` gained `only_ids` — `_recursive_print`
+  and linked-item display skip anything not in the set. Ancestors are always
+  in the set, so the pruned walk stays a contiguous tree.
+- **CLI** (`cli.py`): `Controller.show_filtered(tokens)` — parse, match,
+  expand, render pruned, print `"N items matched"`. `show` dispatch checks
+  `looks_like_filters` first, else the old `all` / id / name path. Fixed a
+  latent `IndexError` on bare `task show` in passing (`args[1]` with no
+  guard). Documented in `help_menu.py` (also the AI's command reference) and
+  the `docs/` prose pages (`managing-the-tree`, `getting-started`, `index`,
+  `interactive-mode`, `browser-mode`); `commands.md` tracks `help_general`
+  automatically.
+- **Browser** (`browser.py` + `console.js`): `_run_show` routes a filter query
+  to `_run_filter` → a pruned tree (`_filtered_tree` narrows each item's
+  `child_ids`/`linked_ids` to the kept set so the canvas never walks into a
+  removed node) + a `filtered` flag. `console.js`'s `show` handler sees the
+  flag, fits the view, and stores the raw filter args in `activeFilter`.
+- **Filter persistence.** `CommandRequest` gained an optional `filter` string;
+  `_response_tree()` re-prunes every mutation's returned tree to it. `console.js`
+  attaches `activeFilter` to every `/api/command` POST (via `postCommand`,
+  which `sendFieldUpdate`/`sendComment` now also use). So a filtered view
+  survives delete / done / field edits — it was snapping back to the whole
+  forest before. `show all` / navigating to a specific node clears it. Known
+  gap: `a` (add child) under an active filter creates the item but it won't
+  match the filter, so it doesn't appear or get selected.
+
+---
+
 # 9-3
 
 Browser session — console-driven navigation and selection, mostly beyond the
