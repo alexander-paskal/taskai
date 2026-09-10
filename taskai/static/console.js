@@ -151,6 +151,15 @@ consoleInput.addEventListener("keydown", async (e) => {
 
 		applyTree(data.tree);
 
+		// `show <attr><op><value> ...` — server returns a pruned tree + a flag
+		if (data.filtered) {
+			selectedNode = rootNode;
+			if (typeof onNodeSelected === "function") onNodeSelected(null);
+			fitAll();
+			if (data.output) appendLine(data.output);
+			return;
+		}
+
 		if (data.focus) {
 			const node = nodes.find(n => n.id === String(data.focus));
 			if (node) {

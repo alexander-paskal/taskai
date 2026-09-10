@@ -12,6 +12,10 @@ Viewing:
 'task show all' --> show every item, with ids prepended, as a tree
 'task show {id}' --> show full details for the item with that id
 'task show {name|fnmatch pattern}' --> match an item by name (or glob pattern) and show it
+'task show {attr}{op}{value} ...' --> show only items matching every filter, each with its parent chain for context
+  ops: = > < >= <= ; text uses = with fnmatch (name=Write*), the rest compare numbers/dates
+  no spaces around the operator; quote each expression so your shell doesn't treat > < as redirects
+  e.g. task show 'status=IN PROGRESS' 'priority>=2' 'due_by<12-31-2026'
 
 Creating:
 'task create {name} {--field value ...}' --> create a new top-level (root) item - use this when there's no existing parent to attach to

@@ -35,14 +35,20 @@ VALID_ATTRS = {
 @config("DISPLAY_STRING", "display_str")
 @config("DISPLAY_COLORS", "display_colors")
 def view_lists(
-        db: JsonDirectoryDatabase, 
-        roots: list[int], 
+        db: JsonDirectoryDatabase,
+        roots: list[int],
         show_done=True,
         max_level=1000,
-        display_str: str = "id name status", 
+        only_ids: set[int] | None = None,
+        display_str: str = "id name status",
         display_colors: str = None
 ):
-    """Shows all the lists"""
+    """Shows all the lists.
+
+    `only_ids`, when given, prunes the walk to just those ids - used by
+    `task show <filters>` to render matched items with their parent chain
+    and nothing else.
+    """
 
     attrs = display_str.lower().split(" ")
 
@@ -77,16 +83,20 @@ def view_lists(
     def _recursive_print(item_id: int, level: int):
         if level >= max_level:
             return
+        if only_ids is not None and item_id not in only_ids:
+            return
 
         try:
             item = db.get_item(item_id)
         except DatabaseError:
             return
-        
+
         _print_item(item, level)
 
 
         for linked_id in item.linked_ids:
+            if only_ids is not None and linked_id not in only_ids:
+                continue
             try:
                 linked_item = db.get_item(linked_id)
             except DatabaseError:

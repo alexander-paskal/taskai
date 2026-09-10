@@ -9,6 +9,13 @@ from pydantic import BaseModel
 
 from taskai.cli import Controller, _parse_arg_string, _parse_remaining, db, execute_commands
 from taskai.errors import TaskCLIError
+from taskai.filters import (
+    FilterError,
+    looks_like_filters,
+    match_items,
+    parse_filters,
+    with_ancestors,
+)
 
 
 app = FastAPI()
@@ -49,6 +56,23 @@ def _full_tree():
     return tree
 
 
+def _filtered_tree(keep):
+    """Same shape as _full_tree(), but only the ids in `keep`, with
+    child_ids / linked_ids narrowed to `keep` too so the frontend never
+    walks into a pruned-out node."""
+    tree = {}
+    for item_id in db.get_item_ids():
+        if item_id not in keep:
+            continue
+        item = db.get_item(item_id)
+        dump = item.model_dump(mode="json")
+        dump["child_ids"] = [c for c in dump["child_ids"] if c in keep]
+        dump["linked_ids"] = [l for l in dump["linked_ids"] if l in keep]
+        dump["comments"] = _resolve_comments(item)
+        tree[item_id] = dump
+    return tree
+
+
 @app.get("/api/tree")
 def get_tree():
     db.flush()  # reload from disk in case another process (e.g. the CLI) wrote since we last connected
@@ -83,6 +107,11 @@ def run_command(request: CommandRequest):
 def _run_show(args):
     """`show` is read-only from the browser's perspective: it never mutates
     the db, it just tells the frontend which node to focus/center on."""
+    show_args = list(args[1:])
+
+    if looks_like_filters(show_args):
+        return _run_filter(show_args)
+
     target = args[1] if len(args) > 1 else "all"
 
     if target == "all":
@@ -100,3 +129,25 @@ def _run_show(args):
         }
 
     return {"output": "", "tree": _full_tree(), "focus": str(item.id)}
+
+
+def _run_filter(show_args):
+    """`show attr<op>value ...` — return a pruned tree (matches + their parent
+    chains) plus a `filtered` flag so the frontend fits the view to it."""
+    try:
+        exprs = parse_filters(show_args)
+    except FilterError as e:
+        return {"output": str(e), "tree": _full_tree(), "focus": None}
+
+    matched = match_items(db, exprs)
+    if not matched:
+        return {"output": "No items match those filters", "tree": _full_tree(), "focus": None}
+
+    keep = with_ancestors(db, matched)
+    plural = "s" if len(matched) != 1 else ""
+    return {
+        "output": f"{len(matched)} item{plural} matched",
+        "tree": _filtered_tree(keep),
+        "focus": None,
+        "filtered": True,
+    }

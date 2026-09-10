@@ -11,6 +11,13 @@ import getpass
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.views import view_lists, view_item
+from taskai.filters import (
+    FilterError,
+    looks_like_filters,
+    match_items,
+    parse_filters,
+    with_ancestors,
+)
 from taskai.models import TodoItem, CLIConfig
 from taskai.services.ai import ai_headstart_service, ai_natural_language_service
 from taskai.services.user_setup import user_setup_service
@@ -134,6 +141,29 @@ class Controller:
             print(f"Could not find item matching pattern '{item_id}'")
             return
         view_item(db, item.id, **kwargs)
+
+    def show_filtered(tokens: list[str], **kwargs):
+        """`task show attr<op>value ...` - render only the items matching all
+        the given filters, each with its parent chain for context."""
+        try:
+            exprs = parse_filters(tokens)
+        except FilterError as e:
+            Controller.throw_error(str(e))
+            return
+
+        matched = match_items(db, exprs)
+        if not matched:
+            print("No items match those filters")
+            return
+
+        display = with_ancestors(db, matched)
+        roots = [r for r in Controller._get_root_ids() if r in display]
+        view_lists(
+            db, roots,
+            show_done=kwargs.get("show_done", True),
+            only_ids=display,
+        )
+        print(f"\n{len(matched)} item{'s' if len(matched) != 1 else ''} matched")
 
     def show_examples():
         print(help_menu["examples"])
@@ -411,9 +441,14 @@ def execute_commands(*args, **kwargs) -> int:
                 Controller.run_setup_service()
 
             case "show":
-                match args[1]:
-                    case "all": Controller.show_all(*args[2:], **kwargs)
-                    case _: Controller.show_item(args[1], **kwargs)
+                show_args = list(args[1:])
+                if looks_like_filters(show_args):
+                    Controller.show_filtered(show_args, **kwargs)
+                else:
+                    target = args[1] if len(args) > 1 else "all"
+                    match target:
+                        case "all": Controller.show_all(*args[2:], **kwargs)
+                        case _: Controller.show_item(target, **kwargs)
 
             case "create":
                 Controller.create_item(args[1], **kwargs)
