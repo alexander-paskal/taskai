@@ -426,31 +426,21 @@ const lastChildByParent = {};
 
 // moves the selection relative to the current node along the node tree.
 // The move is equivalent to a `show <target>`: the node becomes selected and
-// the view eases + zooms to it (focusOnNode). Wraps around on both axes —
-// left/right past the end of a depth level loops to that level's first node,
-// past the bottom leaf loops back to rootNode (the top), and `up` from
-// rootNode drops to the deepest node.
+// the view eases + zooms to it (focusOnNode). up/down don't wrap — off the
+// top or past a leaf does nothing; only left/right wrap, looping to the
+// first (or last) node of the current depth level.
 function navigate(direction) {
 	const cur = selectedNode || rootNode;
 	let target = null;
 
 	if (direction === "down") {
-		if (cur.children.length) {
-			// return to the last child visited under `cur`, else its first child
-			const remembered = lastChildByParent[cur.id];
-			target = cur.children.find(c => c.id === remembered) || cur.children[0];
-		} else {
-			target = rootNode; // past the bottom -> wrap to the top
-		}
+		if (!cur.children.length) return; // at a leaf -> nothing below
+		// return to the last child visited under `cur`, else its first child
+		const remembered = lastChildByParent[cur.id];
+		target = cur.children.find(c => c.id === remembered) || cur.children[0];
 	} else if (direction === "up") {
-		if (cur.parent) {
-			target = cur.parent;
-		} else {
-			// at rootNode (the top) -> wrap to the bottom: follow the
-			// first-child chain down to the deepest leaf
-			target = cur;
-			while (target.children[0]) target = target.children[0];
-		}
+		if (!cur.parent) return; // at the top -> nothing above
+		target = cur.parent;
 	} else if (direction === "left" || direction === "right") {
 		// step to the node immediately left/right at the same depth, across
 		// the whole level — so you cross into a cousin subtree rather than
