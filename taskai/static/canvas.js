@@ -403,7 +403,9 @@ function fitAll(duration = STYLE.zoom.focusDurationMs) {
 
 	const pad = 60; // screen px of breathing room around the content
 	const scale = Math.min(
-		STYLE.zoom.max,
+		// don't auto-zoom in past the focus threshold — a small subset
+		// shouldn't fill the screen; the user can still wheel in past this
+		STYLE.zoom.focusScale,
 		Math.max(
 			STYLE.zoom.min,
 			Math.min(
