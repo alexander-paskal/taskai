@@ -117,6 +117,11 @@ function handleEscape() {
 	}
 	if (editPanel.classList.contains("expanded")) {
 		closeEditPanel();
+		// re-center the selected node as the canvas widens back out, otherwise
+		// the panel's width animation re-anchors on the old center and leaves
+		// the node cut off at the edge
+		const node = selectedRealNode();
+		if (node) focusOnNode(node);
 		return;
 	}
 	// deselect, but leave the camera where it is — Esc shouldn't move/zoom
