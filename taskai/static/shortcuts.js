@@ -31,8 +31,17 @@ function toggleShortcutPanel(force) {
 shortcutToggle.addEventListener("click", () => toggleShortcutPanel());
 
 function toggleEditPanel() {
-	if (editPanel.classList.contains("expanded")) closeEditPanel();
+	if (editPanel.classList.contains("expanded")) closeEditPanelAndRefocus();
 	else openEditPanel();
+}
+
+// close the edit panel, then ease the selected node back to center as the
+// canvas widens out — without this the panel's width animation re-anchors on
+// the old center and leaves the node cut off at the edge
+function closeEditPanelAndRefocus() {
+	closeEditPanel();
+	const node = selectedRealNode();
+	if (node) focusOnNode(node);
 }
 
 // --- action helpers --------------------------------------------------------
@@ -116,12 +125,7 @@ function handleEscape() {
 		return;
 	}
 	if (editPanel.classList.contains("expanded")) {
-		closeEditPanel();
-		// re-center the selected node as the canvas widens back out, otherwise
-		// the panel's width animation re-anchors on the old center and leaves
-		// the node cut off at the edge
-		const node = selectedRealNode();
-		if (node) focusOnNode(node);
+		closeEditPanelAndRefocus();
 		return;
 	}
 	// deselect, but leave the camera where it is — Esc shouldn't move/zoom
