@@ -81,6 +81,25 @@ def get_tree():
 
 class CommandRequest(BaseModel):
     input: str
+    # raw filter args from the last `show <attr><op>value ...` the frontend
+    # ran, if any — so a mutation's refreshed tree stays scoped to that view
+    # instead of snapping back to the whole forest
+    filter: str | None = None
+
+
+def _response_tree(filter_str):
+    """The tree a mutation should return: pruned to `filter_str`'s matches
+    (+ their parent chains) when one is active, else the whole forest."""
+    if not filter_str:
+        return _full_tree()
+    tokens = _parse_arg_string(filter_str)
+    if not looks_like_filters(tokens):
+        return _full_tree()
+    try:
+        exprs = parse_filters(tokens)
+    except FilterError:
+        return _full_tree()
+    return _filtered_tree(with_ancestors(db, match_items(db, exprs)))
 
 
 @app.post("/api/command")
@@ -89,7 +108,7 @@ def run_command(request: CommandRequest):
     args, kwargs = _parse_remaining(arg_parts)
 
     if not args:
-        return {"output": "", "tree": _full_tree(), "focus": None}
+        return {"output": "", "tree": _response_tree(request.filter), "focus": None}
 
     if args[0] == "show":
         return _run_show(args)
@@ -101,7 +120,7 @@ def run_command(request: CommandRequest):
     except TaskCLIError:
         pass  # Controller.throw_error() already printed the error into `output`
 
-    return {"output": output.getvalue(), "tree": _full_tree(), "focus": None}
+    return {"output": output.getvalue(), "tree": _response_tree(request.filter), "focus": None}
 
 
 def _run_show(args):

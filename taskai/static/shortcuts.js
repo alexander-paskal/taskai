@@ -78,9 +78,6 @@ function toggleDoneSelected() {
 function deleteSelected() {
 	const node = selectedRealNode();
 	if (!node) return;
-	const item = itemForNode(node);
-	const label = item ? item.name : node.id;
-	if (!window.confirm(`Delete "${label}" and everything under it?`)) return;
 	runMutation(`delete ${node.id}`);
 }
 
@@ -202,7 +199,7 @@ const SHORTCUTS = [
 		run: () => toggleDoneSelected(),
 	},
 	{
-		combos: [{ key: "Delete" }], glyphs: ["Del"], desc: "Delete (asks first)",
+		combos: [{ key: "Delete" }], glyphs: ["Del"], desc: "Delete",
 		run: () => deleteSelected(),
 	},
 ];

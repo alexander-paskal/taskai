@@ -64,12 +64,7 @@ async function sendFieldUpdate(item, def, value) {
 
 	let data;
 	try {
-		const res = await fetch("/api/command", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ input: command }),
-		});
-		data = await res.json();
+		data = await postCommand(command); // carries the active filter, if any
 	} catch (err) {
 		appendLine(`Error updating item ${item.id}: ${err.message}`);
 		return;
@@ -87,12 +82,7 @@ async function sendComment(itemId, text) {
 
 	let data;
 	try {
-		const res = await fetch("/api/command", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ input: command }),
-		});
-		data = await res.json();
+		data = await postCommand(command); // carries the active filter, if any
 	} catch (err) {
 		appendLine(`Error adding comment to item ${itemId}: ${err.message}`);
 		return;

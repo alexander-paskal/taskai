@@ -29,6 +29,12 @@ function appendLine(text) {
 	consoleScrollback.scrollTop = consoleScrollback.scrollHeight;
 }
 
+// raw filter args from the last `show <attr><op>value ...` query (e.g.
+// `priority>3 status="IN PROGRESS"`), or null. Sent with every /api/command
+// POST so a mutation's refreshed tree stays scoped to the same filtered view.
+// Cleared by `show all` and by navigating to a specific node.
+let activeFilter = null;
+
 const PAN_AMOUNT = 250; // screen pixels per pan command
 const ZOOM_FACTOR = 1.5;
 
@@ -62,10 +68,12 @@ function resolveDotRefs(command) {
 // POST a raw command string to the shared endpoint; returns the parsed
 // { output, tree, focus } (or throws). Callers decide what to echo.
 async function postCommand(input) {
+	const body = { input };
+	if (activeFilter) body.filter = activeFilter;
 	const res = await fetch("/api/command", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ input }),
+		body: JSON.stringify(body),
 	});
 	return res.json();
 }
@@ -82,6 +90,7 @@ async function showAll() {
 		return;
 	}
 	applyTree(tree);
+	activeFilter = null; // `show all` drops any filter
 	selectedNode = rootNode;
 	if (typeof onNodeSelected === "function") onNodeSelected(null);
 	fitAll();
@@ -153,6 +162,7 @@ consoleInput.addEventListener("keydown", async (e) => {
 
 		// `show <attr><op><value> ...` — server returns a pruned tree + a flag
 		if (data.filtered) {
+			activeFilter = target; // remember it so mutations keep this view
 			selectedNode = rootNode;
 			if (typeof onNodeSelected === "function") onNodeSelected(null);
 			fitAll();
@@ -161,6 +171,7 @@ consoleInput.addEventListener("keydown", async (e) => {
 		}
 
 		if (data.focus) {
+			activeFilter = null; // navigated to a specific node — no longer filtered
 			const node = nodes.find(n => n.id === String(data.focus));
 			if (node) {
 				selectedNode = node;
@@ -208,12 +219,7 @@ consoleInput.addEventListener("keydown", async (e) => {
 
 	let data;
 	try {
-		const res = await fetch("/api/command", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ input: command }),
-		});
-		data = await res.json();
+		data = await postCommand(command);
 	} catch (err) {
 		appendLine("Error: " + err.message);
 		return;
