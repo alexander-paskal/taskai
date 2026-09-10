@@ -102,7 +102,7 @@ async function sendComment(itemId, text) {
 	applyTree(data.tree);
 }
 
-function handleFieldChange(item, def, value) {
+function handleFieldChange(item, def, value, immediate = false) {
 	if (def.type === "checkbox") {
 		sendFieldUpdate(item, def, value ? "true" : "false");
 		return;
@@ -115,6 +115,15 @@ function handleFieldChange(item, def, value) {
 
 	const timerKey = `${item.id}:${def.key}`;
 	clearTimeout(pendingFieldUpdates[timerKey]);
+
+	// Enter (see buildField) commits right away rather than waiting out the
+	// debounce — the edit is done, no reason to sit on it
+	if (immediate) {
+		delete pendingFieldUpdates[timerKey];
+		sendFieldUpdate(item, def, value);
+		return;
+	}
+
 	pendingFieldUpdates[timerKey] = setTimeout(() => {
 		delete pendingFieldUpdates[timerKey];
 		sendFieldUpdate(item, def, value);
@@ -172,6 +181,18 @@ function buildField(item, def) {
 		const value = def.type === "checkbox" ? input.checked : input.value;
 		handleFieldChange(item, def, value);
 	});
+
+	// Enter on a single-line field ends the edit: flush the pending update
+	// now and blur. Skipped for the textarea (Enter is a newline there) and
+	// the checkbox (toggled with space, no debounce to flush).
+	if (def.type !== "textarea" && def.type !== "checkbox") {
+		input.addEventListener("keydown", (e) => {
+			if (e.key !== "Enter") return;
+			e.preventDefault();
+			handleFieldChange(item, def, input.value, true);
+			input.blur();
+		});
+	}
 
 	return wrapper;
 }

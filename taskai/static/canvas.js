@@ -327,9 +327,6 @@ function focusOnNode(node, scale = STYLE.zoom.focusScale, duration = STYLE.zoom.
 	const startOffsetY = view.offsetY;
 	const startScale = view.scale;
 
-	const targetOffsetX = canvas.width / 2 - node.x * scale;
-	const targetOffsetY = canvas.height * STYLE.zoom.focusYRatio - node.y * scale;
-
 	const startTime = performance.now();
 
 	function step(now) {
@@ -337,6 +334,15 @@ function focusOnNode(node, scale = STYLE.zoom.focusScale, duration = STYLE.zoom.
 		const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
 
 		view.scale = startScale + (scale - startScale) * eased;
+
+		// recompute the target each frame from the current canvas size: the
+		// canvas can be resizing under us when a side panel opens in step with
+		// this animation (e.g. the `a` add-node shortcut), and a target
+		// captured once up front would leave the node off-centre by half the
+		// width change — often hidden behind the panel that just opened.
+		const targetOffsetX = canvas.width / 2 - node.x * scale;
+		const targetOffsetY = canvas.height * STYLE.zoom.focusYRatio - node.y * scale;
+
 		view.offsetX = startOffsetX + (targetOffsetX - startOffsetX) * eased;
 		view.offsetY = startOffsetY + (targetOffsetY - startOffsetY) * eased;
 

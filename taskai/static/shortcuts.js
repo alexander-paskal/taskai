@@ -91,8 +91,10 @@ async function addNodeAndEdit() {
 
 	selectedNode = node;
 	if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(node));
-	focusOnNode(node);
+	// open the panel first so focusOnNode eases into the already-narrowing
+	// canvas and its per-frame target tracks the new width (see focusOnNode)
 	if (typeof openEditPanel === "function") openEditPanel();
+	focusOnNode(node);
 
 	requestAnimationFrame(() => {
 		const nameInput = document.querySelector('#edit-panel [data-field-key="name"]');
