@@ -181,6 +181,32 @@ class JsonDirectoryDatabase:
         parent.child_ids.remove(child_id)
         self.update_item(parent_id, child_ids=parent.child_ids)
 
+
+    def add_dependency(self, src_id: int, dst_id: int):
+        """Adds dependency of dst on src"""
+        src = self.get_item(src_id)
+        dst = self.get_item(dst_id)
+        if dst_id not in src.depended_by_ids:
+            src.depended_by_ids.append(dst_id)
+            self.update_item(src.id, depended_by_ids=src.depended_by_ids)
+        if src_id not in dst.depends_on_ids:
+            dst.depends_on_ids.append(src_id)
+            self.update_item(dst.id, depends_on_ids=dst.depends_on_ids)
+
+    def remove_dependency(self, src_id: int, dst_id: int):
+        """Removes dependency of dst on src"""
+        src = self.get_item(src_id)
+        dst = self.get_item(dst_id)
+        if dst_id in src.depended_by_ids:
+            new_src_depended_by_ids = [id_ for id_ in src.depended_by_ids if id_ != dst_id]
+            self.update_item(src_id, depended_by_ids=new_src_depended_by_ids)
+        if src_id in dst.depends_on_ids:
+            new_dst_depends_on_ids = [id_ for id_ in dst.depends_on_ids if id_ != src_id] 
+            self.update_item(dst_id, depends_on_ids=new_dst_depends_on_ids)
+
+    def delete_chain(self, head_id: int):
+        print("delete chain not implemented")
+
     def delete_comment(self, id: int) -> bool:
         if str(id) not in self.user_data.comments:
             raise DatabaseError(f"No record by id {id}")

@@ -339,6 +339,10 @@ class Controller:
         db.update_item(parent.id, linked_ids=parent.linked_ids)
         db.commit()
 
+
+    def add_dependency(src_id: int|str, )
+
+
     def nuke_database():
         if not Confirm.ask("[red]This will permanently delete ALL data. Are you sure?[/red]", default=False):
             print("Cancelled.")

@@ -38,7 +38,7 @@ class TodoItem(Base):
     description: str = ""
     due_by: Optional[datetime] = None
     comment_ids: list[int] = Field(default_factory=list)
-    dependency_ids: list[int] = Field(default_factory=list)
+    dependency_ids: list[int] = Field(default_factory=list)   # deprecated
     linked_ids: list[int] = Field(default_factory=list)
     child_ids: list[int] = Field(default_factory=list)
     priority: int = 0
@@ -46,6 +46,11 @@ class TodoItem(Base):
     recurs_until: Optional[datetime] = None 
     recur_keep_incomplete: bool = False
     status: str = ""
+
+    # dependency chains
+    is_chain_head: bool = False                               # are we the head of the chain?
+    depends_on_ids: list[int] = Field(default_factory=list)   # prev -> this
+    depended_by_ids: list[int] = Field(default_factory=list)  # this -> next
 
     @field_validator("status", mode="before")
     def coerce_status(cls, value):
