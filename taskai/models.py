@@ -47,6 +47,11 @@ class TodoItem(Base):
     recur_keep_incomplete: bool = False
     status: str = ""
 
+    # chain fields
+    is_chain_head: bool = False
+    prev_chain_id: Optional[int] = None
+    next_chain_id: Optional[int] = None
+
     @field_validator("status", mode="before")
     def coerce_status(cls, value):
         if not isinstance(value, str):

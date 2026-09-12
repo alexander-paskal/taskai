@@ -170,16 +170,58 @@ class JsonDirectoryDatabase:
         # remove child from parent
         if item.parent_id is not None:
             self.remove_child_from_parent(item.id, item.parent_id)
-        
+
+        # remove from chain
+        self.remove_node_from_chain(id)
+
         self._debug(f"Deleting item {id}")
         item_dict = self.user_data.todo_items.pop(str(id))
 
-    def remove_child_from_parent(self, child_id: int, parent_id: int) -> bool:
+    def remove_child_from_parent(self, child_id: int, parent_id: int):
         parent = self.get_item(parent_id)
         if child_id not in parent.child_ids:
             raise DatabaseError(f"Cannot delete child {child_id} from parent {parent_id}")
         parent.child_ids.remove(child_id)
         self.update_item(parent_id, child_ids=parent.child_ids)
+
+    def insert_node_into_chain(self, node_id: int, prev_id: int):
+        node = self.get_item(node_id)
+        prev = self.get_item(prev_id)
+
+        # if prev has no next, make it a head
+        if prev.next_chain_id is None:
+            prev.is_chain_head = True
+
+        # else insert into the chain
+        else:
+            node.next_chain_id = prev.next_chain_idc
+
+        node.prev_chain_id = prev_id
+        prev.next_chain_id = node_id
+
+        self.update_item(**prev.model_dump())
+        self.update_item(**node.model_dump())
+
+    def remove_node_from_chain(self, node_id: int):
+        node = self.get_item(node_id)
+
+        if node.prev_chain_id is not None and node.next_chain_id is not None:
+            
+            self.update_item(node.prev_chain_id, next_chain_id=node.next_chain_id)
+            self.update_item(node.next_chain_id, prev_chain_id =node.prev_chain_id)
+
+        elif node.prev_chain_id is not None:
+            self.update_item(node.prev_chain_id, next_chain_id=None, is_chain_head=False)
+
+        elif node.next_chain_id is not None:
+            self.update_item(node.next_chain_id, prev_chain_id=None)
+            if self.get_item_attr(node.next_chain_id, "next_chain_id") is not None:
+                self.update_item(node.next_chain_id, is_chain_head=True)
+
+        node.next_chain_id = None
+        node.prev_chain_id = None
+        node.is_chain_head = False
+        self.update_item(**node.model_dump())
 
     def delete_comment(self, id: int) -> bool:
         if str(id) not in self.user_data.comments:

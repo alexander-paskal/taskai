@@ -81,6 +81,12 @@ def view_lists(
         print(indent + prefix + display_string)
 
     def _recursive_print(item_id: int, level: int):
+
+        if item_id in already_seen:
+            return
+        already_seen.add(item_id)
+
+
         if level >= max_level:
             return
         if only_ids is not None and item_id not in only_ids:
@@ -106,7 +112,11 @@ def view_lists(
         for child_id in item.child_ids:
             _recursive_print(child_id, level+1)
 
+        if item.next_chain_id is not None:
+            print("\t" * level + "    \u2193")
+            _recursive_print(item.next_chain_id, level)
 
+    already_seen = set()
     for root in roots:
         _recursive_print(root, 0)
             

@@ -168,7 +168,7 @@ class Controller:
     def show_examples():
         print(help_menu["examples"])
 
-    def create_item(name: str, parent_id=None, **kwargs):
+    def create_item(name: str, parent_id=None, **kwargs) -> int:
         if parent_id is not None:
             parent_id = Controller._resolve_item(parent_id).id
 
@@ -176,6 +176,7 @@ class Controller:
         item_id = db.create_item(name=name, parent_id=parent_id, **kwargs)
         print(f"Created item {item_id} - '{name}'")
         db.commit()
+        return item_id
 
     def create_comment(item_id: int|str, content: str):
         item = Controller._resolve_item(item_id)
@@ -337,6 +338,23 @@ class Controller:
             )
         parent.linked_ids.remove(child.id)
         db.update_item(parent.id, linked_ids=parent.linked_ids)
+        db.commit()
+
+    def next_node(name: str, prev_identifier: int|str, **kwargs):
+        node_id = Controller.create_item(name, **kwargs)
+        prev_id = Controller._resolve_item(prev_identifier).id
+        db.insert_node_into_chain(node_id, prev_id)
+        db.commit()
+
+    def insert_node_as_chain(node_identifier: int|str, prev_identifier: int|str):
+        node = Controller._resolve_item(node_identifier)
+        prev = Controller._resolve_item(prev_identifier)
+        db.insert_node_into_chain(node.id, prev.id)
+        db.commit()
+
+    def remove_node_as_chain(node_identifier: int|str):
+        node = Controller._resolve_item(node_identifier)
+        db.remove_node_from_chain(node.id)
         db.commit()
 
     def nuke_database():
@@ -504,6 +522,10 @@ def execute_commands(*args, **kwargs) -> int:
                 recursive = "-r" in args or "-recursive" in args
                 Controller.update_item(args[1], completed=False, recursive=recursive)
 
+            case "next":
+                prev_identifier = args[1]
+                item_name = args[2]
+                Controller.next_node(item_name, prev_identifier)
 
             case "examples":
                 Controller.show_examples()
