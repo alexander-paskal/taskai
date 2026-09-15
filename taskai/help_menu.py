@@ -66,6 +66,7 @@ Config:
 'task config set {key} {value}' --> set a config value
 'task config get {key}' --> get a config value
 'task config pop {key}' --> remove a config value
+  browser-relevant keys: STATUS_COLORS="RUNNING=green,BLOCKED=red,..." recolors the DAG node's status label per status string
 
 Other:
 'task help' --> show this help

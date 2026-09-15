@@ -86,4 +86,5 @@ const STYLE = {
 	// before the first tree load - seeded empty so any consumer can safely
 	// read from it even if that fetch hasn't resolved yet
 	serverConfig: {},
+	statusColors: {}, // parsed from serverConfig.STATUS_COLORS once loadConfig resolves
 };

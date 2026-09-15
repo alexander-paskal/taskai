@@ -114,13 +114,23 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       created an item with `--color`, confirmed it in the live `/api/tree`
       payload, cleared it back to `""` and confirmed the model round-trips
       that correctly.
-- [ ] **Status-string → color mapping, defined in config.** e.g.
+- [x] **Status-string → color mapping, defined in config.** e.g.
       `RUNNING=green, BLOCKED=red` as a new `CLIConfig` key (config-key
       naming and exact syntax TBD — something in the spirit of the existing
       `DISPLAY_STRING`/`DISPLAY_COLORS` pair). Right now every non-empty
       `status` renders the same fixed orange in the DAG (`STYLE.colors.
       statusText`) regardless of its value; this makes that configurable
       per status string. Depends on the config-to-browser item above.
+      New `CLIConfig.STATUS_COLORS: str = ""`, comma-separated
+      `STATUS=color` pairs (e.g. `"RUNNING=green,BLOCKED=red"`) — settable
+      with the existing generic `task config set STATUS_COLORS ...`, no new
+      command needed. `render.js`'s new `parseStatusColors` parses it once
+      into `STYLE.statusColors` (in `canvas.js`'s `loadConfig`); `drawNode`
+      looks up the node's exact `status` string there before falling back
+      to the fixed `statusText` color. Verified: unit-tested the parser
+      (whitespace, multiple pairs, empty/undefined input) and round-tripped
+      a real value through `task config set` → `GET /api/style` against a
+      live instance.
 - [x] **Chain-aware up/down arrows when there's no conflicting tree
       relationship.** Currently arrows are pure tree nav and `f`/`b` are
       the only way to walk a chain (deliberate split — see DEVPLAN 1.8,

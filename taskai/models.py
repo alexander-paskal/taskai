@@ -75,6 +75,10 @@ class CLIConfig(Base):
     # VIEW
     DISPLAY_STRING: str = "id name status due_by"
     DISPLAY_COLORS: str = "_ white dark_orange _"
+    # per-status-string color for the DAG node's status label, e.g.
+    # "RUNNING=green,BLOCKED=red" - browser-only today (CLI status display
+    # isn't color-coded per value), read via GET /api/style
+    STATUS_COLORS: str = ""
 
 
 class LLMConfig(Base):

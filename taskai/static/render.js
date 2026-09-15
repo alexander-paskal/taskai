@@ -1,6 +1,19 @@
 // Drawing only: render(ctx, camera, graph, selectedNode, hoveredNode) draws
 // one frame. Doesn't own any state, doesn't touch anything outside `ctx`.
 
+// "RUNNING=green,BLOCKED=red" -> {RUNNING: "green", BLOCKED: "red"} - lets
+// `task config set STATUS_COLORS ...` recolor the status label per exact
+// status string instead of the fixed STYLE.colors.statusText for all of them
+function parseStatusColors(raw) {
+	const map = {};
+	if (!raw) return map;
+	raw.split(",").forEach(pair => {
+		const [key, value] = pair.split("=");
+		if (key && value) map[key.trim()] = value.trim();
+	});
+	return map;
+}
+
 function truncateWithEllipsis(ctx, text, maxWidth) {
 	let truncated = text;
 	while (truncated.length > 0 && ctx.measureText(truncated + "…").width > maxWidth) {
@@ -216,7 +229,7 @@ function drawNode(ctx, node, isHovered, isSelected) {
 		ctx.textBaseline = "top";
 		ctx.fillText(STYLE.node.glyph, nodeX + node.size - STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
 	} else if (node.status) {
-		ctx.fillStyle = STYLE.colors.statusText;
+		ctx.fillStyle = STYLE.statusColors[node.status] || STYLE.colors.statusText;
 		ctx.font = STYLE.node.idFont;
 		ctx.textAlign = "right";
 		ctx.textBaseline = "top";

@@ -64,6 +64,7 @@ async function loadConfig() {
 	try {
 		const res = await fetch("/api/style");
 		STYLE.serverConfig = await res.json();
+		STYLE.statusColors = parseStatusColors(STYLE.serverConfig.STATUS_COLORS);
 	} catch (err) {
 		console.error("Failed to load server config, using defaults:", err);
 	}
