@@ -826,3 +826,118 @@ endpoints.
 - [ ] Write a short "show and tell" (what it is, the everything-is-an-item
       model, the AI layer, the canvas view) built around the gif, and decide
       on channels (Show HN, r/commandline, r/productivity, GitHub topics).
+
+---
+
+## Phase 8 — Chain CLI & data integrity
+
+The chain data model (`is_chain_head`/`prev_chain_id`/`next_chain_id` on
+`TodoItem`, `JsonDirectoryDatabase.insert_node_into_chain` /
+`remove_node_from_chain` / `delete_chain`) and the browser rendering/nav for
+it (DEVPLAN 1.8) already exist. This phase is CLI-side: finish the command
+surface and fix the bugs found while designing it, so a chain is a fully
+first-class thing a user can build, browse, and tear down from the terminal
+— blocking the next release. Intended use cases: **(1)** define a sequential
+chain of tasks, **(2)** delete individual items out of a chain — linked-list
+style, the rest re-links around the hole — and **(3)** delete an entire
+chain in one shot. A fourth, explicitly called out as a primary workflow:
+navigate along an in-progress chain and `clear` away the items already
+marked done as you go, tetris-style, leaving just the part still in
+progress.
+
+**Bugs to fix (foundational — the new commands below depend on these):**
+
+- [x] **Deleting a chain head orphans the rest of the chain.**
+      `remove_node_from_chain`'s "node has only a next" branch (fires
+      whenever the item being removed from a chain is currently the head)
+      promotes the next link to head and copies the old head's `parent_id`
+      onto it, but never updates the actual parent's `child_ids` to swap the
+      deleted head's id for the new one. The parent keeps pointing at a
+      dead id; the rest of the chain becomes unreachable from the tree
+      (not anyone's child, not a root) even though the JSON records
+      survive. Fix this at the `remove_node_from_chain`/`delete_item` level
+      itself (not as a special case bolted onto one call site) — `clear`'s
+      item-by-item deletion loop and a plain `task delete <head>` both need
+      to go through this same path and come out correct.
+- [ ] **`_get_root_ids` (`cli.py`) doesn't exclude chain members.** It
+      filters on `parent_id is None` only, so `task show all` lists every
+      non-head chain link as a spurious top-level root. Add the same
+      `prev_chain_id is None` check the browser's `Graph` already uses.
+- [ ] **`insert_node_into_chain` doesn't detach `node` from a chain it's
+      already in**, and doesn't clear a stale `is_chain_head` on it. Not
+      hit today because the only caller (`next_node`) always hands it a
+      freshly-created item — becomes a real risk once `task chain` (below)
+      lets you splice two *existing* items together, possibly ones already
+      mid-chain.
+
+**New/wired CLI commands:**
+
+- [ ] `task next <prev> <name>` — already exists (create + append), keep as
+      is. Fix in passing: `execute_commands`'s `case "next":` doesn't
+      forward `**kwargs` to `Controller.next_node`, so e.g. `--due_by` on
+      `task next` is silently dropped — same landmine class as the old
+      `task ai --context` bug (DEVLOG 8-22). Thread `**kwargs` through like
+      `case "ai":` was fixed to do.
+- [ ] **`task chain <prev_id> <node_id>`** — new dispatch wiring the
+      already-written, currently-unreachable `Controller.insert_node_as_chain`.
+      Links two *existing* items. Per Alex: **do not refuse if `node`
+      already has a parent — pop it off that parent (remove from
+      `child_ids`, clear `parent_id`) and splice it into the chain
+      instead.** This is the "malleable graph" call: moving a node from
+      tree-child to chain-member is one command, not detach-then-chain.
+      `node`'s own `child_ids` are untouched either way — a chain member is
+      allowed real children of its own (they render to the side; see
+      DEVPLAN 1.8), only its *parent* relationship is exclusive between
+      "tree child" and "chain member."
+- [ ] **`task unchain <node_id>`** — new dispatch wiring the
+      already-written, currently-unreachable `Controller.remove_node_as_chain`.
+      Detaches one item from its chain without deleting it. Per Alex:
+      **symmetric to `chain` above** — after splicing `node` out
+      (`remove_node_from_chain`), add it as a child of *the chain head's
+      parent* (walk `prev_chain_id` to the true head, read that head's
+      `parent_id`, `add_child_to_parent` there; if the head is itself a
+      root, `node` becomes a root too). Pulls it out of the sequence and
+      into the parent's set of children. A no-op on the reparenting step if
+      `node` being unchained *is* the head — it's already that parent's
+      child.
+- [ ] **`task delete <id> -chain`** — new flag on the existing `delete`
+      command (same convention as `complete`/`done`'s `-r`/`-recursive`),
+      wiring the already-written, currently-unreachable `db.delete_chain`.
+      Deletes the *entire* chain `id` belongs to, not just `id` onward —
+      walk `prev_chain_id` back to the true head first, so it works no
+      matter which link you target, then cascade forward and detach the
+      head from its tree parent the normal way.
+- [ ] **`clear` needs to actually reach chain members.**
+      `Controller._flatten_item_descendants` (used by `task clear <parent>`
+      to scope which completed items to sweep) walks `child_ids` only. A
+      chain's non-head members are never in anyone's `child_ids` — they're
+      only reachable by walking `next_chain_id` from the head — so today
+      `task clear <chain-head-or-ancestor>` silently misses every
+      completed item past the head. Extend the walk to also follow
+      `next_chain_id` (and recurse into each chain member's own
+      `child_ids`, same as the browser's `flatten`/`buildTree` do). Bare
+      `task clear` (no parent) already iterates every item id in the db, so
+      it isn't blind to chain members the same way — it just needs the
+      head-deletion bug fixed above so clearing a *done* head doesn't
+      orphan the still-in-progress rest of the chain out from under itself.
+      This is the primary use case Alex called out: navigate along a chain,
+      `clear` the done items as you pass them, tetris-style, and be left
+      with just the in-progress remainder correctly re-linked (and, if the
+      head itself was cleared, correctly reattached to the tree parent).
+
+**Data structuring:**
+
+- [ ] **Drop the stored `is_chain_head` field, derive it instead**
+      (`prev_chain_id is None and next_chain_id is not None`). It's exactly
+      the field that's gone out of sync in the bugs above, the frontend
+      already doesn't use it (uses `chainNext`/`chainPrev` presence
+      instead — DEVPLAN 1.8), and removing it is backward-compatible
+      (Pydantic silently ignores the leftover key in old JSON — no
+      migration needed). Replace the one real remaining consumer,
+      `delete_item`'s cascade check
+      (`get_item_attr(child_id, "is_chain_head")`), with the derived check.
+
+**Docs:** none of `next`/`chain`/`unchain`/`delete -chain` are documented in
+[taskai/help_menu.py](taskai/help_menu.py) — which is also `task ai`'s
+verbatim command reference, so the AI can't use any of this either until
+it's added there.

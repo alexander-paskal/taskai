@@ -228,9 +228,19 @@ class JsonDirectoryDatabase:
             self.update_item(node.prev_chain_id, next_chain_id=None, is_chain_head=False)
 
         elif node.next_chain_id is not None:
-            self.update_item(node.next_chain_id, prev_chain_id=None)
-            if self.get_item_attr(node.next_chain_id, "next_chain_id") is not None:
-                self.update_item(node.next_chain_id, is_chain_head=True, parent_id=node.parent_id)
+            next_id = node.next_chain_id
+            self.update_item(next_id, prev_chain_id=None)
+            if self.get_item_attr(next_id, "next_chain_id") is not None:
+                self.update_item(next_id, is_chain_head=True)
+
+            # node was the chain's tree entry point (the head) - the chain's
+            # entry point just moved to `next_id`, so it needs node's old
+            # parent slot too, not just the `parent_id` field on its own
+            # (which alone would leave the parent's child_ids still
+            # pointing at node, orphaning the rest of the chain)
+            if node.parent_id is not None:
+                self.update_item(next_id, parent_id=node.parent_id)
+                self.add_child_to_parent(next_id, node.parent_id)
 
         node.next_chain_id = None
         node.prev_chain_id = None
