@@ -273,8 +273,19 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       total across `test_cli.py`/`test_execution.py`/
       `test_json_dir_database.py`/`test_view.py`. Lower priority than the
       chain coverage above for a v1 cutoff specifically.
-- [ ] Wire CI (`pytest` on every PR, `sphinx-build -W` + `linkcheck` for
-      docs) — nice-to-have, fine to slip past v1 if time is tight.
+- [x] Wire CI (`pytest` on every PR, `sphinx-build -W` + `linkcheck` for
+      docs) — nice-to-have, fine to slip past v1 if time is tight. New
+      `.github/workflows/test.yml`, two jobs on `push`/`pull_request`:
+      `pytest` (installs the package + pytest, runs the suite) and `docs`
+      (`sphinx-build -b html -W` then `-b linkcheck`). **Heads up: the docs
+      job will start out red** — `-W` treats warnings as errors, and the
+      known `demo.gif` placeholder (see Docs section below) is currently
+      the one warning in the build. That's intentional, not a bug in the
+      workflow — confirmed locally that plain `sphinx-build -b html`
+      reports exactly that one warning and `-W` correctly turns it into a
+      failure. Didn't touch the existing `publish-to-pypi.yml` or any repo
+      branch-protection settings (whether this becomes a required check is
+      a repo-settings call, not something in the workflow file).
 
 ---
 
