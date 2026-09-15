@@ -1,7 +1,7 @@
 // Collapsible console panel: toggle, plus command submission against
 // POST /api/command. That endpoint always returns the current full tree;
 // `show` commands don't mutate anything, they just return a `focus` id
-// telling us which node to center/zoom on (see focusOnNode in canvas.js).
+// telling us which node to center/zoom on.
 const consolePanel = document.getElementById("console-panel");
 const consoleToggle = document.getElementById("console-toggle");
 const consoleInput = document.getElementById("console-input");
@@ -39,12 +39,12 @@ const PAN_AMOUNT = 250; // screen pixels per pan command
 const ZOOM_FACTOR = 1.5;
 
 const CLIENT_COMMANDS = {
-	"zoom in":   () => canvasZoom(ZOOM_FACTOR),
-	"zoom out":  () => canvasZoom(1 / ZOOM_FACTOR),
-	"pan left":  () => canvasPan(PAN_AMOUNT, 0),
-	"pan right": () => canvasPan(-PAN_AMOUNT, 0),
-	"pan up":    () => canvasPan(0, PAN_AMOUNT),
-	"pan down":  () => canvasPan(0, -PAN_AMOUNT),
+	"zoom in":   () => state.camera.zoom(ZOOM_FACTOR),
+	"zoom out":  () => state.camera.zoom(1 / ZOOM_FACTOR),
+	"pan left":  () => state.camera.pan(PAN_AMOUNT, 0),
+	"pan right": () => state.camera.pan(-PAN_AMOUNT, 0),
+	"pan up":    () => state.camera.pan(0, PAN_AMOUNT),
+	"pan down":  () => state.camera.pan(0, -PAN_AMOUNT),
 	"up":        () => navigate("up"),
 	"down":      () => navigate("down"),
 	"left":      () => navigate("left"),
@@ -58,11 +58,11 @@ const CLIENT_COMMANDS = {
 // alone. Returns null (and reports) if `.` is used with no real selection.
 function resolveDotRefs(command) {
 	if (!/(^|\s)\.(\s|$)/.test(command)) return command;
-	if (!selectedNode || selectedNode === rootNode) {
+	if (!state.selectedNode || state.selectedNode === state.graph.rootNode) {
 		appendLine("No node selected — `.` refers to the selected node");
 		return null;
 	}
-	return command.replace(/(^|\s)\.(?=\s|$)/g, `$1${selectedNode.id}`);
+	return command.replace(/(^|\s)\.(?=\s|$)/g, `$1${state.selectedNode.id}`);
 }
 
 // POST a raw command string to the shared endpoint; returns the parsed
@@ -81,19 +81,15 @@ async function postCommand(input) {
 // select the synthetic root and ease the view out to fit the whole forest —
 // the `show` / `show all` console command and the keyboard shortcut share this
 async function showAll() {
-	let tree;
 	try {
-		const res = await fetch("/api/tree");
-		tree = await res.json();
+		await loadTree();
 	} catch (err) {
 		appendLine("Error: " + err.message);
 		return;
 	}
-	applyTree(tree);
 	activeFilter = null; // `show all` drops any filter
-	selectedNode = rootNode;
-	if (typeof onNodeSelected === "function") onNodeSelected(null);
-	fitAll();
+	selectNode(state.graph.rootNode);
+	state.camera.fitAll(state.graph);
 }
 
 const commandHistory = [];
@@ -147,12 +143,7 @@ consoleInput.addEventListener("keydown", async (e) => {
 		const target = showMatch[1].trim();
 		let data;
 		try {
-			const res = await fetch("/api/command", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ input: command }),
-			});
-			data = await res.json();
+			data = await postCommand(command);
 		} catch (err) {
 			appendLine("Error: " + err.message);
 			return;
@@ -163,20 +154,18 @@ consoleInput.addEventListener("keydown", async (e) => {
 		// `show <attr><op><value> ...` — server returns a pruned tree + a flag
 		if (data.filtered) {
 			activeFilter = target; // remember it so mutations keep this view
-			selectedNode = rootNode;
-			if (typeof onNodeSelected === "function") onNodeSelected(null);
-			fitAll();
+			selectNode(state.graph.rootNode);
+			state.camera.fitAll(state.graph);
 			if (data.output) appendLine(data.output);
 			return;
 		}
 
 		if (data.focus) {
 			activeFilter = null; // navigated to a specific node — no longer filtered
-			const node = nodes.find(n => n.id === String(data.focus));
+			const node = state.graph.getNode(String(data.focus));
 			if (node) {
-				selectedNode = node;
-				if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(node));
-				focusOnNode(node);
+				selectNode(node);
+				state.camera.focusOnNode(node);
 			}
 		} else {
 			appendLine(data.output || `No item found matching '${target}'`);
@@ -204,11 +193,10 @@ consoleInput.addEventListener("keydown", async (e) => {
 		applyTree(data.tree);
 
 		if (data.focus) {
-			const node = nodes.find(n => n.id === String(data.focus));
+			const node = state.graph.getNode(String(data.focus));
 			if (node) {
-				selectedNode = node;
-				if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(node));
-				focusOnNode(node);
+				selectNode(node);
+				state.camera.focusOnNode(node);
 				if (typeof openEditPanel === "function") openEditPanel();
 			}
 		} else {
@@ -230,7 +218,7 @@ consoleInput.addEventListener("keydown", async (e) => {
 	applyTree(data.tree);
 
 	if (data.focus) {
-		const focusedNode = nodes.find(n => n.id === String(data.focus));
-		if (focusedNode) focusOnNode(focusedNode);
+		const focusedNode = state.graph.getNode(String(data.focus));
+		if (focusedNode) state.camera.focusOnNode(focusedNode);
 	}
 });

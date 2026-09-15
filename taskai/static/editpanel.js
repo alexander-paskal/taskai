@@ -11,12 +11,12 @@ const EDIT_PANEL_EXPANDED_WIDTH = 448;
 
 // reserve the collapsed strip's width in the canvas from the start (instant —
 // there's nothing on screen yet to animate a transition from)
-setRightPanelWidthInstant(EDIT_PANEL_COLLAPSED_WIDTH);
+state.camera.setPanelWidthInstant("right", EDIT_PANEL_COLLAPSED_WIDTH);
 
 editToggle.addEventListener("click", () => {
 	const expanded = editPanel.classList.toggle("expanded");
 	editToggle.setAttribute("aria-expanded", String(expanded));
-	setRightPanelWidth(expanded ? EDIT_PANEL_EXPANDED_WIDTH : EDIT_PANEL_COLLAPSED_WIDTH);
+	state.camera.setPanelWidth("right", expanded ? EDIT_PANEL_EXPANDED_WIDTH : EDIT_PANEL_COLLAPSED_WIDTH);
 });
 
 // "YYYY-MM-DDTHH:MM:SS..." (pydantic's JSON datetime) -> "YYYY-MM-DD" for <input type="date">
@@ -319,8 +319,7 @@ function renderEditForm(item) {
 	editBody.appendChild(form);
 }
 
-// called by canvas.js whenever the selected node changes (click, or a tree
-// refresh that re-resolves the current selection)
+// called by canvas.js's selectNode whenever the selected node changes
 function onNodeSelected(item) {
 	renderEditForm(item);
 }
@@ -331,7 +330,7 @@ function openEditPanel() {
 	if (!editPanel.classList.contains("expanded")) {
 		editPanel.classList.add("expanded");
 		editToggle.setAttribute("aria-expanded", "true");
-		setRightPanelWidth(EDIT_PANEL_EXPANDED_WIDTH);
+		state.camera.setPanelWidth("right", EDIT_PANEL_EXPANDED_WIDTH);
 	}
 }
 
@@ -340,7 +339,7 @@ function closeEditPanel() {
 	if (editPanel.classList.contains("expanded")) {
 		editPanel.classList.remove("expanded");
 		editToggle.setAttribute("aria-expanded", "false");
-		setRightPanelWidth(EDIT_PANEL_COLLAPSED_WIDTH);
+		state.camera.setPanelWidth("right", EDIT_PANEL_COLLAPSED_WIDTH);
 	}
 }
 

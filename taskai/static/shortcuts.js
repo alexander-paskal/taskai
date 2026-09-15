@@ -19,13 +19,13 @@ const SHORTCUT_PANEL_COLLAPSED_WIDTH = 44;
 const SHORTCUT_PANEL_EXPANDED_WIDTH = 300;
 
 // reserve the collapsed strip's width in the canvas from the start (instant)
-setPanelWidthInstant("left", SHORTCUT_PANEL_COLLAPSED_WIDTH);
+state.camera.setPanelWidthInstant("left", SHORTCUT_PANEL_COLLAPSED_WIDTH);
 
 function toggleShortcutPanel(force) {
 	const expanded = typeof force === "boolean" ? force : !shortcutPanel.classList.contains("expanded");
 	shortcutPanel.classList.toggle("expanded", expanded);
 	shortcutToggle.setAttribute("aria-expanded", String(expanded));
-	setPanelWidth("left", expanded ? SHORTCUT_PANEL_EXPANDED_WIDTH : SHORTCUT_PANEL_COLLAPSED_WIDTH);
+	state.camera.setPanelWidth("left", expanded ? SHORTCUT_PANEL_EXPANDED_WIDTH : SHORTCUT_PANEL_COLLAPSED_WIDTH);
 }
 
 shortcutToggle.addEventListener("click", () => toggleShortcutPanel());
@@ -41,7 +41,7 @@ function toggleEditPanel() {
 function closeEditPanelAndRefocus() {
 	closeEditPanel();
 	const node = selectedRealNode();
-	if (node) focusOnNode(node);
+	if (node) state.camera.focusOnNode(node);
 }
 
 // --- action helpers --------------------------------------------------------
@@ -49,7 +49,7 @@ function closeEditPanelAndRefocus() {
 // the selected node, or null when the selection is the synthetic root
 // (i.e. "nothing / the whole tree")
 function selectedRealNode() {
-	return selectedNode && selectedNode !== rootNode ? selectedNode : null;
+	return state.selectedNode && state.selectedNode !== state.graph.rootNode ? state.selectedNode : null;
 }
 
 // run a DB-mutating command through the shared endpoint. No `> echo` (that's
@@ -71,7 +71,7 @@ async function runMutation(input) {
 function toggleDoneSelected() {
 	const node = selectedRealNode();
 	if (!node) return;
-	const item = itemForNode(node);
+	const item = state.graph.itemFor(node);
 	runMutation(`${item && item.completed ? "undone" : "done"} ${node.id}`);
 }
 
@@ -87,20 +87,19 @@ async function addNodeAndEdit() {
 	const parent = selectedRealNode();
 	const input = parent ? `add ${parent.id} "New task"` : `create "New task"`;
 
-	const before = new Set(Object.keys(latestItemsById));
+	const before = new Set(Object.keys(state.graph.itemsById));
 	const data = await runMutation(input);
 	if (!data) return;
 
-	const newId = Object.keys(latestItemsById).find(id => !before.has(id));
-	const node = newId && nodes.find(n => n.id === String(newId));
+	const newId = Object.keys(state.graph.itemsById).find(id => !before.has(id));
+	const node = newId && state.graph.getNode(String(newId));
 	if (!node) return;
 
-	selectedNode = node;
-	if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(node));
+	selectNode(node);
 	// open the panel first so focusOnNode eases into the already-narrowing
 	// canvas and its per-frame target tracks the new width (see focusOnNode)
 	if (typeof openEditPanel === "function") openEditPanel();
-	focusOnNode(node);
+	state.camera.focusOnNode(node);
 
 	requestAnimationFrame(() => {
 		const nameInput = document.querySelector('#edit-panel [data-field-key="name"]');
@@ -126,9 +125,7 @@ function handleEscape() {
 		return;
 	}
 	// deselect, but leave the camera where it is — Esc shouldn't move/zoom
-	selectedNode = rootNode;
-	if (typeof onNodeSelected === "function") onNodeSelected(null);
-	draw();
+	selectNode(state.graph.rootNode);
 }
 
 // --- registry ------------------------------------------------------------
@@ -174,15 +171,15 @@ const SHORTCUTS = [
 			{ key: "ArrowLeft", shift: true }, { key: "ArrowRight", shift: true },
 		],
 		glyphs: ["⇧↑", "⇧↓", "⇧←", "⇧→"], desc: "Pan the view",
-		run: (e) => { const [dx, dy] = PAN_VEC[e.key]; canvasPan(dx * PAN_AMOUNT, dy * PAN_AMOUNT); },
+		run: (e) => { const [dx, dy] = PAN_VEC[e.key]; state.camera.pan(dx * PAN_AMOUNT, dy * PAN_AMOUNT); },
 	},
 	{
 		combos: [{ key: "+" }, { key: "=" }], glyphs: ["+"], desc: "Zoom in",
-		run: () => canvasZoom(ZOOM_FACTOR),
+		run: () => state.camera.zoom(ZOOM_FACTOR),
 	},
 	{
 		combos: [{ key: "-" }], glyphs: ["–"], desc: "Zoom out",
-		run: () => canvasZoom(1 / ZOOM_FACTOR),
+		run: () => state.camera.zoom(1 / ZOOM_FACTOR),
 	},
 	{
 		combos: [{ key: "0" }], glyphs: ["0"], desc: "Fit / show all",

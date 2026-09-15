@@ -1,937 +1,105 @@
-// Visual configuration for the DAG canvas. Plain data on purpose — this will
-// eventually be served by a backend endpoint (e.g. GET /api/style) so the
-// look can be themed/configured server-side instead of hardcoded here.
-const STYLE = {
-	colors: {
-		background: "#f5f6f8",
-		nodeFill: "#ffffff",
-		nodeFillHover: "#f3f6ff",
-		nodeFillDone: "#e6f7ec",
-		nodeFillDoneHover: "#d9f0e1",
-		nodeBorder: "#e2e4ea",
-		nodeBorderHover: "#4772fa",
-		nodeBorderDone: "#a9dab9",
-		text: "#23252b",
-		idText: "#b4b9c4",
-		statusText: "#e0924a",
-		edge: "#dcdfe6",
-		shadowNodeFill: "#ffffff", // same card fill as a real node — the dashed border + transparency set it apart, not a tint
-		shadowNodeFillDone: "#eef7f0",
-		shadowNodeBorder: "#c8ccd6", // same grey family as tree edges — the dash carries the meaning, not the colour
-		shadowGlyph: "#a855f7", // the one colour accent kept on a shadow node
-		tooltipBackground: "#ffffff",
-		tooltipBorder: "#e2e4ea",
-		tooltipText: "#23252b",
-	},
-	node: {
-		size: 160, // full square side length, in world units
-		cornerRadius: 14,
-		font: "20px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-		lineHeight: 24,
-		maxLines: 3,
-		padding: 16,
-		idFont: "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-		idPadding: 12,
-		borderWidth: 1.5,
-		borderWidthHover: 2,
-		shadowColor: "rgba(15, 23, 42, 0.10)",
-		shadowBlur: 10,
-		shadowOffsetY: 2,
-		ghostOpacity: 0.92, // whole-node alpha for shadow (soft-link) nodes — only slightly transparent; the dashed border does most of the work
-		ghostFont: "italic 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-		ghostDash: [5, 4], // dashed border for shadow nodes
-		glyph: "↗", // ↗ drawn on a shadow node to mark it as a link
-	},
-	edge: {
-		width: 1.25,
-		linkWidth: 1.5,
-		linkDash: [7, 6], // dash pattern (world units) for the parent -> shadow-node edge
-		linkColorRGB: "150, 155, 168", // uncoloured grey; the dash is the cue, not a hue
-		chainColor: "#6366f1", // bold, distinct from both the plain tree edges and the dashed link edges
-		chainWidth: 2.5,
-		chainArrowSize: 10,
-	},
-	layout: {
-		xSpacing: 230,
-		ySpacing: 230,
-		marginX: 120,
-		marginY: 120,
-		treeGap: 260, // extra horizontal gap, on top of xSpacing, between separate root trees
-	},
-	zoom: {
-		min: 0.1,
-		max: 4,
-		speed: 0.001,
-		focusScale: 0.85,
-		focusDurationMs: 250,
-		// vertical screen position a focused node lands at, as a fraction of
-		// canvas height from the top (0 = top, 1 = bottom); kept above center
-		// so there's room below to see a focused node's children/grandchildren
-		focusYRatio: 0.2,
-	},
-	tooltip: {
-		font: "12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-		paddingX: 8,
-		height: 24,
-		cornerRadius: 6,
-		offset: 10,
-	},
+// High-level wiring: builds a Graph from /api/tree, drives a Camera over
+// it, and turns raw DOM events into navigation/selection/render calls.
+// `state` is the single source of truth the other panel scripts read from
+// and act through.
+
+const canvasEl = document.getElementById("myCanvas");
+const ctx = canvasEl.getContext("2d");
+
+const state = {
+	graph: new Graph({}),
+	camera: null,
+	selectedNode: null,
+	hoveredNode: null,
 };
+state.camera = new Camera(canvasEl, redraw);
+state.selectedNode = state.graph.rootNode;
 
-let roots = [];
-let nodes = [];
-let latestItemsById = {}; // full raw item data keyed by id, from the last /api/tree or /api/command response
-
-// synthetic, never-drawn node sitting above the real root items. It's the
-// nav anchor for top-level movement and the "selection" that means "the whole
-// tree / nothing specific" — e.g. after `show all`, or clicking empty canvas.
-// Never added to `nodes`, so it's never hit-tested, drawn, or bordered.
-const ROOT_NODE_ID = "__root__";
-const rootNode = { id: ROOT_NODE_ID, isRoot: true, label: "", size: 0, children: [], x: 0, y: 0 };
-
-// the real item behind a node — for a shadow (soft-link) node that's the
-// linked-to item (node.realId), not the synthetic shadow id
-function itemForNode(node) {
-	return node ? latestItemsById[node.realId || node.id] : null;
+function redraw() {
+	render(ctx, state.camera, state.graph, state.selectedNode, state.hoveredNode);
 }
 
-function flatten(node, list = []){
-	list.push(node);
-	node.children.forEach(child => flatten(child, list));
-	if (node.chainNext) flatten(node.chainNext, list);
-	return list;
+// selection persists across hover and drives the edit panel (see
+// onNodeSelected, defined in editpanel.js)
+function selectNode(node) {
+	state.selectedNode = node;
+	if (typeof onNodeSelected === "function") onNodeSelected(state.graph.itemFor(node));
+	redraw();
 }
 
-// a "shadow" node: a lightweight, non-recursing stand-in for a soft-linked
-// item (linked_ids), shown as a ghost child under the linking node instead
-// of drawing an edge across the graph to the real one. `realId` points back
-// at the actual item so selection/editing act on it, not the shadow.
-function buildShadowNode(item, parentId) {
-	return {
-		id: `link:${parentId}:${item.id}`,
-		realId: String(item.id),
-		isShadow: true,
-		label: item.name,
-		size: STYLE.node.size,
-		completed: item.completed,
-		status: item.status,
-		children: [],
-	};
-}
-
-// builds a renderable node tree from the flat {id: item} map returned by /api/tree
-function buildTree(itemsById, id, seen = new Set()) {
-	const item = itemsById[id];
-	seen.add(id);
-	const children = (item.child_ids || []).map(childId => buildTree(itemsById, childId, seen));
-
-	// soft links render as ghost children appended after the real ones
-	(item.linked_ids || []).forEach(linkedId => {
-		const linked = itemsById[linkedId];
-		if (linked) children.push(buildShadowNode(linked, item.id));
-	});
-
-	const node = {
-		id: String(item.id),
-		label: item.name,
-		size: STYLE.node.size,
-		completed: item.completed,
-		status: item.status,
-		children,
-	};
-
-	// back-reference so navigation (navigate()) can walk up as well as down
-	children.forEach(child => { child.parent = node; });
-
-	// a chain member never has its own parent_id (only a prev_chain_id) — it's
-	// reached here by walking next_chain_id from its predecessor, not built as
-	// a separate forest root. `seen` guards against a cycle in the chain data.
-	if (item.next_chain_id != null && itemsById[item.next_chain_id] && !seen.has(item.next_chain_id)) {
-		node.chainNext = buildTree(itemsById, item.next_chain_id, seen);
-		node.chainNext.chainPrev = node;
-	}
-
-	return node;
-}
-
-// true if `node` is a link in some chain (head, middle, or tail alike) — such
-// a node's own real children grow to the right instead of centering below it
-function isChainMember(node) {
-	return !!(node.chainNext || node.chainPrev);
-}
-
-// bottom-up: gives every node a {left, right, height} footprint in grid units
-// (not pixels — place() turns these into positions via xSpacing/ySpacing).
-// `left`/`right` are how far the node's content reaches left/right of its own
-// x — not a single symmetric width, because a chain node's reach is
-// lopsided: nothing it owns ever renders left of its own column, so `left`
-// is always just the node's own square. A plain node still centers its
-// children below it the old way (left == right == half the children's
-// combined width). A chain node instead pushes its own real children into a
-// row to its right (each additional child stacking further right than the
-// last), and makes its chain successor wait — straight down, but only after
-// however many rows that side-subtree needs, so nothing overlaps it.
-function measure(node) {
-	const childBoxes = node.children.map(measure);
-
-	if (isChainMember(node)) {
-		const sideRight = childBoxes.length
-			? 1 + childBoxes.reduce((sum, b) => sum + b.left + b.right, 0)
-			: 0;
-		const sideHeight = childBoxes.length ? Math.max(...childBoxes.map(b => b.height)) : 0;
-		const chainBox = node.chainNext ? measure(node.chainNext) : { right: 0, height: 0 };
-
-		node._childBoxes = childBoxes;
-		node._sideHeight = sideHeight;
-		node._left = 0.5; // only this node's own square ever reaches left of its x
-		node._right = Math.max(0.5, sideRight, chainBox.right);
-		node._height = 1 + sideHeight + chainBox.height;
-	} else {
-		const total = childBoxes.reduce((sum, b) => sum + b.left + b.right, 0);
-
-		node._childBoxes = childBoxes;
-		node._left = childBoxes.length ? total / 2 : 0.5;
-		node._right = childBoxes.length ? total / 2 : 0.5;
-		node._height = childBoxes.length ? 1 + Math.max(...childBoxes.map(b => b.height)) : 1;
-	}
-
-	return { left: node._left, right: node._right, height: node._height };
-}
-
-// top-down: places `node` at grid position (x, y) — resolved to world
-// coordinates here — then places its descendants per the rule measure() used.
-// A child is anchored at `cursor + child.left` (not `cursor + width/2`) so
-// its bounding box's left edge lands exactly at `cursor` regardless of
-// whether that child's own footprint is symmetric or lopsided.
-function place(node, x, y) {
-	node.x = STYLE.layout.marginX + x * STYLE.layout.xSpacing;
-	node.y = STYLE.layout.marginY + y * STYLE.layout.ySpacing;
-
-	if (isChainMember(node)) {
-		let cursor = 1; // side row starts one column right of the spine
-		node.children.forEach((child, i) => {
-			const box = node._childBoxes[i];
-			place(child, x + cursor + box.left, y + 1);
-			cursor += box.left + box.right;
-		});
-		if (node.chainNext) place(node.chainNext, x, y + 1 + node._sideHeight);
-	} else {
-		let cursor = -node._left;
-		node.children.forEach((child, i) => {
-			const box = node._childBoxes[i];
-			place(child, x + cursor + box.left, y + 1);
-			cursor += box.left + box.right;
-		});
-	}
-}
-
-// builds the node tree + layout from a {id: item} map and (re)renders —
-// shared by the initial /api/tree load and command responses from the
-// console, which already carry the updated tree and don't need a refetch.
+// rebuilds the graph from a {id: item} map and redraws — shared by the
+// initial /api/tree load and command responses from the console, which
+// already carry the updated tree and don't need a refetch
 function applyTree(itemsById) {
-	latestItemsById = itemsById;
+	state.graph = new Graph(itemsById);
 
-	// a chain member's parent_id is always null (only prev_chain_id links it) —
-	// exclude those here so they're reached by walking next_chain_id from
-	// their predecessor instead of also being built as a second forest root
-	const rootIds = Object.values(itemsById)
-		.filter(item => item.parent_id === null && item.prev_chain_id == null)
-		.map(item => item.id);
-
-	roots = rootIds.map(id => buildTree(itemsById, id));
-
-	// lay the forest out as one more row of slots (never a chain itself), same
-	// as any node's children, then add a bit of extra breathing room between
-	// separate root trees on top of ordinary sibling spacing
-	const superRoot = { children: roots };
-	measure(superRoot);
-
-	const extraGapUnits = STYLE.layout.treeGap / STYLE.layout.xSpacing;
-	const totalWidth = superRoot._left + superRoot._right + Math.max(0, roots.length - 1) * extraGapUnits;
-	let cursor = -totalWidth / 2;
-	roots.forEach((root, i) => {
-		if (i > 0) cursor += extraGapUnits;
-		const box = superRoot._childBoxes[i];
-		place(root, cursor + box.left, 0);
-		cursor += box.left + box.right;
-	});
-
-	nodes = roots.flatMap(root => flatten(root));
-
-	// keep the synthetic root pointing at the freshly-built real roots, and
-	// park it just above them so it works as a nav origin
-	rootNode.children = roots;
-	roots.forEach(r => { r.parent = rootNode; });
-	if (roots.length) {
-		rootNode.x = roots.reduce((sum, r) => sum + r.x, 0) / roots.length;
-		rootNode.y = Math.min(...roots.map(r => r.y)) - STYLE.layout.ySpacing;
-	} else {
-		rootNode.x = 0;
-		rootNode.y = 0;
-	}
-
-	// the previously-selected node was rebuilt as a new object (or may no
-	// longer exist) — re-resolve by id so selection survives a tree refresh
-	if (selectedNode) {
-		selectedNode = selectedNode.id === ROOT_NODE_ID
-			? rootNode
-			: nodes.find(n => n.id === selectedNode.id) || rootNode;
-		if (typeof onNodeSelected === "function") {
-			onNodeSelected(itemForNode(selectedNode));
-		}
-	}
-
-	draw();
+	// the previous selection is now a stale object (nodes are rebuilt every
+	// time) — re-resolve it by id so selection survives a tree refresh
+	const prevId = state.selectedNode ? state.selectedNode.id : null;
+	selectNode((prevId && state.graph.getNode(prevId)) || state.graph.rootNode);
 }
 
 async function loadTree() {
 	const res = await fetch("/api/tree");
-	const itemsById = await res.json();
-	applyTree(itemsById);
+	applyTree(await res.json());
 }
 
-const canvas = document.getElementById("myCanvas");
-const ctx = canvas.getContext("2d"); // get the canvas context I guess?
-
-// pan/zoom view state: world coordinates map to screen as screen = world * scale + offset
-const view = { offsetX: 0, offsetY: 0, scale: 1 };
-
-function screenToWorld(sx, sy) {
-	return { x: (sx - view.offsetX) / view.scale, y: (sy - view.offsetY) / view.scale };
-}
-
-function worldToScreen(wx, wy) {
-	return { x: wx * view.scale + view.offsetX, y: wy * view.scale + view.offsetY };
-}
-
-// width (px) reserved on each side — right for the edit panel, left for the
-// shortcuts panel; the canvas fills what's between them
-let rightPanelWidth = 0;
-let leftPanelWidth = 0;
-const panelWidthAnimId = { left: null, right: null };
-
-// keep in sync with the CSS width transition on .edit-panel / .shortcut-panel
-const PANEL_TRANSITION_MS = 200;
-
-function applyCanvasSize() {
-	canvas.width = window.innerWidth - rightPanelWidth - leftPanelWidth;
-	canvas.height = window.innerHeight;
-	canvas.style.marginLeft = leftPanelWidth + "px"; // shove the canvas past the left panel
-}
-
-function resizeCanvas() {
-	applyCanvasSize();
-	draw();
-}
-window.addEventListener("resize", resizeCanvas);
-
-// rescales the zoom in proportion to how much the canvas width just changed
-// (not just re-panning) so the same amount of world content stays in view
-// instead of getting cropped by a narrower canvas, then re-anchors so
-// `centerWorld` (whatever was visually centered before the change) stays
-// centered after.
-function _rescaleForWidthChange(oldWidth, startScale, centerWorld) {
-	view.scale = oldWidth > 0
-		? Math.min(STYLE.zoom.max, Math.max(STYLE.zoom.min, startScale * canvas.width / oldWidth))
-		: startScale;
-
-	view.offsetX = canvas.width / 2 - centerWorld.x * view.scale;
-	view.offsetY = canvas.height / 2 - centerWorld.y * view.scale;
-}
-
-function _panelWidth(side) { return side === "left" ? leftPanelWidth : rightPanelWidth; }
-function _setPanelWidthVar(side, w) {
-	if (side === "left") leftPanelWidth = w;
-	else rightPanelWidth = w;
-}
-
-// jumps a side's reservation straight to `width` with no animation — for
-// initial setup, where there's nothing on screen yet to transition from
-function setPanelWidthInstant(side, width) {
-	if (panelWidthAnimId[side] !== null) {
-		cancelAnimationFrame(panelWidthAnimId[side]);
-		panelWidthAnimId[side] = null;
-	}
-
-	const oldWidth = canvas.width;
-	const startScale = view.scale;
-	const centerWorld = screenToWorld(canvas.width / 2, canvas.height / 2);
-
-	_setPanelWidthVar(side, width);
-	applyCanvasSize();
-	_rescaleForWidthChange(oldWidth, startScale, centerWorld);
-
-	draw();
-}
-
-// eases a side's reservation (and the canvas size/zoom that follow it) to
-// `targetWidth` over `duration`ms, matching the panel's own CSS transition
-// so the graph resizes in step with it rather than snapping.
-function setPanelWidth(side, targetWidth, duration = PANEL_TRANSITION_MS) {
-	if (panelWidthAnimId[side] !== null) cancelAnimationFrame(panelWidthAnimId[side]);
-	if (_panelWidth(side) === targetWidth) return;
-
-	const startWidth = _panelWidth(side);
-	const startScale = view.scale;
-	const oldWidth = canvas.width;
-	const centerWorld = screenToWorld(canvas.width / 2, canvas.height / 2);
-	const startTime = performance.now();
-
-	function step(now) {
-		const t = Math.min(1, (now - startTime) / duration);
-		const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
-
-		_setPanelWidthVar(side, startWidth + (targetWidth - startWidth) * eased);
-		applyCanvasSize();
-		_rescaleForWidthChange(oldWidth, startScale, centerWorld);
-
-		draw();
-
-		panelWidthAnimId[side] = t < 1 ? requestAnimationFrame(step) : null;
-	}
-
-	panelWidthAnimId[side] = requestAnimationFrame(step);
-}
-
-// back-compat wrappers — editpanel.js drives the right side through these
-function setRightPanelWidthInstant(width) { setPanelWidthInstant("right", width); }
-function setRightPanelWidth(width, duration) { setPanelWidth("right", width, duration); }
-
-// true if the world point (x, y) falls inside node's square
-function hitTest(node, x, y) {
-	const half = node.size / 2;
-	return Math.abs(x - node.x) <= half && Math.abs(y - node.y) <= half;
-}
-
-// eases the view to `scale`, horizontally centering `node` and placing it
-// at STYLE.zoom.focusYRatio down the screen (not vertically centered)
-function focusOnNode(node, scale = STYLE.zoom.focusScale, duration = STYLE.zoom.focusDurationMs) {
-	const startOffsetX = view.offsetX;
-	const startOffsetY = view.offsetY;
-	const startScale = view.scale;
-
-	const startTime = performance.now();
-
-	function step(now) {
-		const t = Math.min(1, (now - startTime) / duration);
-		const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
-
-		view.scale = startScale + (scale - startScale) * eased;
-
-		// recompute the target each frame from the current canvas size: the
-		// canvas can be resizing under us when a side panel opens in step with
-		// this animation (e.g. the `a` add-node shortcut), and a target
-		// captured once up front would leave the node off-centre by half the
-		// width change — often hidden behind the panel that just opened.
-		const targetOffsetX = canvas.width / 2 - node.x * scale;
-		const targetOffsetY = canvas.height * STYLE.zoom.focusYRatio - node.y * scale;
-
-		view.offsetX = startOffsetX + (targetOffsetX - startOffsetX) * eased;
-		view.offsetY = startOffsetY + (targetOffsetY - startOffsetY) * eased;
-
-		draw();
-
-		if (t < 1) requestAnimationFrame(step);
-	}
-
-	requestAnimationFrame(step);
-}
-
-
-// animates view to target offset/scale using the same ease-out cubic as focusOnNode
-function easeView(targetOffsetX, targetOffsetY, targetScale, duration = STYLE.zoom.focusDurationMs) {
-	const startOffsetX = view.offsetX;
-	const startOffsetY = view.offsetY;
-	const startScale = view.scale;
-	const startTime = performance.now();
-
-	function step(now) {
-		const t = Math.min(1, (now - startTime) / duration);
-		const eased = 1 - Math.pow(1 - t, 3);
-
-		view.scale = startScale + (targetScale - startScale) * eased;
-		view.offsetX = startOffsetX + (targetOffsetX - startOffsetX) * eased;
-		view.offsetY = startOffsetY + (targetOffsetY - startOffsetY) * eased;
-
-		draw();
-		if (t < 1) requestAnimationFrame(step);
-	}
-	requestAnimationFrame(step);
-}
-
-// zoom around the canvas center by `factor` (e.g. 1.5 = in, 1/1.5 = out)
-function canvasZoom(factor) {
-	const cx = canvas.width / 2;
-	const cy = canvas.height / 2;
-	const worldCenter = screenToWorld(cx, cy);
-	const newScale = Math.min(STYLE.zoom.max, Math.max(STYLE.zoom.min, view.scale * factor));
-	easeView(cx - worldCenter.x * newScale, cy - worldCenter.y * newScale, newScale);
-}
-
-// pan by dx/dy screen pixels (positive dx = camera moves left, revealing content to the right)
-function canvasPan(dx, dy) {
-	easeView(view.offsetX + dx, view.offsetY + dy, view.scale);
-}
-
-// eases the view out until every real node fits on screen, with padding —
-// used by `show all` / bare `show`
-function fitAll(duration = STYLE.zoom.focusDurationMs) {
-	if (!nodes.length) return;
-
-	const half = STYLE.node.size / 2;
-	const minX = Math.min(...nodes.map(n => n.x)) - half;
-	const maxX = Math.max(...nodes.map(n => n.x)) + half;
-	const minY = Math.min(...nodes.map(n => n.y)) - half;
-	const maxY = Math.max(...nodes.map(n => n.y)) + half;
-
-	const pad = 60; // screen px of breathing room around the content
-	const scale = Math.min(
-		// don't auto-zoom in past the focus threshold — a small subset
-		// shouldn't fill the screen; the user can still wheel in past this
-		STYLE.zoom.focusScale,
-		Math.max(
-			STYLE.zoom.min,
-			Math.min(
-				(canvas.width - pad * 2) / (maxX - minX),
-				(canvas.height - pad * 2) / (maxY - minY),
-			),
-		),
-	);
-
-	const cx = (minX + maxX) / 2;
-	const cy = (minY + maxY) / 2;
-	easeView(canvas.width / 2 - cx * scale, canvas.height / 2 - cy * scale, scale, duration);
-}
-
-// per-parent memory of the last child navigated to, keyed by parent id (node
-// objects are rebuilt on every applyTree, so ids not references). Lets
-// `down` (a plain node's children) and `right` (a chain node's side row)
-// return to where you last were; stale ids are harmless — the lookup just
-// misses and falls back to the first child.
-const lastChildByParent = {};
-
-// moves the selection relative to the current node. The move is equivalent
-// to a `show <target>`: the node becomes selected and the view eases +
-// zooms to it (focusOnNode).
-//
-// For a plain node, down/up walk the tree (children/parent) and left/right
-// step across the whole depth level, wrapping at its ends (see below). For a
-// node that's part of a chain, down/up walk the chain itself
-// (chainNext/chainPrev) instead — the tree relationship a chain node has to
-// its own real children is `right`'s job, not `down`'s, since those children
-// render as a row to the side, not below. Leaving that row happens two ways:
-// `left` off its first entry steps back to the chain node itself, and `up`
-// from anywhere in the row skips past the chain node straight to whatever
-// came before it in the chain (or, at the chain's head, out to its ordinary
-// tree parent) — the chain node's own row isn't "between" it and its
-// predecessor, so up shouldn't stop there.
 function navigate(direction) {
-	const cur = selectedNode || rootNode;
-	let target = null;
+	const target = navigateGraph(direction, state.selectedNode || state.graph.rootNode, state.graph);
+	if (!target) return;
 
-	if (direction === "down") {
-		if (isChainMember(cur)) {
-			target = cur.chainNext || null; // chain successor, not real children — those are `right`
-		} else {
-			if (!cur.children.length) return; // at a leaf -> nothing below
-			const remembered = lastChildByParent[cur.id];
-			target = cur.children.find(c => c.id === remembered) || cur.children[0];
-		}
-	} else if (direction === "up") {
-		if (isChainMember(cur)) {
-			target = cur.chainPrev || cur.parent || null;
-		} else if (cur.parent && isChainMember(cur.parent) && cur.parent.chainPrev) {
-			target = cur.parent.chainPrev; // leaving a chain node's side row: skip the chain link, land on its predecessor
-		} else {
-			target = cur.parent || null;
-		}
-	} else if (direction === "right" && isChainMember(cur)) {
-		if (!cur.children.length) return; // nothing in the row to enter
-		const remembered = lastChildByParent[cur.id];
-		target = cur.children.find(c => c.id === remembered) || cur.children[0];
-	} else if (direction === "left" && cur.parent && isChainMember(cur.parent) && cur.parent.children[0] === cur) {
-		target = cur.parent; // first entry in a chain node's row: step back out to it
-	} else if (direction === "left" || direction === "right") {
-		// step to the node immediately left/right at the same depth, across
-		// the whole level — so you cross into a cousin subtree rather than
-		// wrapping inside the current parent (this also covers moving between
-		// a chain node's own side-children, which share one y row same as any
-		// other siblings). The layout gives every node at a given depth the
-		// same y, so the level is just "nodes sharing cur.y" sorted by x; no
-		// explicit depth/level bookkeeping. Wrap to the first (or last) node
-		// of the level only when you run off its end.
-		const row = nodes
-			.filter(n => Math.abs(n.y - cur.y) < 1)
-			.sort((a, b) => a.x - b.x);
-		const i = row.indexOf(cur);
-		if (i === -1 || row.length < 2) return;
-		const step = direction === "right" ? 1 : -1;
-		target = row[(i + step + row.length) % row.length];
-	}
-
-	if (!target || target === cur) return;
-
-	// remember this child so a later `down`/`right` into its parent returns here
-	if (target.parent) lastChildByParent[target.parent.id] = target.id;
-
-	selectedNode = target;
-	if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(target));
-	if (target === rootNode) fitAll();
-	else focusOnNode(target);
-	draw();
+	selectNode(target);
+	if (target === state.graph.rootNode) state.camera.fitAll(state.graph);
+	else state.camera.focusOnNode(target);
 }
 
-// trims text, always appending an ellipsis, until "text…" fits maxWidth
-function truncateWithEllipsis(ctx, text, maxWidth) {
-	let truncated = text;
-	while (truncated.length > 0 && ctx.measureText(truncated + "…").width > maxWidth) {
-		truncated = truncated.slice(0, -1);
-	}
-	return truncated ? truncated + "…" : "…";
-}
+window.addEventListener("resize", () => state.camera.resize());
 
-// returns text unchanged if it already fits maxWidth, else truncates with an ellipsis
-function fitText(ctx, text, maxWidth) {
-	if (ctx.measureText(text).width <= maxWidth) return text;
-	return truncateWithEllipsis(ctx, text, maxWidth);
-}
-
-// wraps text into up to maxLines lines that each fit maxWidth, ellipsis-
-// truncating the last line if there's still text left over after maxLines
-function wrapText(ctx, text, maxWidth, maxLines) {
-	const words = text.split(/\s+/).filter(Boolean);
-	const lines = [];
-	let currentLine = "";
-	let nextWord = 0;
-
-	while (nextWord < words.length && lines.length < maxLines) {
-		const word = words[nextWord];
-		const candidate = currentLine ? `${currentLine} ${word}` : word;
-
-		if (!currentLine || ctx.measureText(candidate).width <= maxWidth) {
-			currentLine = candidate;
-			nextWord++;
-		} else {
-			lines.push(currentLine);
-			currentLine = "";
-		}
-	}
-
-	const fullyFit = nextWord >= words.length;
-	if (currentLine) lines.push(currentLine);
-
-	if (!fullyFit) {
-		lines[lines.length - 1] = truncateWithEllipsis(ctx, lines[lines.length - 1], maxWidth);
-	}
-
-	return lines;
-}
-
-function roundedRectPath(ctx, x, y, w, h, r) {
-	ctx.beginPath();
-	ctx.moveTo(x + r, y);
-	ctx.arcTo(x + w, y, x + w, y + h, r);
-	ctx.arcTo(x + w, y + h, x, y + h, r);
-	ctx.arcTo(x, y + h, x, y, r);
-	ctx.arcTo(x, y, x + w, y, r);
-	ctx.closePath();
-}
-
-// dashed edges from a node to each of its shadow (soft-link) children. Uncoloured
-// (grey) — the dash pattern alone distinguishes it from the solid tree edges.
-// Each edge is drawn with a gradient stroke that's fully transparent inside
-// either node's square and only opaque in the gap between them, so the line
-// never crosses over node content.
-function drawLinkEdges(ctx) {
-	ctx.save();
-	ctx.lineWidth = STYLE.edge.linkWidth;
-	ctx.lineCap = "butt";
-	ctx.setLineDash(STYLE.edge.linkDash);
-
-	const rgb = STYLE.edge.linkColorRGB;
-	const clear = `rgba(${rgb}, 0)`;
-	const solid = `rgba(${rgb}, 0.9)`;
-
-	function edge(from, to) {
-		const dist = Math.hypot(to.x - from.x, to.y - from.y) || 1;
-		// fraction of the line covered by each node's half-square
-		const fromFrac = Math.min(0.49, (from.size / 2) / dist);
-		const toFrac = Math.min(0.49, (to.size / 2) / dist);
-
-		const grad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
-		grad.addColorStop(0, clear);
-		grad.addColorStop(Math.max(0, fromFrac - 0.001), clear);
-		grad.addColorStop(fromFrac, solid);
-		grad.addColorStop(1 - toFrac, solid);
-		grad.addColorStop(Math.min(1, 1 - toFrac + 0.001), clear);
-		grad.addColorStop(1, clear);
-
-		ctx.strokeStyle = grad;
-		ctx.beginPath();
-		ctx.moveTo(from.x, from.y);
-		ctx.lineTo(to.x, to.y);
-		ctx.stroke();
-	}
-
-	function walk(node) {
-		node.children.forEach(child => {
-			if (child.isShadow) edge(node, child);
-			else walk(child);
-		});
-		if (node.chainNext) walk(node.chainNext);
-	}
-	roots.forEach(root => walk(root));
-
-	ctx.restore();
-}
-
-// bold, arrowed edges for chain successors (next_chain_id) — deliberately
-// distinct from both the plain tree edges and the dashed shadow-link edges
-function drawChainEdges(ctx) {
-	ctx.save();
-	ctx.strokeStyle = STYLE.edge.chainColor;
-	ctx.fillStyle = STYLE.edge.chainColor;
-	ctx.lineWidth = STYLE.edge.chainWidth;
-	ctx.lineCap = "round";
-
-	function edge(from, to) {
-		const dist = Math.hypot(to.x - from.x, to.y - from.y) || 1;
-		const ux = (to.x - from.x) / dist;
-		const uy = (to.y - from.y) / dist;
-		const startX = from.x + ux * (from.size / 2);
-		const startY = from.y + uy * (from.size / 2);
-		const endX = to.x - ux * (to.size / 2);
-		const endY = to.y - uy * (to.size / 2);
-
-		ctx.beginPath();
-		ctx.moveTo(startX, startY);
-		ctx.lineTo(endX, endY);
-		ctx.stroke();
-
-		const arrow = STYLE.edge.chainArrowSize;
-		const angle = Math.atan2(uy, ux);
-		ctx.beginPath();
-		ctx.moveTo(endX, endY);
-		ctx.lineTo(endX - arrow * Math.cos(angle - Math.PI / 6), endY - arrow * Math.sin(angle - Math.PI / 6));
-		ctx.lineTo(endX - arrow * Math.cos(angle + Math.PI / 6), endY - arrow * Math.sin(angle + Math.PI / 6));
-		ctx.closePath();
-		ctx.fill();
-	}
-
-	function walk(node) {
-		if (node.chainNext) {
-			edge(node, node.chainNext);
-			walk(node.chainNext);
-		}
-		node.children.forEach(walk);
-	}
-	roots.forEach(root => walk(root));
-
-	ctx.restore();
-}
-
-function draw() {
-	ctx.fillStyle = STYLE.colors.background;
-	ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-	ctx.save();
-	ctx.translate(view.offsetX, view.offsetY);
-	ctx.scale(view.scale, view.scale);
-
-	// Draw connecting lines
-	ctx.strokeStyle = STYLE.colors.edge;
-	ctx.lineWidth = STYLE.edge.width;
-	ctx.lineCap = "round";
-	function drawLines(node) {
-		node.children.forEach(child => {
-			if (child.isShadow) return; // shadow children get a dashed edge in drawLinkEdges instead
-			ctx.beginPath();
-			ctx.moveTo(node.x, node.y);
-			ctx.lineTo(child.x, child.y);
-			ctx.stroke();
-			drawLines(child);
-		});
-		if (node.chainNext) drawLines(node.chainNext); // chain hop gets its own bold edge, drawn separately below
-	}
-	roots.forEach(root => drawLines(root));
-
-	// Soft-link edges (linked_ids), layered on top of the tree edges but below the nodes
-	drawLinkEdges(ctx);
-
-	// Chain edges (next_chain_id) — bold arrows, layered above tree/link edges but below nodes
-	drawChainEdges(ctx);
-
-	// Draw nodes
-	nodes.forEach(node => {
-		const half = node.size / 2;
-		const isShadow = node.isShadow;
-		const isHovered = node === hoveredNode;
-		const isSelected = node === selectedNode;
-		const nodeX = node.x - half;
-		const nodeY = node.y - half;
-
-		ctx.save();
-		if (isShadow) ctx.globalAlpha = STYLE.node.ghostOpacity;
-
-		ctx.save();
-		if (!isShadow) {
-			// shadow nodes stay flat — no drop shadow — so they read as secondary
-			ctx.shadowColor = STYLE.node.shadowColor;
-			ctx.shadowBlur = STYLE.node.shadowBlur;
-			ctx.shadowOffsetY = STYLE.node.shadowOffsetY;
-		}
-
-		let fill;
-		if (isShadow) fill = node.completed ? STYLE.colors.shadowNodeFillDone : STYLE.colors.shadowNodeFill;
-		else if (node.completed) fill = isHovered ? STYLE.colors.nodeFillDoneHover : STYLE.colors.nodeFillDone;
-		else fill = isHovered ? STYLE.colors.nodeFillHover : STYLE.colors.nodeFill;
-
-		roundedRectPath(ctx, nodeX, nodeY, node.size, node.size, STYLE.node.cornerRadius);
-		ctx.fillStyle = fill;
-		ctx.fill();
-		ctx.restore(); // drop the shadow before stroking the border
-
-		let border = STYLE.colors.nodeBorder;
-		if (isShadow) border = STYLE.colors.shadowNodeBorder;
-		else if (node.completed) border = STYLE.colors.nodeBorderDone;
-		if (isHovered || isSelected) border = STYLE.colors.nodeBorderHover;
-
-		if (isShadow) ctx.setLineDash(STYLE.node.ghostDash);
-		roundedRectPath(ctx, nodeX, nodeY, node.size, node.size, STYLE.node.cornerRadius);
-		ctx.strokeStyle = border;
-		ctx.lineWidth = (isHovered || isSelected) ? STYLE.node.borderWidthHover : STYLE.node.borderWidth;
-		ctx.stroke();
-		ctx.setLineDash([]);
-
-		ctx.fillStyle = STYLE.colors.idText;
-		ctx.font = STYLE.node.idFont;
-		ctx.textAlign = "left";
-		ctx.textBaseline = "top";
-		ctx.fillText(isShadow ? node.realId : node.id, nodeX + STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
-
-		if (isShadow) {
-			// a link glyph in the top-right marks this as a soft-link stand-in, not a real placement
-			ctx.fillStyle = STYLE.colors.shadowGlyph;
-			ctx.font = STYLE.node.idFont;
-			ctx.textAlign = "right";
-			ctx.textBaseline = "top";
-			ctx.fillText(STYLE.node.glyph, nodeX + node.size - STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
-		} else if (node.status) {
-			ctx.fillStyle = STYLE.colors.statusText;
-			ctx.font = STYLE.node.idFont;
-			ctx.textAlign = "right";
-			ctx.textBaseline = "top";
-			const maxStatusWidth = node.size / 2 - STYLE.node.idPadding;
-			const statusLabel = fitText(ctx, node.status, maxStatusWidth);
-			ctx.fillText(statusLabel, nodeX + node.size - STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
-		}
-
-		ctx.fillStyle = STYLE.colors.text;
-		ctx.font = isShadow ? STYLE.node.ghostFont : STYLE.node.font;
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		const maxWidth = node.size - STYLE.node.padding * 2;
-		const lines = wrapText(ctx, node.label, maxWidth, STYLE.node.maxLines);
-		const startY = node.y - ((lines.length - 1) * STYLE.node.lineHeight) / 2;
-		lines.forEach((line, i) => {
-			ctx.fillText(line, node.x, startY + i * STYLE.node.lineHeight);
-		});
-
-		ctx.restore();
-	});
-
-	ctx.restore();
-
-	// Full label tooltip for the hovered node, drawn in screen space (after restore)
-	// so its text stays a fixed, readable size regardless of zoom level.
-	if (hoveredNode) {
-		const { x: sx, y: sy } = worldToScreen(hoveredNode.x, hoveredNode.y);
-		const halfScreen = (hoveredNode.size / 2) * view.scale;
-
-		ctx.font = STYLE.tooltip.font;
-		const boxW = ctx.measureText(hoveredNode.label).width + STYLE.tooltip.paddingX * 2;
-		const boxH = STYLE.tooltip.height;
-		const boxX = sx - boxW / 2;
-		const boxY = sy - halfScreen - boxH - STYLE.tooltip.offset;
-
-		roundedRectPath(ctx, boxX, boxY, boxW, boxH, STYLE.tooltip.cornerRadius);
-		ctx.fillStyle = STYLE.colors.tooltipBackground;
-		ctx.fill();
-		ctx.strokeStyle = STYLE.colors.tooltipBorder;
-		ctx.lineWidth = 1;
-		ctx.stroke();
-
-		ctx.fillStyle = STYLE.colors.tooltipText;
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillText(hoveredNode.label, sx, boxY + boxH / 2);
-	}
-}
-
-// hovering color change
-let hoveredNode = null;
-
-// selection — persists across hover and drives the edit panel (see
-// onNodeSelected, defined in editpanel.js). Never null: an empty/whole-tree
-// selection is the synthetic rootNode.
-let selectedNode = rootNode;
-
-// panning state
 let isPanning = false;
 let didPan = false; // set once a mousedown->mousemove drag moves enough to count as a pan, not a click
 let panStart = null; // {x, y, offsetX, offsetY} in screen coords
 
-canvas.addEventListener("click", (e) => {
+canvasEl.addEventListener("click", (e) => {
 	if (didPan) {
 		didPan = false;
 		return;
 	}
+	const rect = canvasEl.getBoundingClientRect();
+	const { x, y } = state.camera.screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+	selectNode(state.graph.hitTest(x, y) || state.graph.rootNode); // empty canvas -> whole-tree selection
+});
 
-	const rect = canvas.getBoundingClientRect();
-	const { x, y } = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-
-	const clicked = nodes.find(node => hitTest(node, x, y));
-
-	selectedNode = clicked || rootNode; // empty canvas -> whole-tree selection
-	if (typeof onNodeSelected === "function") {
-		onNodeSelected(itemForNode(selectedNode));
-	}
-	draw();
-})
-
-canvas.addEventListener("dblclick", (e) => {
-	const rect = canvas.getBoundingClientRect();
-	const { x, y } = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-	const clicked = nodes.find(node => hitTest(node, x, y));
+canvasEl.addEventListener("dblclick", (e) => {
+	const rect = canvasEl.getBoundingClientRect();
+	const { x, y } = state.camera.screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+	const clicked = state.graph.hitTest(x, y);
 	if (!clicked) return;
 
-	// single click already selected it; double click also opens the editor
-	selectedNode = clicked;
-	if (typeof onNodeSelected === "function") onNodeSelected(itemForNode(clicked));
+	selectNode(clicked); // single click already selected it; double click also opens the editor
 	if (typeof openEditPanel === "function") openEditPanel();
-	focusOnNode(clicked); // after openEditPanel so the ease tracks the narrowed canvas
-})
+	state.camera.focusOnNode(clicked); // after openEditPanel so the ease tracks the narrowed canvas
+});
 
-canvas.addEventListener("mousedown", (e) => {
-	const rect = canvas.getBoundingClientRect();
+canvasEl.addEventListener("mousedown", (e) => {
+	const rect = canvasEl.getBoundingClientRect();
 	isPanning = true;
 	didPan = false;
 	panStart = {
 		x: e.clientX - rect.left,
 		y: e.clientY - rect.top,
-		offsetX: view.offsetX,
-		offsetY: view.offsetY,
+		offsetX: state.camera.offsetX,
+		offsetY: state.camera.offsetY,
 	};
-	canvas.style.cursor = "grabbing";
-})
+	canvasEl.style.cursor = "grabbing";
+});
 
 window.addEventListener("mouseup", () => {
 	isPanning = false;
-	canvas.style.cursor = hoveredNode ? "pointer" : "default";
-})
+	canvasEl.style.cursor = state.hoveredNode ? "pointer" : "default";
+});
 
-canvas.addEventListener("mousemove", (e) => {
-	const rect = canvas.getBoundingClientRect();
+canvasEl.addEventListener("mousemove", (e) => {
+	const rect = canvasEl.getBoundingClientRect();
 	const sx = e.clientX - rect.left;
 	const sy = e.clientY - rect.top;
 
@@ -939,41 +107,30 @@ canvas.addEventListener("mousemove", (e) => {
 		const dx = sx - panStart.x;
 		const dy = sy - panStart.y;
 		if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didPan = true;
-		view.offsetX = panStart.offsetX + dx;
-		view.offsetY = panStart.offsetY + dy;
-		draw();
+		state.camera.offsetX = panStart.offsetX + dx;
+		state.camera.offsetY = panStart.offsetY + dy;
+		redraw();
 		return;
 	}
 
-	const { x, y } = screenToWorld(sx, sy);
-	const found = nodes.find(n => hitTest(n, x, y));
-
-	if (found !== hoveredNode) {
-		hoveredNode = found || null;
-		canvas.style.cursor = found ? "pointer": "default";
-		draw();
+	const { x, y } = state.camera.screenToWorld(sx, sy);
+	const found = state.graph.hitTest(x, y);
+	if (found !== state.hoveredNode) {
+		state.hoveredNode = found;
+		canvasEl.style.cursor = found ? "pointer" : "default";
+		redraw();
 	}
-})
+});
 
 // zoom, keeping the point under the cursor fixed on screen
-canvas.addEventListener("wheel", (e) => {
+canvasEl.addEventListener("wheel", (e) => {
 	e.preventDefault();
-
-	const rect = canvas.getBoundingClientRect();
-	const sx = e.clientX - rect.left;
-	const sy = e.clientY - rect.top;
-
-	const worldBefore = screenToWorld(sx, sy);
+	const rect = canvasEl.getBoundingClientRect();
 	const zoomFactor = Math.exp(-e.deltaY * STYLE.zoom.speed);
-	view.scale = Math.min(STYLE.zoom.max, Math.max(STYLE.zoom.min, view.scale * zoomFactor));
-	view.offsetX = sx - worldBefore.x * view.scale;
-	view.offsetY = sy - worldBefore.y * view.scale;
+	state.camera.zoomAtPoint(e.clientX - rect.left, e.clientY - rect.top, zoomFactor);
+}, { passive: false });
 
-	draw();
-}, { passive: false })
-
-
-resizeCanvas();
+state.camera.resize();
 loadTree();
 
 // refetch on window focus so edits made elsewhere (e.g. the CLI) while this
