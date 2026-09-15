@@ -49,6 +49,8 @@ const CLIENT_COMMANDS = {
 	"down":      () => navigate("down"),
 	"left":      () => navigate("left"),
 	"right":     () => navigate("right"),
+	"forward":   () => navigate("forward"),
+	"back":      () => navigate("back"),
 	"hide edit": () => closeEditPanel(),
 };
 

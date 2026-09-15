@@ -166,6 +166,10 @@ const SHORTCUTS = [
 		run: (e) => navigate(ARROW_DIR[e.key]),
 	},
 	{
+		combos: [{ key: "f" }, { key: "b" }], glyphs: ["f", "b"], desc: "Step forward / back in a chain",
+		run: (e) => navigate(e.key === "f" ? "forward" : "back"),
+	},
+	{
 		combos: [
 			{ key: "ArrowUp", shift: true }, { key: "ArrowDown", shift: true },
 			{ key: "ArrowLeft", shift: true }, { key: "ArrowRight", shift: true },
