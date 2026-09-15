@@ -66,9 +66,8 @@ exclude_patterns = ["_build", "_generated", "Thumbs.db", ".DS_Store"]
 
 html_theme = "furo"
 html_title = f"taskai {release}"
-# NOTE: confirm the Read the Docs project slug and adjust if it isn't "taskai"
-# (this also appears in the README). Read the Docs sets the per-version
-# canonical URL itself; this is just the site root.
+# confirmed live at this slug (also referenced in the README). Read the
+# Docs sets the per-version canonical URL itself; this is just the site root.
 html_baseurl = "https://taskai.readthedocs.io/"
 html_static_path = ["_static"]
 

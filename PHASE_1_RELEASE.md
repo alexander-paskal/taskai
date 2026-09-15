@@ -223,8 +223,11 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
 
 - [ ] Replace `docs/_static/demo.gif` placeholder with a real recording —
       referenced from `index.md` and the README.
-- [ ] Confirm the Read the Docs project slug (`conf.py`'s `html_baseurl` +
-      README currently assume `taskai`).
+- [x] Confirm the Read the Docs project slug (`conf.py`'s `html_baseurl` +
+      README currently assume `taskai`). Confirmed live: fetched
+      `https://taskai.readthedocs.io/` and it resolves to the real project
+      (v1.9.0, right author, right content) — not a 404, not someone else's
+      docs. Removed the "needs confirmation" note in `conf.py`.
 - [ ] Screenshots for browser-mode docs.
 - [x] `help_menu.py`/README are current as of the chain work (Phase 8) —
       spot-check the RTD site's generated pages didn't drift now that
