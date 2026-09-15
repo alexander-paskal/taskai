@@ -221,6 +221,9 @@ consoleInput.addEventListener("keydown", async (e) => {
 
 	if (data.focus) {
 		const focusedNode = state.graph.getNode(String(data.focus));
-		if (focusedNode) state.camera.focusOnNode(focusedNode);
+		if (focusedNode) {
+			selectNode(focusedNode);
+			state.camera.focusOnNode(focusedNode);
+		}
 	}
 });

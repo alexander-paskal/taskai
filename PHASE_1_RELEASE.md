@@ -41,14 +41,22 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       any time the selection actually changes — so this falls out of the
       same general mechanism for every navigation, not something
       delete-specific.
-- [ ] **`next` should focus the node it just created.** Today, running
+- [x] **`next` should focus the node it just created.** Today, running
       `next <prev> <name>` through the console applies the fresh tree but
       doesn't select/focus anything — you have to go find it. `show`
       already gets special server-side `focus`-id handling in
       `POST /api/command` (`taskai/browser.py`); extending that same
       `focus` response to `next` (the newly-appended item's id) is the
       consistent way to do this, rather than a client-side before/after-id
-      diff like `addNodeAndEdit`'s shortcut does for `a`.
+      diff like `addNodeAndEdit`'s shortcut does for `a`. Server-side:
+      diffs `db.get_item_ids()` before/after running `next` through
+      `execute_commands`. Found and fixed a related inconsistency in
+      passing: the console's *generic* command fallback (any command not
+      specially handled, like `next` typed directly) was already reading
+      `data.focus` and moving the camera, but never actually calling
+      `selectNode` — so it centered on the new node without selecting it
+      (edit panel wouldn't update, arrow nav wouldn't be relative to it).
+      Fixed to call both.
 - [x] **Show `due_by` on the node itself.** `render.js`'s `drawNode` draws
       id (top-left) and `status` (top-right) already; add `due_by`
       somewhere on the card (needs a spot picked that doesn't collide with

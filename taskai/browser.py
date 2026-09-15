@@ -113,6 +113,11 @@ def run_command(request: CommandRequest):
     if args[0] == "show":
         return _run_show(args)
 
+    # `next` creates a new item but has no id to name it by up front - diff
+    # the id set before/after so the frontend can focus what it just made,
+    # the same way `show`'s focus works
+    before_ids = set(db.get_item_ids()) if args[0] == "next" else None
+
     output = io.StringIO()
     try:
         with contextlib.redirect_stdout(output):
@@ -120,7 +125,13 @@ def run_command(request: CommandRequest):
     except TaskCLIError:
         pass  # Controller.throw_error() already printed the error into `output`
 
-    return {"output": output.getvalue(), "tree": _response_tree(request.filter), "focus": None}
+    focus = None
+    if before_ids is not None:
+        new_ids = set(db.get_item_ids()) - before_ids
+        if new_ids:
+            focus = str(max(new_ids))  # ids are assigned monotonically
+
+    return {"output": output.getvalue(), "tree": _response_tree(request.filter), "focus": focus}
 
 
 def _run_show(args):
