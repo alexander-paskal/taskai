@@ -271,6 +271,14 @@ function drawTooltip(ctx, camera, node) {
 	ctx.fillText(node.label, sx, boxY + boxH / 2);
 }
 
+function drawEmptyState(ctx, canvas) {
+	ctx.fillStyle = STYLE.colors.emptyStateText;
+	ctx.font = STYLE.emptyState.font;
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+	ctx.fillText(STYLE.emptyState.message, canvas.width / 2, canvas.height / 2);
+}
+
 function render(ctx, camera, graph, selectedNode, hoveredNode) {
 	const canvas = camera.canvas;
 
@@ -278,6 +286,11 @@ function render(ctx, camera, graph, selectedNode, hoveredNode) {
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 	if (!graph) return;
+
+	if (!graph.nodes.length) {
+		drawEmptyState(ctx, canvas);
+		return;
+	}
 
 	ctx.save();
 	ctx.translate(camera.offsetX, camera.offsetY);

@@ -15,6 +15,7 @@ const STYLE = {
 		idText: "#b4b9c4",
 		statusText: "#e0924a",
 		dueText: "#5b8fd6",
+		emptyStateText: "#9aa0ad",
 		edge: "#dcdfe6",
 		shadowNodeFill: "#ffffff", // same card fill as a real node — the dashed border + transparency set it apart, not a tint
 		shadowNodeFillDone: "#eef7f0",
@@ -76,5 +77,9 @@ const STYLE = {
 		height: 24,
 		cornerRadius: 6,
 		offset: 10,
+	},
+	emptyState: {
+		font: "16px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+		message: "No tasks yet — press ` to open the console and create one",
 	},
 };

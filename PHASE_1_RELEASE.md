@@ -18,8 +18,12 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       `Controller.browser_service` hardcodes uvicorn's default port.
       Original DEVPLAN scoping (1.1) called for `task web [port]`; small,
       contained fix. `task browser {port}`, defaults to 8000.
-- [ ] **DAG empty/loading state.** (DEVPLAN Phase 3) A user with no tasks
-      yet just sees a blank canvas — no "nothing here yet" state.
+- [x] **DAG empty/loading state.** (DEVPLAN Phase 3) A user with no tasks
+      yet just sees a blank canvas — no "nothing here yet" state. Drawn in
+      screen space (stays centered regardless of pan/zoom) whenever
+      `graph.nodes.length === 0` — covers both "still loading" and
+      "genuinely empty" with one message rather than adding a separate
+      loading-flag/spinner for what's normally a near-instant local fetch.
 - [ ] **`style.css` spacing/typography consistency pass.** (DEVPLAN Phase 3)
       Never done; low effort, worth a once-over before screenshots go in
       the docs/listing.
