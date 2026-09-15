@@ -17,6 +17,12 @@ class DatabaseError(Exception):
     pass
 
 
+def _is_chain_head(item: TodoItem) -> bool:
+    """A chain's head is the one member reachable from the tree (parent_id
+    or a root) - everything after it is only reachable via next_chain_id."""
+    return item.prev_chain_id is None and item.next_chain_id is not None
+
+
 class JsonDirectoryDatabase:
     """
     All views extracted from the database are read only
@@ -164,9 +170,9 @@ class JsonDirectoryDatabase:
         item = self.get_item(id)
         
         # recursively delete children
-        for child_id in item.child_ids: 
+        for child_id in item.child_ids:
 
-            if self.get_item_attr(child_id, "is_chain_head"):
+            if _is_chain_head(self.get_item(child_id)):
                 self.delete_chain(child_id)
             else:
                 self.delete_item(child_id)
@@ -201,8 +207,7 @@ class JsonDirectoryDatabase:
 
         # already part of some chain - detach cleanly first rather than
         # overwriting its pointers in place, which would corrupt both
-        # chains (its old neighbors would still point at it). This also
-        # clears any stale is_chain_head left over from its old position.
+        # chains (its old neighbors would still point at it)
         if node.prev_chain_id is not None or node.next_chain_id is not None:
             self.remove_node_from_chain(node_id)
             node = self.get_item(node_id)
@@ -226,10 +231,6 @@ class JsonDirectoryDatabase:
         node.prev_chain_id = prev_id
         prev.next_chain_id = node_id
 
-        # if prev has no prev, its the head of the chain
-        if prev.prev_chain_id is None:
-            prev.is_chain_head = True
-
         self.update_item(**prev.model_dump())
         self.update_item(**node.model_dump())
 
@@ -242,13 +243,11 @@ class JsonDirectoryDatabase:
             self.update_item(node.next_chain_id, prev_chain_id =node.prev_chain_id)
 
         elif node.prev_chain_id is not None:
-            self.update_item(node.prev_chain_id, next_chain_id=None, is_chain_head=False)
+            self.update_item(node.prev_chain_id, next_chain_id=None)
 
         elif node.next_chain_id is not None:
             next_id = node.next_chain_id
             self.update_item(next_id, prev_chain_id=None)
-            if self.get_item_attr(next_id, "next_chain_id") is not None:
-                self.update_item(next_id, is_chain_head=True)
 
             # node was the chain's tree entry point (the head) - the chain's
             # entry point just moved to `next_id`, so it needs node's old
@@ -261,7 +260,6 @@ class JsonDirectoryDatabase:
 
         node.next_chain_id = None
         node.prev_chain_id = None
-        node.is_chain_head = False
         self.update_item(**node.model_dump())
 
     def delete_comment(self, id: int) -> bool:

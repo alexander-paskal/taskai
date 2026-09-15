@@ -927,7 +927,7 @@ progress.
 
 **Data structuring:**
 
-- [ ] **Drop the stored `is_chain_head` field, derive it instead**
+- [x] **Drop the stored `is_chain_head` field, derive it instead**
       (`prev_chain_id is None and next_chain_id is not None`). It's exactly
       the field that's gone out of sync in the bugs above, the frontend
       already doesn't use it (uses `chainNext`/`chainPrev` presence
@@ -937,7 +937,10 @@ progress.
       `delete_item`'s cascade check
       (`get_item_attr(child_id, "is_chain_head")`), with the derived check.
 
-**Docs:** none of `next`/`chain`/`unchain`/`delete -chain` are documented in
-[taskai/help_menu.py](taskai/help_menu.py) — which is also `task ai`'s
-verbatim command reference, so the AI can't use any of this either until
-it's added there.
+**Docs:** [x] `next`/`chain`/`unchain`/`delete -chain` are now documented in
+[taskai/help_menu.py](taskai/help_menu.py) (a new "Chains:" section, an
+updated "Deleting:" section, and a worked example) — which is also
+`task ai`'s verbatim command reference, so the AI can use all of this too
+now.
+
+Phase 8 is complete.

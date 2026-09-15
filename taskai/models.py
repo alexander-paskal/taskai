@@ -48,7 +48,6 @@ class TodoItem(Base):
     status: str = ""
 
     # chain fields
-    is_chain_head: bool = False
     prev_chain_id: Optional[int] = None
     next_chain_id: Optional[int] = None
 

@@ -33,11 +33,18 @@ Modifying items (an id or a name works everywhere):
 'task link {parent id|name} {item id|name}' --> soft-link item under parent, without reparenting it
 'task unlink {parent id|name} {item id|name}' --> remove a soft-link previously added with 'task link'
 
+Chains (a sequence of items, distinct from parent/child - a chain member can
+still have its own children, which show up alongside it, not inside it):
+'task next {prev id|name} {name} {--field value ...}' --> create a new item and append it to the end of the chain starting at prev
+'task chain {prev id|name} {node id|name}' --> link an existing item into a chain, right after prev; if node has a parent, it's popped off it first
+'task unchain {node id|name}' --> remove an item from its chain (it survives as an item) - it becomes a child of the chain head's parent instead
+
 Deleting:
 'task delete {id}' / 'task delete {name}' --> delete an item, and all its descendants, by id or name
+'task delete {id} -chain' --> delete the ENTIRE chain the item belongs to (not just that item onward), no matter which link you target
 'task remove ...' --> alias for 'task delete ...'
-'task clear' --> delete every completed item
-'task clear {parent id|name}' --> delete every completed item under a given parent
+'task clear' --> delete every completed item, chain members included
+'task clear {parent id|name}' --> delete every completed item under a given parent, including anything chained off it
 'task nuke' --> delete ALL data for a fresh start (asks for confirmation)
 
 Item fields (pass as named options, e.g. --priority 2, to create/add/update):
@@ -96,6 +103,20 @@ Reorganize (reorder/rename/status take an id; move takes an id or a name):
 Soft-link an item in a second place without moving it:
   task link "Launch blog" 7        # item 7 now also shows under "Launch blog"
   task unlink "Launch blog" 7
+
+Build and work a chain of tasks:
+  task add "Launch blog" "Write outline" --priority 1
+  task next "Write outline" "Draft intro"
+  task next "Draft intro" "Draft body"
+  task show all                    # renders nested under "Write outline", linked with a down-arrow
+  task done "Write outline"
+  task done "Draft intro"
+  task clear "Launch blog"         # sweeps both done items; "Draft body" becomes the new head
+
+Pull an item out of a chain, or delete the whole thing:
+  task unchain "Draft body"             # now a normal child of "Launch blog", not a sequence member
+  task next "Write first post" "Edit first post"
+  task delete "Write first post" -chain # deletes the whole chain, from any link in it
 
 Clean up:
   task clear "Launch blog"         # delete completed items under that parent
