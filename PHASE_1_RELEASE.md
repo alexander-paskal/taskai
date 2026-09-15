@@ -85,7 +85,7 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       `status` renders the same fixed orange in the DAG (`STYLE.colors.
       statusText`) regardless of its value; this makes that configurable
       per status string. Depends on the config-to-browser item above.
-- [ ] **Chain-aware up/down arrows when there's no conflicting tree
+- [x] **Chain-aware up/down arrows when there's no conflicting tree
       relationship.** Currently arrows are pure tree nav and `f`/`b` are
       the only way to walk a chain (deliberate split — see DEVPLAN 1.8,
       worked out after hitting the "is c1 a chain head or a tree parent"
@@ -101,7 +101,9 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       This only changes behavior in the "otherwise a dead end" case — a
       node with both a real child and a chain link (e.g. a chain head with
       its own children) keeps today's behavior exactly, `f`/`b` still work
-      everywhere unchanged.
+      everywhere unchanged. Verified against 7 cases covering both
+      fallbacks, both non-fallback (unchanged) paths, and the true dead end
+      (tail, down).
 - [ ] **Transpose the DAG's coordinate axes: growth goes right, spread goes
       down** (today: growth down, spread right). Affects `measure`/`place`
       in `graph.js` — swap which recursion axis feeds `marginX +

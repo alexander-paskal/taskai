@@ -1,10 +1,13 @@
 // navigateGraph(direction, currentNode, graph) decides which node a
-// direction key moves to. Arrow keys walk the tree only: down/up are
+// direction key moves to. Arrow keys are primarily tree nav — down/up are
 // children/parent, left/right step across the whole depth level (wrapping
-// at its ends) — this holds for every node, chain or not, since a chain
-// node's real children are still its tree children (they just render to the
-// side, see graph.js). "forward"/"back" are the separate chain axis:
-// chainNext/chainPrev, independent of tree position.
+// at its ends) — but fall back to the chain axis (chainNext/chainPrev) when
+// the tree relationship in that direction is simply absent: a node with its
+// own real children still descends into them (down never means "skip my
+// children"), and a node with a tree parent still ascends to it, but a pure
+// chain link (no children, or - always true for a non-head member - no tree
+// parent) would otherwise be a dead end. "forward"/"back" remain the
+// explicit, always-available chain axis regardless of tree relationships.
 
 // parentId -> childId memory of the last child navigated to under a given
 // parent (ids, not node references, since nodes are rebuilt on every tree
@@ -16,11 +19,14 @@ function navigateGraph(direction, cur, graph) {
 	let target = null;
 
 	if (direction === "down") {
-		if (!cur.children.length) return null;
-		const remembered = lastChildByParent[cur.id];
-		target = cur.children.find(c => c.id === remembered) || cur.children[0];
+		if (cur.children.length) {
+			const remembered = lastChildByParent[cur.id];
+			target = cur.children.find(c => c.id === remembered) || cur.children[0];
+		} else {
+			target = cur.chainNext || null; // no real children - fall back to the chain
+		}
 	} else if (direction === "up") {
-		target = cur.parent || null;
+		target = cur.parent || cur.chainPrev || null; // no tree parent - fall back to the chain
 	} else if (direction === "forward") {
 		target = cur.chainNext || null;
 	} else if (direction === "back") {
