@@ -12,30 +12,6 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
 
 ---
 
-## Bugs to fix
-
-- [ ] **Unquoted multi-word input silently truncates or crashes.**
-      (TRIAGE / High) `create`/`add`/`rename` only read a single token
-      (`args[1]`/`args[2]`) for what's conceptually a free-text field —
-      `task create Buy groceries` silently becomes item "Buy", the rest is
-      dropped, no error. `comment` gets it from the other direction: it
-      spreads all remaining words into `create_comment(item_id, content)`,
-      which only takes two positional args, so it throws a `TypeError`
-      instead of truncating. `task ai headstart <prompt>` has the same
-      `TypeError` bug for the same reason.
-      **Resolved:** Alex doesn't want a quoting requirement at all — join
-      the trailing args as the free-text field by default, the same way
-      `task ai <prompt>` already does, for `create`/`rename`/`comment`/
-      `task ai headstart` (each has exactly one free-text field with
-      nothing after it, so joining is unambiguous). `add {parent} {name}`
-      is the one case that needs a rule, since the parent argument comes
-      *first*: **the parent/id argument stays a single token** (an id, or
-      an unquoted single-word name / a quoted multi-word one) — only
-      everything *after* it joins into the free-text name. That keeps
-      "no quotes needed for the actual text field" while resolving the
-      ambiguity, since identifiers are already normally short/single-token
-      in this app.
-
 ## Small polish
 
 - [ ] **`task browser` has no `[port]` override.** (TRIAGE / Low)
