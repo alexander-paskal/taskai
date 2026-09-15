@@ -160,11 +160,14 @@ function isChainMember(node) {
 	return !!(node.chainNext || node.chainPrev);
 }
 
-// bottom-up: gives every node a {width, height} footprint in grid units (not
-// pixels — place() turns these into positions via xSpacing/ySpacing).
-//
-// A plain node's children spread out centered below it, one row per level,
-// same as always. A chain node instead pushes its own real children into a
+// bottom-up: gives every node a {left, right, height} footprint in grid units
+// (not pixels — place() turns these into positions via xSpacing/ySpacing).
+// `left`/`right` are how far the node's content reaches left/right of its own
+// x — not a single symmetric width, because a chain node's reach is
+// lopsided: nothing it owns ever renders left of its own column, so `left`
+// is always just the node's own square. A plain node still centers its
+// children below it the old way (left == right == half the children's
+// combined width). A chain node instead pushes its own real children into a
 // row to its right (each additional child stacking further right than the
 // last), and makes its chain successor wait — straight down, but only after
 // however many rows that side-subtree needs, so nothing overlaps it.
@@ -172,46 +175,52 @@ function measure(node) {
 	const childBoxes = node.children.map(measure);
 
 	if (isChainMember(node)) {
-		const sideWidth = childBoxes.reduce((sum, b) => sum + b.width, 0);
+		const sideRight = childBoxes.length
+			? 1 + childBoxes.reduce((sum, b) => sum + b.left + b.right, 0)
+			: 0;
 		const sideHeight = childBoxes.length ? Math.max(...childBoxes.map(b => b.height)) : 0;
-		const chainBox = node.chainNext ? measure(node.chainNext) : { width: 0, height: 0 };
+		const chainBox = node.chainNext ? measure(node.chainNext) : { right: 0, height: 0 };
 
 		node._childBoxes = childBoxes;
 		node._sideHeight = sideHeight;
-		node._width = Math.max(1 + sideWidth, chainBox.width);
+		node._left = 0.5; // only this node's own square ever reaches left of its x
+		node._right = Math.max(0.5, sideRight, chainBox.right);
 		node._height = 1 + sideHeight + chainBox.height;
 	} else {
-		const width = childBoxes.reduce((sum, b) => sum + b.width, 0);
-		const height = childBoxes.length ? 1 + Math.max(...childBoxes.map(b => b.height)) : 1;
+		const total = childBoxes.reduce((sum, b) => sum + b.left + b.right, 0);
 
 		node._childBoxes = childBoxes;
-		node._width = Math.max(width, 1);
-		node._height = height;
+		node._left = childBoxes.length ? total / 2 : 0.5;
+		node._right = childBoxes.length ? total / 2 : 0.5;
+		node._height = childBoxes.length ? 1 + Math.max(...childBoxes.map(b => b.height)) : 1;
 	}
 
-	return { width: node._width, height: node._height };
+	return { left: node._left, right: node._right, height: node._height };
 }
 
 // top-down: places `node` at grid position (x, y) — resolved to world
 // coordinates here — then places its descendants per the rule measure() used.
+// A child is anchored at `cursor + child.left` (not `cursor + width/2`) so
+// its bounding box's left edge lands exactly at `cursor` regardless of
+// whether that child's own footprint is symmetric or lopsided.
 function place(node, x, y) {
 	node.x = STYLE.layout.marginX + x * STYLE.layout.xSpacing;
 	node.y = STYLE.layout.marginY + y * STYLE.layout.ySpacing;
 
 	if (isChainMember(node)) {
-		let cursor = 1; // side children start one column right of the spine
+		let cursor = 1; // side row starts one column right of the spine
 		node.children.forEach((child, i) => {
 			const box = node._childBoxes[i];
-			place(child, x + cursor + box.width / 2, y + 1);
-			cursor += box.width;
+			place(child, x + cursor + box.left, y + 1);
+			cursor += box.left + box.right;
 		});
 		if (node.chainNext) place(node.chainNext, x, y + 1 + node._sideHeight);
 	} else {
-		let cursor = -node._width / 2;
+		let cursor = -node._left;
 		node.children.forEach((child, i) => {
 			const box = node._childBoxes[i];
-			place(child, x + cursor + box.width / 2, y + 1);
-			cursor += box.width;
+			place(child, x + cursor + box.left, y + 1);
+			cursor += box.left + box.right;
 		});
 	}
 }
@@ -238,13 +247,13 @@ function applyTree(itemsById) {
 	measure(superRoot);
 
 	const extraGapUnits = STYLE.layout.treeGap / STYLE.layout.xSpacing;
-	const totalWidth = superRoot._width + Math.max(0, roots.length - 1) * extraGapUnits;
+	const totalWidth = superRoot._left + superRoot._right + Math.max(0, roots.length - 1) * extraGapUnits;
 	let cursor = -totalWidth / 2;
 	roots.forEach((root, i) => {
 		if (i > 0) cursor += extraGapUnits;
 		const box = superRoot._childBoxes[i];
-		place(root, cursor + box.width / 2, 0);
-		cursor += box.width;
+		place(root, cursor + box.left, 0);
+		cursor += box.left + box.right;
 	});
 
 	nodes = roots.flatMap(root => flatten(root));
@@ -495,35 +504,62 @@ function fitAll(duration = STYLE.zoom.focusDurationMs) {
 }
 
 // per-parent memory of the last child navigated to, keyed by parent id (node
-// objects are rebuilt on every applyTree, so ids not references). Lets `down`
-// return to where you last were under a parent; stale ids are harmless — the
-// lookup just misses and falls back to the first child.
+// objects are rebuilt on every applyTree, so ids not references). Lets
+// `down` (a plain node's children) and `right` (a chain node's side row)
+// return to where you last were; stale ids are harmless — the lookup just
+// misses and falls back to the first child.
 const lastChildByParent = {};
 
-// moves the selection relative to the current node along the node tree.
-// The move is equivalent to a `show <target>`: the node becomes selected and
-// the view eases + zooms to it (focusOnNode). up/down don't wrap — off the
-// top or past a leaf does nothing; only left/right wrap, looping to the
-// first (or last) node of the current depth level.
+// moves the selection relative to the current node. The move is equivalent
+// to a `show <target>`: the node becomes selected and the view eases +
+// zooms to it (focusOnNode).
+//
+// For a plain node, down/up walk the tree (children/parent) and left/right
+// step across the whole depth level, wrapping at its ends (see below). For a
+// node that's part of a chain, down/up walk the chain itself
+// (chainNext/chainPrev) instead — the tree relationship a chain node has to
+// its own real children is `right`'s job, not `down`'s, since those children
+// render as a row to the side, not below. Leaving that row happens two ways:
+// `left` off its first entry steps back to the chain node itself, and `up`
+// from anywhere in the row skips past the chain node straight to whatever
+// came before it in the chain (or, at the chain's head, out to its ordinary
+// tree parent) — the chain node's own row isn't "between" it and its
+// predecessor, so up shouldn't stop there.
 function navigate(direction) {
 	const cur = selectedNode || rootNode;
 	let target = null;
 
 	if (direction === "down") {
-		if (!cur.children.length) return; // at a leaf -> nothing below
-		// return to the last child visited under `cur`, else its first child
+		if (isChainMember(cur)) {
+			target = cur.chainNext || null; // chain successor, not real children — those are `right`
+		} else {
+			if (!cur.children.length) return; // at a leaf -> nothing below
+			const remembered = lastChildByParent[cur.id];
+			target = cur.children.find(c => c.id === remembered) || cur.children[0];
+		}
+	} else if (direction === "up") {
+		if (isChainMember(cur)) {
+			target = cur.chainPrev || cur.parent || null;
+		} else if (cur.parent && isChainMember(cur.parent) && cur.parent.chainPrev) {
+			target = cur.parent.chainPrev; // leaving a chain node's side row: skip the chain link, land on its predecessor
+		} else {
+			target = cur.parent || null;
+		}
+	} else if (direction === "right" && isChainMember(cur)) {
+		if (!cur.children.length) return; // nothing in the row to enter
 		const remembered = lastChildByParent[cur.id];
 		target = cur.children.find(c => c.id === remembered) || cur.children[0];
-	} else if (direction === "up") {
-		if (!cur.parent) return; // at the top -> nothing above
-		target = cur.parent;
+	} else if (direction === "left" && cur.parent && isChainMember(cur.parent) && cur.parent.children[0] === cur) {
+		target = cur.parent; // first entry in a chain node's row: step back out to it
 	} else if (direction === "left" || direction === "right") {
 		// step to the node immediately left/right at the same depth, across
 		// the whole level — so you cross into a cousin subtree rather than
-		// wrapping inside the current parent. The layout gives every node at a
-		// given depth the same y, so the level is just "nodes sharing cur.y"
-		// sorted by x; no explicit depth/level bookkeeping. Wrap to the first
-		// (or last) node of the level only when you run off its end.
+		// wrapping inside the current parent (this also covers moving between
+		// a chain node's own side-children, which share one y row same as any
+		// other siblings). The layout gives every node at a given depth the
+		// same y, so the level is just "nodes sharing cur.y" sorted by x; no
+		// explicit depth/level bookkeeping. Wrap to the first (or last) node
+		// of the level only when you run off its end.
 		const row = nodes
 			.filter(n => Math.abs(n.y - cur.y) < 1)
 			.sort((a, b) => a.x - b.x);
@@ -535,7 +571,7 @@ function navigate(direction) {
 
 	if (!target || target === cur) return;
 
-	// remember this child so a later `down` into its parent returns here
+	// remember this child so a later `down`/`right` into its parent returns here
 	if (target.parent) lastChildByParent[target.parent.id] = target.id;
 
 	selectedNode = target;
