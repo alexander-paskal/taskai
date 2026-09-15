@@ -250,8 +250,16 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       pre-existing warning, the known `demo.gif` placeholder — unrelated),
       and the built `commands.html` correctly includes the full "Chains:"
       section verbatim. Nothing needed fixing.
-- [ ] Lower priority, nice-to-have if time allows: explanation/architecture
-      pages, custom 404, OpenGraph cards, CI `linkcheck`, a changelog.
+- [~] Lower priority, nice-to-have if time allows: explanation/architecture
+      pages, custom 404, OpenGraph cards, CI `linkcheck`, a changelog. CI
+      `linkcheck` is done (wired into the new CI job above). Added
+      [CHANGELOG.md](CHANGELOG.md) — an `Unreleased` section for
+      everything in this punch list plus dated entries for 1.9.0 back to
+      1.6.6, built from the actual version-bump commits and what changed
+      between them. Left the rest (architecture pages, custom 404, OG
+      cards) genuinely deferred — each is either a real content-writing
+      effort in its own right or needs an asset I can't produce, and none
+      were called out as blocking.
 
 ## Testing
 
