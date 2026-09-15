@@ -52,6 +52,7 @@ function buildTree(itemsById, id, seen = new Set()) {
 		size: STYLE.node.size,
 		completed: item.completed,
 		status: item.status,
+		due_by: item.due_by,
 		children,
 	};
 	children.forEach(child => { child.parent = node; });

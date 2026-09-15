@@ -224,6 +224,16 @@ function drawNode(ctx, node, isHovered, isSelected) {
 		ctx.fillText(statusLabel, nodeX + node.size - STYLE.node.idPadding, nodeY + STYLE.node.idPadding);
 	}
 
+	if (!isShadow && node.due_by) {
+		ctx.fillStyle = STYLE.colors.dueText;
+		ctx.font = STYLE.node.idFont;
+		ctx.textAlign = "right";
+		ctx.textBaseline = "bottom";
+		// "2026-12-31T00:00:00" -> "12/31" - compact, locale-agnostic
+		const dueLabel = node.due_by.slice(5, 7) + "/" + node.due_by.slice(8, 10);
+		ctx.fillText(dueLabel, nodeX + node.size - STYLE.node.idPadding, nodeY + node.size - STYLE.node.idPadding);
+	}
+
 	ctx.fillStyle = STYLE.colors.text;
 	ctx.font = isShadow ? STYLE.node.ghostFont : STYLE.node.font;
 	ctx.textAlign = "center";

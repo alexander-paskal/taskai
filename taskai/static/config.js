@@ -14,6 +14,7 @@ const STYLE = {
 		text: "#23252b",
 		idText: "#b4b9c4",
 		statusText: "#e0924a",
+		dueText: "#5b8fd6",
 		edge: "#dcdfe6",
 		shadowNodeFill: "#ffffff", // same card fill as a real node — the dashed border + transparency set it apart, not a tint
 		shadowNodeFillDone: "#eef7f0",

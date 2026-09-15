@@ -42,10 +42,12 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       `focus` response to `next` (the newly-appended item's id) is the
       consistent way to do this, rather than a client-side before/after-id
       diff like `addNodeAndEdit`'s shortcut does for `a`.
-- [ ] **Show `due_by` on the node itself.** `render.js`'s `drawNode` draws
+- [x] **Show `due_by` on the node itself.** `render.js`'s `drawNode` draws
       id (top-left) and `status` (top-right) already; add `due_by`
       somewhere on the card (needs a spot picked that doesn't collide with
-      the wrapped label or the status text).
+      the wrapped label or the status text). Landed bottom-right,
+      compact `MM/DD`. Had to add `due_by` to `graph.js`'s node object too
+      — it wasn't being copied from the API payload at all.
 
 ## New features for v1
 
