@@ -31,13 +31,16 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       Written when the web UI was new; now that chains + the new CLI
       surface exercise a lot more of `execute_commands`, worth a quick
       re-pass rather than assuming.
-- [ ] **Delete should shift focus intelligently, not just to the root.**
+- [x] **Delete should shift focus intelligently, not just to the root.**
       After deleting the selected node, restore selection to whatever was
       focused *before* it (needs at least a one-deep "previously selected"
       memory, since `state.selectedNode` today just gets re-resolved to
       `rootNode` once the deleted id no longer exists in the fresh graph)
       — fall back to the synthetic root only if there's nothing to return
-      to.
+      to. `state.previousSelectedId` (canvas.js), updated by `selectNode`
+      any time the selection actually changes — so this falls out of the
+      same general mechanism for every navigation, not something
+      delete-specific.
 - [ ] **`next` should focus the node it just created.** Today, running
       `next <prev> <name>` through the console applies the fresh tree but
       doesn't select/focus anything — you have to go find it. `show`

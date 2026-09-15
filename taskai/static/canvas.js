@@ -10,6 +10,7 @@ const state = {
 	graph: new Graph({}),
 	camera: null,
 	selectedNode: null,
+	previousSelectedId: null, // one level of "where was I before this" - see selectNode
 	hoveredNode: null,
 };
 state.camera = new Camera(canvasEl, redraw);
@@ -20,8 +21,14 @@ function redraw() {
 }
 
 // selection persists across hover and drives the edit panel (see
-// onNodeSelected, defined in editpanel.js)
+// onNodeSelected, defined in editpanel.js). Remembers the prior selection
+// (by id, not reference - nodes are rebuilt on every tree refresh) so that
+// if the current selection later disappears (e.g. it gets deleted),
+// applyTree can fall back to it instead of jumping straight to the root.
 function selectNode(node) {
+	if (state.selectedNode && state.selectedNode.id !== node.id) {
+		state.previousSelectedId = state.selectedNode.id;
+	}
 	state.selectedNode = node;
 	if (typeof onNodeSelected === "function") onNodeSelected(state.graph.itemFor(node));
 	redraw();
@@ -34,9 +41,14 @@ function applyTree(itemsById) {
 	state.graph = new Graph(itemsById);
 
 	// the previous selection is now a stale object (nodes are rebuilt every
-	// time) — re-resolve it by id so selection survives a tree refresh
+	// time) - re-resolve it by id so selection survives a tree refresh. If
+	// it's gone (e.g. just deleted), fall back to the previously-selected
+	// node before it, and only give up to the synthetic root if that's gone too.
 	const prevId = state.selectedNode ? state.selectedNode.id : null;
-	selectNode((prevId && state.graph.getNode(prevId)) || state.graph.rootNode);
+	const resolved = (prevId && state.graph.getNode(prevId))
+		|| (state.previousSelectedId && state.graph.getNode(state.previousSelectedId))
+		|| state.graph.rootNode;
+	selectNode(resolved);
 }
 
 async function loadTree() {
