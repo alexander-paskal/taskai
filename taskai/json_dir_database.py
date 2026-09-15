@@ -165,13 +165,18 @@ class JsonDirectoryDatabase:
         
         # recursively delete children
         for child_id in item.child_ids: 
-            self.delete_item(child_id)
+
+            if self.get_item_attr(child_id, "is_chain_head"):
+                self.delete_chain(child_id)
+            else:
+                self.delete_item(child_id)
+
 
         # remove child from parent
         if item.parent_id is not None:
             self.remove_child_from_parent(item.id, item.parent_id)
 
-        # remove from chain
+        # remove from a parent
         self.remove_node_from_chain(id)
 
         self._debug(f"Deleting item {id}")
@@ -184,20 +189,29 @@ class JsonDirectoryDatabase:
         parent.child_ids.remove(child_id)
         self.update_item(parent_id, child_ids=parent.child_ids)
 
+    def delete_chain(self, node_id: int):
+        item = self.get_item(node_id)
+
+        if item.next_chain_id is not None:
+            self.delete_chain(item.next_chain_id)
+        self.delete_item(node_id)
+
     def insert_node_into_chain(self, node_id: int, prev_id: int):
         node = self.get_item(node_id)
         prev = self.get_item(prev_id)
 
-        # if prev has no next, make it a head
-        if prev.next_chain_id is None:
-            prev.is_chain_head = True
+        # prev already had a next -> insert and update refs
+        if prev.next_chain_id is not None:
+            node.next_chain_id = prev.next_chain_id
+            self.update_item(node.next_chain_id, prev_chain_id=node_id)
 
-        # else insert into the chain
-        else:
-            node.next_chain_id = prev.next_chain_idc
-
+        # update prev to point to node
         node.prev_chain_id = prev_id
         prev.next_chain_id = node_id
+
+        # if prev has no prev, its the head of the chain
+        if prev.prev_chain_id is None:
+            prev.is_chain_head = True
 
         self.update_item(**prev.model_dump())
         self.update_item(**node.model_dump())
@@ -216,7 +230,7 @@ class JsonDirectoryDatabase:
         elif node.next_chain_id is not None:
             self.update_item(node.next_chain_id, prev_chain_id=None)
             if self.get_item_attr(node.next_chain_id, "next_chain_id") is not None:
-                self.update_item(node.next_chain_id, is_chain_head=True)
+                self.update_item(node.next_chain_id, is_chain_head=True, parent_id=node.parent_id)
 
         node.next_chain_id = None
         node.prev_chain_id = None
