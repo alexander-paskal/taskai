@@ -296,7 +296,14 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
 - [ ] Broaden the general test suite (DEVPLAN Phase 6) — currently 7 tests
       total across `test_cli.py`/`test_execution.py`/
       `test_json_dir_database.py`/`test_view.py`. Lower priority than the
-      chain coverage above for a v1 cutoff specifically.
+      chain coverage above for a v1 cutoff specifically. **Deliberately
+      left for last and not started** — this is genuinely open-ended
+      (DEVPLAN Phase 6 scopes it as "every `execute_commands` branch,
+      id/name resolution, `_parse_item_kwargs`, the browser endpoints,
+      the AI command-execution loop with a mocked LLM"), it was already
+      explicitly the lowest priority item on this whole list, and
+      everything else got done first. A real next session, not a
+      last-minute partial pass tacked onto this one.
 - [x] Wire CI (`pytest` on every PR, `sphinx-build -W` + `linkcheck` for
       docs) — nice-to-have, fine to slip past v1 if time is tight. New
       `.github/workflows/test.yml`, two jobs on `push`/`pull_request`:
