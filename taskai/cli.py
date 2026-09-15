@@ -1,7 +1,6 @@
 # standard lib
 import argparse
 import os
-from datetime import datetime
 import builtins
 import fnmatch
 import sys
@@ -9,6 +8,7 @@ import subprocess
 import getpass
 
 # local
+from taskai.dates import parse_date_value
 from taskai.json_dir_database import JsonDirectoryDatabase
 from taskai.views import view_lists, view_item
 from taskai.filters import (
@@ -115,7 +115,7 @@ class Controller:
                         kwargs["completed"] = str(v).strip().lower() in ("true", "1", "yes")
                 case "due_by":
                     if isinstance(v, str):
-                        kwargs["due_by"] = datetime.strptime(v, "%m-%d-%Y")
+                        kwargs["due_by"] = parse_date_value(v)
                 case "depends_on":
                     # CLI-facing alias for the model's dependency_ids field;
                     # accepts a comma-separated id list ("1,2,3") or one id

@@ -17,8 +17,8 @@ tree rather than a scatter of disconnected nodes.
 import fnmatch
 import re
 from dataclasses import dataclass
-from datetime import datetime
 
+from taskai.dates import parse_date_value
 from taskai.json_dir_database import DatabaseError
 
 # attr -> how both sides of the comparison should be read
@@ -28,8 +28,6 @@ _BOOL_ATTRS = {"completed"}
 _STR_ATTRS = {"name", "description", "status"}
 
 FILTERABLE_ATTRS = _INT_ATTRS | _DATE_ATTRS | _BOOL_ATTRS | _STR_ATTRS
-
-_DATE_FORMAT = "%m-%d-%Y"  # matches the CLI's --due_by format
 
 # two-char operators first so `>=` isn't read as `>` then `=`
 _FILTER_RE = re.compile(
@@ -57,7 +55,7 @@ def _coerce(attr: str, raw: str):
     if attr in _BOOL_ATTRS:
         return str(raw).strip().lower() in ("true", "1", "yes")
     if attr in _DATE_ATTRS:
-        return datetime.strptime(raw.strip(), _DATE_FORMAT).date()
+        return parse_date_value(raw).date()
     return raw  # string: compared with fnmatch (=) or lexically (< >)
 
 

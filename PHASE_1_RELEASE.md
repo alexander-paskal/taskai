@@ -131,7 +131,7 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       arrow = next sibling) so the keys still feel spatially consistent
       with what's on screen? Leaning yes, but worth confirming rather than
       assuming.
-- [ ] **Smarter `due_by` parsing.** Two related asks:
+- [x] **Smarter `due_by` parsing.** Two related asks:
       - **Format inference.** `_parse_item_kwargs` (`cli.py`) currently
         hard-requires `MM-DD-YYYY` (`datetime.strptime(v, "%m-%d-%Y")`) —
         anything else throws. Accept common formats without the user
@@ -147,6 +147,21 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
         `create`/`add`/`update`/`next` — since both go through date
         parsing but currently via different code (`filters.py` vs.
         `_parse_item_kwargs`) and only one was explicitly asked for.
+      **Resolved: did both, via one shared helper.** New
+      [taskai/dates.py](taskai/dates.py), `parse_date_value(raw)` — tries a
+      list of formats (`MM-DD-YYYY`, ISO, `MM/DD/YYYY`, `MM/DD/YY`, and
+      `Month D[,] YYYY` in long/short-month variants) then falls back to
+      `today`/`tomorrow` (case-insensitive). Used by *both*
+      `_parse_item_kwargs`'s `due_by` branch (`cli.py`) and
+      `filters.py`'s `_coerce` for `due_by`/`created_on` — so
+      `--due_by tomorrow` on `create`/`add`/`update`/`next` and
+      `task show 'due_by=today'` both work, not just one. Verified: the 7
+      existing tests still pass; unit-checked every format + both
+      keywords + a bad-input error path directly; end-to-end through the
+      real CLI (`create --due_by 2026-12-25`, `update --due_by tomorrow`,
+      `show 'due_by=tomorrow'` all resolved and matched correctly).
+      `help_menu.py` updated in both spots (item-fields table and the
+      filter example line).
 
 ## Docs
 
