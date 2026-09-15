@@ -441,6 +441,36 @@ the original checklist.
       collapsing the right panel and restoring canvas width. Complements the
       existing `edit <id|name>` that opens it.
 
+### 1.8 — Chain rendering & navigation (post-plan, beyond original scope)
+
+The backend chain fields (`is_chain_head`/`prev_chain_id`/`next_chain_id`,
+`task next`) existed with no browser support at all; this gives the DAG a
+view onto them.
+
+- [x] **Layout rewrite.** The old depth-first "leaf counter" layout
+      (`canvas.js`) is now a bottom-up subtree-width algorithm (`graph.js`,
+      `measure`/`place`) — every node's footprint is the sum of its
+      children's real footprints instead of a fixed grid, so sibling
+      subtrees pack at minimum distance instead of getting a fixed spacing
+      regardless of content.
+- [x] **Chains render as a straight line.** A chain node's real children
+      (`child_ids`) push into a row to its right instead of centering below
+      it; its chain successor (`chainNext`) drops straight down, waiting
+      until that side row's height clears so nothing overlaps. Fixed a real
+      bug found via a screenshot: a chain node's footprint is lopsided (all
+      reach is to the right, none to the left), so layout tracks separate
+      `left`/`right` extents per node instead of one symmetric width —
+      otherwise a deep chain could bleed into an unrelated cousin subtree.
+      Chain edges render as bold arrows (`render.js`, `drawChainEdges`),
+      distinct from plain tree edges and dashed soft-link edges.
+- [x] **Navigation.** Arrow keys stay pure tree navigation (up/down =
+      parent/children, left/right = the depth level) — a chain node's real
+      children are still its tree children for this purpose, they just
+      render to the side. `f`/`b` (`navigation.js`, `shortcuts.js`) are a
+      separate chain axis: forward/back along `chainNext`/`chainPrev`,
+      independent of tree position. Also usable from the console as
+      `forward`/`back`.
+
 ---
 
 ## Phase 2 — AI tools
@@ -599,11 +629,17 @@ Re-scope this section before starting 2.4.
 
 ## Phase 3 — Polish
 
-- [ ] **Frontend cleanup.** Once 1.3–1.6 are functional, split `app.js` into
-      small single-purpose files (`api.js`, `dag.js`, `console.js`,
-      `editmenu.js`) and delete anything exploratory left over from getting
-      the DAG layout working. Still no bundler — just multiple `<script>`
-      tags loaded in order.
+- [x] **Frontend cleanup.** `canvas.js` split into `config.js` (`STYLE`),
+      `graph.js` (`Graph` class — tree/chain construction + layout),
+      `camera.js` (`Camera` class — pan/zoom/panel-width transform, never
+      holds a `Graph`, takes one as an argument where it needs one),
+      `navigation.js` (`navigateGraph`, pure aside from its own "last child
+      visited" memory), and `render.js` (drawing only). `canvas.js` itself is
+      now just the `state` object (`{graph, camera, selectedNode,
+      hoveredNode}`) plus DOM event wiring — the readable top-level flow.
+      `console.js`/`editpanel.js`/`shortcuts.js` read and act through `state`
+      instead of the old flat globals. Still no bundler — six `<script>` tags
+      loaded in dependency order.
 - [~] **Docs.** README is synced with `execute_commands` (command list,
       `task ai` flags, Web UI section, `task setup` walkthrough);
       `help_menu.py` lists `task browser` / `task help`, and its stale

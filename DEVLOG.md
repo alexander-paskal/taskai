@@ -1,3 +1,26 @@
+# 9-14
+
+Gave the browser DAG chain support (backend chain fields already existed,
+frontend didn't know about them) and cleaned up `canvas.js` along the way.
+Durable versions in DEVPLAN 1.8 (chains) and Phase 3 (frontend cleanup).
+
+- **Layout rewrite.** Bottom-up subtree-width algorithm replaces the old
+  fixed-grid layout — a chain renders as a straight line, its real children
+  push into a row to the right instead of centering below it. Found and
+  fixed a real overlap bug from a screenshot: a chain node's footprint is
+  lopsided (all reach to the right), so layout now tracks separate
+  `left`/`right` extents per node instead of one symmetric width.
+- **Navigation.** Arrow keys are pure tree nav (chain or not); `f`/`b`
+  (and `forward`/`back` from the console) are a separate chain axis along
+  `chainNext`/`chainPrev`. Split out after realizing one direction can't
+  mean "sibling," "child," and "next in chain" at once for a node that's
+  both a chain head and has its own tree children.
+- **Frontend split.** `canvas.js` (one file, ~900 lines) is now
+  `config.js`/`graph.js`/`camera.js`/`navigation.js`/`render.js` plus a
+  slim `canvas.js` holding a `state` object and the event wiring — the
+  three panel scripts (`console.js`/`editpanel.js`/`shortcuts.js`) updated
+  to match.
+
 # 9-10
 
 Browser navigation polish, then a new feature: attribute filters for `task
