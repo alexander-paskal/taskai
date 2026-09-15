@@ -201,8 +201,23 @@ class Controller:
 
         db.commit()
 
-    def delete_item(id_: int|str):
+    def delete_item(id_: int|str, chain: bool = False):
         item = Controller._resolve_item(id_)
+
+        if chain:
+            # walk back to the true head first, so this works no matter
+            # which link in the chain was targeted
+            head_id = item.id
+            while True:
+                prev_id = db.get_item_attr(head_id, "prev_chain_id")
+                if prev_id is None:
+                    break
+                head_id = prev_id
+            db.delete_chain(head_id)
+            db.commit()
+            print(f"Deleted chain starting at {head_id}")
+            return
+
         db.delete_item(item.id)
         db.commit()
         print(f"Deleted item {item.id}")
@@ -497,7 +512,8 @@ def execute_commands(*args, **kwargs) -> int:
                 Controller.reorder(args[1], args[3], args[2])
 
             case "delete" | "remove":
-                Controller.delete_item(args[1])
+                chain = "-chain" in args
+                Controller.delete_item(args[1], chain=chain)
 
             case "comment":
                 Controller.create_comment(*args[1:], **kwargs)
