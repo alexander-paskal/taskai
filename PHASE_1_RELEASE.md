@@ -140,10 +140,14 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
 - [ ] Confirm the Read the Docs project slug (`conf.py`'s `html_baseurl` +
       README currently assume `taskai`).
 - [ ] Screenshots for browser-mode docs.
-- [ ] `help_menu.py`/README are current as of the chain work (Phase 8) —
+- [x] `help_menu.py`/README are current as of the chain work (Phase 8) —
       spot-check the RTD site's generated pages didn't drift now that
       `help_general` has a new "Chains:" section (`docs/commands.md`
-      `literalinclude`s it automatically, but worth a build-and-look).
+      `literalinclude`s it automatically, but worth a build-and-look). Ran
+      `sphinx-build -b html docs docs/_build/html`: builds clean (1
+      pre-existing warning, the known `demo.gif` placeholder — unrelated),
+      and the built `commands.html` correctly includes the full "Chains:"
+      section verbatim. Nothing needed fixing.
 - [ ] Lower priority, nice-to-have if time allows: explanation/architecture
       pages, custom 404, OpenGraph cards, CI `linkcheck`, a changelog.
 
