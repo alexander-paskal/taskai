@@ -404,8 +404,8 @@ class Controller:
         db.remove()
         print("Database wiped - starting fresh.")
 
-    def browser_service():
-        subprocess.run([sys.executable, '-m', 'uvicorn', 'taskai.browser:app', '--reload'])
+    def browser_service(port: int = 8000):
+        subprocess.run([sys.executable, '-m', 'uvicorn', 'taskai.browser:app', '--reload', '--port', str(port)])
         
 
 
@@ -583,7 +583,8 @@ def execute_commands(*args, **kwargs) -> int:
                 Controller.repair_service()
 
             case "browser":
-                Controller.browser_service()
+                port = int(args[1]) if len(args) > 1 else 8000
+                Controller.browser_service(port)
 
             case "clear":
                 if len(args) > 1:

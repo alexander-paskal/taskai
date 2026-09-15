@@ -14,10 +14,10 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
 
 ## Small polish
 
-- [ ] **`task browser` has no `[port]` override.** (TRIAGE / Low)
+- [x] **`task browser` has no `[port]` override.** (TRIAGE / Low)
       `Controller.browser_service` hardcodes uvicorn's default port.
       Original DEVPLAN scoping (1.1) called for `task web [port]`; small,
-      contained fix.
+      contained fix. `task browser {port}`, defaults to 8000.
 - [ ] **DAG empty/loading state.** (DEVPLAN Phase 3) A user with no tasks
       yet just sees a blank canvas — no "nothing here yet" state.
 - [ ] **`style.css` spacing/typography consistency pass.** (DEVPLAN Phase 3)

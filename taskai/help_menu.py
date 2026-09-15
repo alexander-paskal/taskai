@@ -70,7 +70,7 @@ Other:
 'task help' --> show this help
 'task examples' --> worked, copy/pasteable command sequences for common workflows
 'task setup' --> interactive first-run setup
-'task browser' --> launch the web UI: a canvas view of the item tree, click a node to edit it, console for raw commands
+'task browser {port}' --> launch the web UI: a canvas view of the item tree, click a node to edit it, console for raw commands. Port defaults to 8000.
 'task repair' --> attempt to repair a corrupted database
 'task pomo {on_minutes} {off_minutes}' --> start a pomodoro timer
 
