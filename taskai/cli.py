@@ -80,14 +80,20 @@ class Controller:
         return item
 
     def _flatten_item_descendants(item: TodoItem, existing=None) -> list[int]:
-        """DFS through children"""
+        """DFS through children and chain links - a chain's non-head members
+        are never in anyone's child_ids, they're only reachable by walking
+        next_chain_id, so both have to be followed to reach everything."""
         if existing is None:
             existing = []
 
         existing.append(item.id)
         for child_id in item.child_ids:
             child = db.get_item(child_id)
-            child_descendants = Controller._flatten_item_descendants(child, existing=existing)
+            Controller._flatten_item_descendants(child, existing=existing)
+
+        if item.next_chain_id is not None:
+            next_item = db.get_item(item.next_chain_id)
+            Controller._flatten_item_descendants(next_item, existing=existing)
 
         return existing
 

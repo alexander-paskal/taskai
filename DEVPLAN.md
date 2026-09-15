@@ -900,14 +900,14 @@ progress.
       into the parent's set of children. A no-op on the reparenting step if
       `node` being unchained *is* the head — it's already that parent's
       child.
-- [ ] **`task delete <id> -chain`** — new flag on the existing `delete`
+- [x] **`task delete <id> -chain`** — new flag on the existing `delete`
       command (same convention as `complete`/`done`'s `-r`/`-recursive`),
       wiring the already-written, currently-unreachable `db.delete_chain`.
       Deletes the *entire* chain `id` belongs to, not just `id` onward —
       walk `prev_chain_id` back to the true head first, so it works no
       matter which link you target, then cascade forward and detach the
       head from its tree parent the normal way.
-- [ ] **`clear` needs to actually reach chain members.**
+- [x] **`clear` needs to actually reach chain members.**
       `Controller._flatten_item_descendants` (used by `task clear <parent>`
       to scope which completed items to sweep) walks `child_ids` only. A
       chain's non-head members are never in anyone's `child_ids` — they're
