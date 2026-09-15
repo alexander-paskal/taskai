@@ -47,6 +47,9 @@ const STYLE = {
 		linkWidth: 1.5,
 		linkDash: [7, 6], // dash pattern (world units) for the parent -> shadow-node edge
 		linkColorRGB: "150, 155, 168", // uncoloured grey; the dash is the cue, not a hue
+		chainColor: "#6366f1", // bold, distinct from both the plain tree edges and the dashed link edges
+		chainWidth: 2.5,
+		chainArrowSize: 10,
 	},
 	layout: {
 		xSpacing: 230,
@@ -95,6 +98,7 @@ function itemForNode(node) {
 function flatten(node, list = []){
 	list.push(node);
 	node.children.forEach(child => flatten(child, list));
+	if (node.chainNext) flatten(node.chainNext, list);
 	return list;
 }
 
@@ -116,9 +120,10 @@ function buildShadowNode(item, parentId) {
 }
 
 // builds a renderable node tree from the flat {id: item} map returned by /api/tree
-function buildTree(itemsById, id) {
+function buildTree(itemsById, id, seen = new Set()) {
 	const item = itemsById[id];
-	const children = (item.child_ids || []).map(childId => buildTree(itemsById, childId));
+	seen.add(id);
+	const children = (item.child_ids || []).map(childId => buildTree(itemsById, childId, seen));
 
 	// soft links render as ghost children appended after the real ones
 	(item.linked_ids || []).forEach(linkedId => {
@@ -138,20 +143,76 @@ function buildTree(itemsById, id) {
 	// back-reference so navigation (navigate()) can walk up as well as down
 	children.forEach(child => { child.parent = node; });
 
+	// a chain member never has its own parent_id (only a prev_chain_id) — it's
+	// reached here by walking next_chain_id from its predecessor, not built as
+	// a separate forest root. `seen` guards against a cycle in the chain data.
+	if (item.next_chain_id != null && itemsById[item.next_chain_id] && !seen.has(item.next_chain_id)) {
+		node.chainNext = buildTree(itemsById, item.next_chain_id, seen);
+		node.chainNext.chainPrev = node;
+	}
+
 	return node;
 }
 
-// depth-first layout: y from depth, x from a running leaf counter shared across the whole forest,
-// with parent x centered over its children
-function layout(node, depth, leafCounter) {
-	node.y = STYLE.layout.marginY + depth * STYLE.layout.ySpacing;
-	if (node.children.length === 0) {
-		node.x = STYLE.layout.marginX + leafCounter.count * STYLE.layout.xSpacing;
-		leafCounter.count += 1;
+// true if `node` is a link in some chain (head, middle, or tail alike) — such
+// a node's own real children grow to the right instead of centering below it
+function isChainMember(node) {
+	return !!(node.chainNext || node.chainPrev);
+}
+
+// bottom-up: gives every node a {width, height} footprint in grid units (not
+// pixels — place() turns these into positions via xSpacing/ySpacing).
+//
+// A plain node's children spread out centered below it, one row per level,
+// same as always. A chain node instead pushes its own real children into a
+// row to its right (each additional child stacking further right than the
+// last), and makes its chain successor wait — straight down, but only after
+// however many rows that side-subtree needs, so nothing overlaps it.
+function measure(node) {
+	const childBoxes = node.children.map(measure);
+
+	if (isChainMember(node)) {
+		const sideWidth = childBoxes.reduce((sum, b) => sum + b.width, 0);
+		const sideHeight = childBoxes.length ? Math.max(...childBoxes.map(b => b.height)) : 0;
+		const chainBox = node.chainNext ? measure(node.chainNext) : { width: 0, height: 0 };
+
+		node._childBoxes = childBoxes;
+		node._sideHeight = sideHeight;
+		node._width = Math.max(1 + sideWidth, chainBox.width);
+		node._height = 1 + sideHeight + chainBox.height;
 	} else {
-		node.children.forEach(child => layout(child, depth + 1, leafCounter));
-		const xs = node.children.map(c => c.x);
-		node.x = (Math.min(...xs) + Math.max(...xs)) / 2;
+		const width = childBoxes.reduce((sum, b) => sum + b.width, 0);
+		const height = childBoxes.length ? 1 + Math.max(...childBoxes.map(b => b.height)) : 1;
+
+		node._childBoxes = childBoxes;
+		node._width = Math.max(width, 1);
+		node._height = height;
+	}
+
+	return { width: node._width, height: node._height };
+}
+
+// top-down: places `node` at grid position (x, y) — resolved to world
+// coordinates here — then places its descendants per the rule measure() used.
+function place(node, x, y) {
+	node.x = STYLE.layout.marginX + x * STYLE.layout.xSpacing;
+	node.y = STYLE.layout.marginY + y * STYLE.layout.ySpacing;
+
+	if (isChainMember(node)) {
+		let cursor = 1; // side children start one column right of the spine
+		node.children.forEach((child, i) => {
+			const box = node._childBoxes[i];
+			place(child, x + cursor + box.width / 2, y + 1);
+			cursor += box.width;
+		});
+		if (node.chainNext) place(node.chainNext, x, y + 1 + node._sideHeight);
+	} else {
+		let cursor = -node._width / 2;
+		node.children.forEach((child, i) => {
+			const box = node._childBoxes[i];
+			place(child, x + cursor + box.width / 2, y + 1);
+			cursor += box.width;
+		});
 	}
 }
 
@@ -161,16 +222,29 @@ function layout(node, depth, leafCounter) {
 function applyTree(itemsById) {
 	latestItemsById = itemsById;
 
+	// a chain member's parent_id is always null (only prev_chain_id links it) —
+	// exclude those here so they're reached by walking next_chain_id from
+	// their predecessor instead of also being built as a second forest root
 	const rootIds = Object.values(itemsById)
-		.filter(item => item.parent_id === null)
+		.filter(item => item.parent_id === null && item.prev_chain_id == null)
 		.map(item => item.id);
 
 	roots = rootIds.map(id => buildTree(itemsById, id));
 
-	const leafCounter = { count: 0 };
+	// lay the forest out as one more row of slots (never a chain itself), same
+	// as any node's children, then add a bit of extra breathing room between
+	// separate root trees on top of ordinary sibling spacing
+	const superRoot = { children: roots };
+	measure(superRoot);
+
+	const extraGapUnits = STYLE.layout.treeGap / STYLE.layout.xSpacing;
+	const totalWidth = superRoot._width + Math.max(0, roots.length - 1) * extraGapUnits;
+	let cursor = -totalWidth / 2;
 	roots.forEach((root, i) => {
-		if (i > 0) leafCounter.count += STYLE.layout.treeGap / STYLE.layout.xSpacing;
-		layout(root, 0, leafCounter);
+		if (i > 0) cursor += extraGapUnits;
+		const box = superRoot._childBoxes[i];
+		place(root, cursor + box.width / 2, 0);
+		cursor += box.width;
 	});
 
 	nodes = roots.flatMap(root => flatten(root));
@@ -568,6 +642,52 @@ function drawLinkEdges(ctx) {
 			if (child.isShadow) edge(node, child);
 			else walk(child);
 		});
+		if (node.chainNext) walk(node.chainNext);
+	}
+	roots.forEach(root => walk(root));
+
+	ctx.restore();
+}
+
+// bold, arrowed edges for chain successors (next_chain_id) — deliberately
+// distinct from both the plain tree edges and the dashed shadow-link edges
+function drawChainEdges(ctx) {
+	ctx.save();
+	ctx.strokeStyle = STYLE.edge.chainColor;
+	ctx.fillStyle = STYLE.edge.chainColor;
+	ctx.lineWidth = STYLE.edge.chainWidth;
+	ctx.lineCap = "round";
+
+	function edge(from, to) {
+		const dist = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+		const ux = (to.x - from.x) / dist;
+		const uy = (to.y - from.y) / dist;
+		const startX = from.x + ux * (from.size / 2);
+		const startY = from.y + uy * (from.size / 2);
+		const endX = to.x - ux * (to.size / 2);
+		const endY = to.y - uy * (to.size / 2);
+
+		ctx.beginPath();
+		ctx.moveTo(startX, startY);
+		ctx.lineTo(endX, endY);
+		ctx.stroke();
+
+		const arrow = STYLE.edge.chainArrowSize;
+		const angle = Math.atan2(uy, ux);
+		ctx.beginPath();
+		ctx.moveTo(endX, endY);
+		ctx.lineTo(endX - arrow * Math.cos(angle - Math.PI / 6), endY - arrow * Math.sin(angle - Math.PI / 6));
+		ctx.lineTo(endX - arrow * Math.cos(angle + Math.PI / 6), endY - arrow * Math.sin(angle + Math.PI / 6));
+		ctx.closePath();
+		ctx.fill();
+	}
+
+	function walk(node) {
+		if (node.chainNext) {
+			edge(node, node.chainNext);
+			walk(node.chainNext);
+		}
+		node.children.forEach(walk);
 	}
 	roots.forEach(root => walk(root));
 
@@ -595,11 +715,15 @@ function draw() {
 			ctx.stroke();
 			drawLines(child);
 		});
+		if (node.chainNext) drawLines(node.chainNext); // chain hop gets its own bold edge, drawn separately below
 	}
 	roots.forEach(root => drawLines(root));
 
 	// Soft-link edges (linked_ids), layered on top of the tree edges but below the nodes
 	drawLinkEdges(ctx);
+
+	// Chain edges (next_chain_id) — bold arrows, layered above tree/link edges but below nodes
+	drawChainEdges(ctx);
 
 	// Draw nodes
 	nodes.forEach(node => {
