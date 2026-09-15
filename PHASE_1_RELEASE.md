@@ -88,11 +88,21 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       ride on: a config surface (new `CLIConfig` keys, most likely) that
       the browser reads at load, rather than everything being a compile-time
       JS constant.
-- [ ] **Node render color as an item attribute.** A per-item color override
+- [x] **Node render color as an item attribute.** A per-item color override
       (new `TodoItem` field, or reuse an existing free-form one) that
       `render.js`'s `drawNode` checks before falling back to the
       completed/default fill — lets a user color-code specific nodes
-      directly rather than only via `completed`/`status`.
+      directly rather than only via `completed`/`status`. New `TodoItem.
+      color: Optional[str]` (any CSS color string), threaded through
+      `graph.js`'s node object and checked in `drawNode` before the
+      completed/default fill logic. Edit panel gets a plain text field
+      (deliberately not a native `<input type="color">` — that widget can
+      never represent "unset," always some valid hex color; an empty
+      string here correctly falls back to the default via JS truthiness,
+      no special-case handling needed anywhere). Verified end to end:
+      created an item with `--color`, confirmed it in the live `/api/tree`
+      payload, cleared it back to `""` and confirmed the model round-trips
+      that correctly.
 - [ ] **Status-string → color mapping, defined in config.** e.g.
       `RUNNING=green, BLOCKED=red` as a new `CLIConfig` key (config-key
       naming and exact syntax TBD — something in the spirit of the existing

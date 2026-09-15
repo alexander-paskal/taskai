@@ -46,6 +46,7 @@ class TodoItem(Base):
     recurs_until: Optional[datetime] = None 
     recur_keep_incomplete: bool = False
     status: str = ""
+    color: Optional[str] = None  # CSS color string (e.g. "#ff8844") - overrides the DAG node's fill
 
     # chain fields
     prev_chain_id: Optional[int] = None

@@ -181,6 +181,7 @@ function drawNode(ctx, node, isHovered, isSelected) {
 
 	let fill;
 	if (isShadow) fill = node.completed ? STYLE.colors.shadowNodeFillDone : STYLE.colors.shadowNodeFill;
+	else if (node.color) fill = node.color; // explicit per-item override wins over completed/default
 	else if (node.completed) fill = isHovered ? STYLE.colors.nodeFillDoneHover : STYLE.colors.nodeFillDone;
 	else fill = isHovered ? STYLE.colors.nodeFillHover : STYLE.colors.nodeFill;
 

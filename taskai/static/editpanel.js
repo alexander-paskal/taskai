@@ -37,6 +37,10 @@ function dateInputValueToCliFormat(value) {
 const FIELD_DEFS = [
 	{ key: "name", label: "Name", type: "text" },
 	{ key: "status", label: "Status", type: "text" },
+	// a plain text field on purpose, not a native <input type="color"> - that
+	// widget can never represent "unset" (it's always some valid hex color),
+	// but an empty string here correctly means "no override, use the default"
+	{ key: "color", label: "Color", type: "text" },
 	{ key: "priority", label: "Priority", type: "number" },
 	{ key: "due_by", label: "Due by", type: "date", format: isoToDateInputValue },
 	{ key: "completed", label: "Completed", type: "checkbox" },
