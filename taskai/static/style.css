@@ -3,6 +3,17 @@
 	--console-h-collapsed: 44px;
 	--console-h-expanded: 280px;
 	--comment-list-h: 200px;
+
+	/* shared palette + type, so the same value isn't repeated by hand at
+	   every call site */
+	--color-border: #e2e4ea;
+	--color-muted: #9aa0ab;
+	--color-text: #23252b;
+	--color-label: #6b7280;
+	--color-accent: #4772fa;
+	--color-surface-alt: #f5f6f8;
+	--font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	--font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 html, body {
@@ -10,9 +21,9 @@ html, body {
 	padding: 0;
 	width: 100%;
 	height: 100%;
-	background: #f5f6f8;
+	background: var(--color-surface-alt);
 	overflow: hidden;
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	font-family: var(--font-sans);
 }
 
 canvas {
@@ -28,7 +39,7 @@ canvas {
 	display: flex;
 	flex-direction: column;
 	background: #ffffff;
-	border-top: 1px solid #e2e4ea;
+	border-top: 1px solid var(--color-border);
 	box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.06);
 	height: var(--console-h-collapsed);
 	overflow: hidden;
@@ -48,13 +59,13 @@ canvas {
 	height: 44px;
 	border: none;
 	background: transparent;
-	color: #9aa0ab;
+	color: var(--color-muted);
 	cursor: pointer;
 	padding: 0;
 }
 
 .console-toggle:hover {
-	color: #23252b;
+	color: var(--color-text);
 }
 
 .console-toggle svg {
@@ -76,9 +87,9 @@ canvas {
 .console-scrollback {
 	flex: 1;
 	overflow-y: auto;
-	font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-	font-size: 12.5px;
-	color: #23252b;
+	font-family: var(--font-mono);
+	font-size: 13px;
+	color: var(--color-text);
 	padding: 8px 0;
 }
 
@@ -92,17 +103,17 @@ canvas {
 	box-sizing: border-box;
 	width: 100%;
 	padding: 8px 10px;
-	font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-	font-size: 12.5px;
-	color: #23252b;
-	background: #f5f6f8;
-	border: 1px solid #e2e4ea;
+	font-family: var(--font-mono);
+	font-size: 13px;
+	color: var(--color-text);
+	background: var(--color-surface-alt);
+	border: 1px solid var(--color-border);
 	border-radius: 8px;
 	outline: none;
 }
 
 .console-input:focus {
-	border-color: #4772fa;
+	border-color: var(--color-accent);
 }
 
 .edit-panel {
@@ -127,7 +138,7 @@ canvas {
 	width: 448px;
 	height: calc(100vh - var(--console-h-collapsed));
 	background: #ffffff;
-	border-left: 1px solid #e2e4ea;
+	border-left: 1px solid var(--color-border);
 	box-shadow: -2px 0 10px rgba(15, 23, 42, 0.06);
 }
 
@@ -144,13 +155,13 @@ body:has(.console-panel.expanded) .edit-panel.expanded {
 	height: 44px;
 	border: none;
 	background: transparent;
-	color: #9aa0ab;
+	color: var(--color-muted);
 	cursor: pointer;
 	padding: 0;
 }
 
 .edit-toggle:hover {
-	color: #23252b;
+	color: var(--color-text);
 	background: rgba(15, 23, 42, 0.05);
 	border-radius: 10px;
 }
@@ -170,7 +181,7 @@ body:has(.console-panel.expanded) .edit-panel.expanded {
 
 .edit-empty {
 	padding: 16px;
-	color: #9aa0ab;
+	color: var(--color-muted);
 	font-size: 13px;
 }
 
@@ -191,7 +202,7 @@ body:has(.console-panel.expanded) .edit-panel.expanded {
 	align-items: center;
 	gap: 10px;
 	font-size: 12px;
-	color: #6b7280;
+	color: var(--color-label);
 }
 
 .edit-field-label {
@@ -234,11 +245,11 @@ body:has(.console-panel.expanded) .edit-panel.expanded {
 .edit-field input[type="number"],
 .edit-field input[type="date"],
 .edit-field textarea {
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	font-family: var(--font-sans);
 	font-size: 13px;
-	color: #23252b;
-	background: #f5f6f8;
-	border: 1px solid #e2e4ea;
+	color: var(--color-text);
+	background: var(--color-surface-alt);
+	border: 1px solid var(--color-border);
 	border-radius: 6px;
 	padding: 5px 8px;
 	box-sizing: border-box;
@@ -251,7 +262,7 @@ body:has(.console-panel.expanded) .edit-panel.expanded {
 .edit-field input[type="number"]:focus,
 .edit-field input[type="date"]:focus,
 .edit-field textarea:focus {
-	border-color: #4772fa;
+	border-color: var(--color-accent);
 }
 
 .edit-field textarea {
@@ -268,7 +279,7 @@ body:has(.console-panel.expanded) .edit-panel.expanded {
 .edit-field-checkbox-row input[type="checkbox"] {
 	width: 16px;
 	height: 16px;
-	accent-color: #4772fa;
+	accent-color: var(--color-accent);
 }
 
 /* comments: a flat read-only feed (no cards — straight on the panel) plus
@@ -305,32 +316,32 @@ body:has(.console-panel.expanded) .comment-list {
 .comment-date {
 	flex: none;
 	font-size: 11px;
-	color: #9aa0ab;
+	color: var(--color-muted);
 }
 
 .comment-body {
 	flex: 1;
 	min-width: 0;
 	text-align: right;
-	font-size: 12.5px;
-	color: #23252b;
+	font-size: 13px;
+	color: var(--color-text);
 	white-space: pre-wrap;
 	word-break: break-word;
 }
 
 .comment-empty {
 	font-size: 12px;
-	color: #9aa0ab;
+	color: var(--color-muted);
 	font-style: italic;
 }
 
 .comment-add-input {
 	flex: none;
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	font-family: var(--font-sans);
 	font-size: 13px;
-	color: #23252b;
-	background: #f5f6f8;
-	border: 1px solid #e2e4ea;
+	color: var(--color-text);
+	background: var(--color-surface-alt);
+	border: 1px solid var(--color-border);
 	border-radius: 6px;
 	padding: 5px 8px;
 	box-sizing: border-box;
@@ -341,7 +352,7 @@ body:has(.console-panel.expanded) .comment-list {
 }
 
 .comment-add-input:focus {
-	border-color: #4772fa;
+	border-color: var(--color-accent);
 }
 
 /* ── shortcuts panel ──────────────────────────────────────────────────────
@@ -367,7 +378,7 @@ body:has(.console-panel.expanded) .comment-list {
 	width: 300px;
 	height: calc(100vh - var(--console-h-collapsed));
 	background: #ffffff;
-	border-right: 1px solid #e2e4ea;
+	border-right: 1px solid var(--color-border);
 	box-shadow: 2px 0 10px rgba(15, 23, 42, 0.06);
 }
 
@@ -384,13 +395,13 @@ body:has(.console-panel.expanded) .shortcut-panel.expanded {
 	height: 44px;
 	border: none;
 	background: transparent;
-	color: #9aa0ab;
+	color: var(--color-muted);
 	cursor: pointer;
 	padding: 0;
 }
 
 .shortcut-toggle:hover {
-	color: #23252b;
+	color: var(--color-text);
 	background: rgba(15, 23, 42, 0.05);
 	border-radius: 10px;
 }
@@ -420,7 +431,7 @@ body:has(.console-panel.expanded) .shortcut-panel.expanded {
 	font-size: 11px;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
-	color: #9aa0ab;
+	color: var(--color-muted);
 	margin-top: 8px;
 }
 
@@ -435,7 +446,7 @@ body:has(.console-panel.expanded) .shortcut-panel.expanded {
 	align-items: baseline;
 	gap: 10px;
 	font-size: 12px;
-	color: #6b7280;
+	color: var(--color-label);
 }
 
 .shortcut-keys {
@@ -447,12 +458,12 @@ body:has(.console-panel.expanded) .shortcut-panel.expanded {
 }
 
 .shortcut-key {
-	font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+	font-family: var(--font-mono);
 	font-size: 11px;
 	line-height: 1.4;
-	color: #23252b;
-	background: #f5f6f8;
-	border: 1px solid #e2e4ea;
+	color: var(--color-text);
+	background: var(--color-surface-alt);
+	border: 1px solid var(--color-border);
 	border-radius: 5px;
 	padding: 0 5px;
 	white-space: nowrap;

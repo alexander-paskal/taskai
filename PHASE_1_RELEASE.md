@@ -24,9 +24,16 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       `graph.nodes.length === 0` — covers both "still loading" and
       "genuinely empty" with one message rather than adding a separate
       loading-flag/spinner for what's normally a near-instant local fetch.
-- [ ] **`style.css` spacing/typography consistency pass.** (DEVPLAN Phase 3)
+- [x] **`style.css` spacing/typography consistency pass.** (DEVPLAN Phase 3)
       Never done; low effort, worth a once-over before screenshots go in
-      the docs/listing.
+      the docs/listing. Pulled the repeated color/font literals (border,
+      muted/primary/label text, accent blue, input background, both font
+      stacks — each duplicated 2-9x) into `:root` custom properties;
+      normalized the one real inconsistency found, an odd `12.5px` body
+      text size next to `13px` used everywhere else for the same kind of
+      text. Deliberately left spacing/radius values (8/10/6/5px) alone —
+      those read as intentionally graduated by element scale, not
+      erroneous, and I can't visually verify a change without screenshots.
 - [x] **Re-check the Phase 0 fixes are still holding.** (DEVPLAN Phase 3)
       Written when the web UI was new; now that chains + the new CLI
       surface exercise a lot more of `execute_commands`, worth a quick
