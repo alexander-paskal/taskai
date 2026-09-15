@@ -150,7 +150,7 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       everywhere unchanged. Verified against 7 cases covering both
       fallbacks, both non-fallback (unchanged) paths, and the true dead end
       (tail, down).
-- [ ] **Transpose the DAG's coordinate axes: growth goes right, spread goes
+- [x] **Transpose the DAG's coordinate axes: growth goes right, spread goes
       down** (today: growth down, spread right). Affects `measure`/`place`
       in `graph.js` — swap which recursion axis feeds `marginX +
       ...*xSpacing` vs. `marginY + ...*ySpacing` in `place()`, done
@@ -161,7 +161,32 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
       the arrow-key mapping rotate with it (right arrow = descend, down
       arrow = next sibling) so the keys still feel spatially consistent
       with what's on screen? Leaning yes, but worth confirming rather than
-      assuming.
+      assuming. **Went with yes.** Turned out to be a genuinely small,
+      contained change: `place()`'s two recursion parameters were already
+      abstract ("spread" and "growth" in grid units) — every call site
+      below the top two lines passes them straight through unchanged, so
+      the *entire* orientation is decided in exactly those two lines
+      (renamed the parameters from `x`/`y` to `spread`/`growth` so that's
+      obvious on read, not just true by convention). Also had to fix:
+      `treeGap`'s unit conversion (was dividing by `xSpacing`, needs
+      `ySpacing` now that it's a spread-axis gap); the synthetic
+      `rootNode`'s position (was "above the roots," now "before them along
+      growth," centered on spread); `focusOnNode`'s off-center bias
+      (renamed `STYLE.zoom.focusYRatio` → `focusGrowthRatio`, moved from Y
+      to X); and `navigation.js`'s depth-level grouping for left/right
+      (was "shared y sorted by x," now "shared x sorted by y"). Console
+      text commands (`up`/`down`/`left`/`right`) and `f`/`b` keep their
+      original *structural* meaning unchanged (typing "down" always means
+      "my child," regardless of screen orientation) — only the *physical*
+      arrow-key → structural-direction mapping in `shortcuts.js` rotates
+      (`ArrowRight`→"down", `ArrowLeft`→"up", `ArrowDown`→"right",
+      `ArrowUp`→"left"). `Shift`+arrow panning stays tied to the actual
+      screen direction, untouched. Verified: rebuilt the graph from real
+      chain data and confirmed growth increases along X while chain
+      members/side-children/siblings spread along Y; confirmed
+      `navigateGraph`'s rotated depth-level stepping against that same
+      layout; confirmed every static file still serves against a live
+      `task browser` instance.
 - [x] **Smarter `due_by` parsing.** Two related asks:
       - **Format inference.** `_parse_item_kwargs` (`cli.py`) currently
         hard-requires `MM-DD-YYYY` (`datetime.strptime(v, "%m-%d-%Y")`) —

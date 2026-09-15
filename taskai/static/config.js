@@ -58,7 +58,7 @@ const STYLE = {
 		ySpacing: 230,
 		marginX: 120,
 		marginY: 120,
-		treeGap: 260, // extra horizontal gap, on top of xSpacing, between separate root trees
+		treeGap: 260, // extra spread-axis (screen Y) gap, on top of ySpacing, between separate root trees
 	},
 	zoom: {
 		min: 0.1,
@@ -66,10 +66,11 @@ const STYLE = {
 		speed: 0.001,
 		focusScale: 0.85,
 		focusDurationMs: 250,
-		// vertical screen position a focused node lands at, as a fraction of
-		// canvas height from the top (0 = top, 1 = bottom); kept above center
-		// so there's room below to see a focused node's children/grandchildren
-		focusYRatio: 0.2,
+		// growth-axis (screen X) position a focused node lands at, as a
+		// fraction of canvas width from the left (0 = left, 1 = right); kept
+		// left of center so there's room to see its children/grandchildren,
+		// which render further along growth from it
+		focusGrowthRatio: 0.2,
 	},
 	tooltip: {
 		font: "12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",

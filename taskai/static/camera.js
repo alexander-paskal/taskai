@@ -102,8 +102,10 @@ class Camera {
 		this._panelAnim[side] = requestAnimationFrame(step);
 	}
 
-	// eases to `scale`, horizontally centering `node` and placing it at
-	// STYLE.zoom.focusYRatio down the screen (not vertically centered)
+	// eases to `scale`, vertically centering `node` and placing it at
+	// STYLE.zoom.focusGrowthRatio across the screen along the growth axis
+	// (screen X) - not horizontally centered, so there's room to see its
+	// descendants, which render further along growth from it
 	focusOnNode(node, scale = STYLE.zoom.focusScale, duration = STYLE.zoom.focusDurationMs) {
 		const startOffsetX = this.offsetX;
 		const startOffsetY = this.offsetY;
@@ -120,8 +122,8 @@ class Camera {
 			// side panel opening in step with this animation resizes the canvas
 			// mid-flight, and a target captured once up front would leave the
 			// node off-centre by half the width change
-			const targetOffsetX = this.canvas.width / 2 - node.x * scale;
-			const targetOffsetY = this.canvas.height * STYLE.zoom.focusYRatio - node.y * scale;
+			const targetOffsetX = this.canvas.width * STYLE.zoom.focusGrowthRatio - node.x * scale;
+			const targetOffsetY = this.canvas.height / 2 - node.y * scale;
 
 			this.offsetX = startOffsetX + (targetOffsetX - startOffsetX) * eased;
 			this.offsetY = startOffsetY + (targetOffsetY - startOffsetY) * eased;

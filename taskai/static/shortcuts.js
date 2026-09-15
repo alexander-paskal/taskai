@@ -130,8 +130,14 @@ function handleEscape() {
 
 // --- registry ------------------------------------------------------------
 
-const ARROW_DIR = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
-// screen-space pan vectors, matching console.js's "pan <dir>" commands
+// rotated 90° from the semantic direction names: the DAG grows rightward
+// and spreads downward (graph.js's place()), so the physical key that feels
+// like "descend"/"ascend" is now Right/Left, and the one that steps across
+// a depth level (stacked vertically now) is Down/Up
+const ARROW_DIR = { ArrowRight: "down", ArrowLeft: "up", ArrowDown: "right", ArrowUp: "left" };
+// screen-space pan vectors, matching console.js's "pan <dir>" commands -
+// tied to the actual screen direction, not tree semantics, so unaffected
+// by the DAG's orientation
 const PAN_VEC = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [1, 0], ArrowRight: [-1, 0] };
 
 const SHORTCUTS = [
