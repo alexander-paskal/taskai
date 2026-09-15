@@ -358,7 +358,22 @@ class Controller:
 
     def remove_node_as_chain(node_identifier: int|str):
         node = Controller._resolve_item(node_identifier)
+
+        # walk back to the chain's head before splicing node out, so we
+        # know where to reattach it afterward
+        head = node
+        while head.prev_chain_id is not None:
+            head = db.get_item(head.prev_chain_id)
+
         db.remove_node_from_chain(node.id)
+
+        # pull it out of the sequence and into the head's parent's set of
+        # children - a no-op if node itself was the head (already that
+        # parent's child) or the head is itself a root (nothing to attach to)
+        if node.id != head.id and head.parent_id is not None:
+            db.update_item(node.id, parent_id=head.parent_id)
+            db.add_child_to_parent(node.id, head.parent_id)
+
         db.commit()
 
     def nuke_database():
@@ -529,7 +544,15 @@ def execute_commands(*args, **kwargs) -> int:
             case "next":
                 prev_identifier = args[1]
                 item_name = args[2]
-                Controller.next_node(item_name, prev_identifier)
+                Controller.next_node(item_name, prev_identifier, **kwargs)
+
+            case "chain":
+                prev_identifier = args[1]
+                node_identifier = args[2]
+                Controller.insert_node_as_chain(node_identifier, prev_identifier)
+
+            case "unchain":
+                Controller.remove_node_as_chain(args[1])
 
             case "examples":
                 Controller.show_examples()

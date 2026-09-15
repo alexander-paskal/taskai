@@ -198,6 +198,23 @@ class JsonDirectoryDatabase:
 
     def insert_node_into_chain(self, node_id: int, prev_id: int):
         node = self.get_item(node_id)
+
+        # already part of some chain - detach cleanly first rather than
+        # overwriting its pointers in place, which would corrupt both
+        # chains (its old neighbors would still point at it). This also
+        # clears any stale is_chain_head left over from its old position.
+        if node.prev_chain_id is not None or node.next_chain_id is not None:
+            self.remove_node_from_chain(node_id)
+            node = self.get_item(node_id)
+
+        # a chain member is tree-invisible except through its head - pop it
+        # off its current parent (if any) instead of leaving it doubly
+        # reachable, as both a tree child and a chain link
+        if node.parent_id is not None:
+            self.remove_child_from_parent(node.id, node.parent_id)
+            self.update_item(node.id, parent_id=None)
+            node = self.get_item(node_id)
+
         prev = self.get_item(prev_id)
 
         # prev already had a next -> insert and update refs

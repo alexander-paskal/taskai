@@ -863,7 +863,7 @@ progress.
       filters on `parent_id is None` only, so `task show all` lists every
       non-head chain link as a spurious top-level root. Add the same
       `prev_chain_id is None` check the browser's `Graph` already uses.
-- [ ] **`insert_node_into_chain` doesn't detach `node` from a chain it's
+- [x] **`insert_node_into_chain` doesn't detach `node` from a chain it's
       already in**, and doesn't clear a stale `is_chain_head` on it. Not
       hit today because the only caller (`next_node`) always hands it a
       freshly-created item — becomes a real risk once `task chain` (below)
@@ -872,13 +872,13 @@ progress.
 
 **New/wired CLI commands:**
 
-- [ ] `task next <prev> <name>` — already exists (create + append), keep as
+- [x] `task next <prev> <name>` — already exists (create + append), keep as
       is. Fix in passing: `execute_commands`'s `case "next":` doesn't
       forward `**kwargs` to `Controller.next_node`, so e.g. `--due_by` on
       `task next` is silently dropped — same landmine class as the old
       `task ai --context` bug (DEVLOG 8-22). Thread `**kwargs` through like
       `case "ai":` was fixed to do.
-- [ ] **`task chain <prev_id> <node_id>`** — new dispatch wiring the
+- [x] **`task chain <prev_id> <node_id>`** — new dispatch wiring the
       already-written, currently-unreachable `Controller.insert_node_as_chain`.
       Links two *existing* items. Per Alex: **do not refuse if `node`
       already has a parent — pop it off that parent (remove from
@@ -889,7 +889,7 @@ progress.
       allowed real children of its own (they render to the side; see
       DEVPLAN 1.8), only its *parent* relationship is exclusive between
       "tree child" and "chain member."
-- [ ] **`task unchain <node_id>`** — new dispatch wiring the
+- [x] **`task unchain <node_id>`** — new dispatch wiring the
       already-written, currently-unreachable `Controller.remove_node_as_chain`.
       Detaches one item from its chain without deleting it. Per Alex:
       **symmetric to `chain` above** — after splicing `node` out
