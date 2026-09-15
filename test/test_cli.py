@@ -54,6 +54,51 @@ def test_run_commands():
     finally:
         _cleanup_db()
 
+
+CHAIN_TESTING_DIR = os.path.join(CWD, "_testing_chain_dir")
+
+# smoke test for the chain command dispatch (execute_commands' case
+# statements) - the DB-layer correctness (pointer-juggling, edge cases) is
+# covered in detail by test_chains.py; this just confirms each command
+# actually reaches its Controller method and doesn't blow up end to end
+CHAIN_COMMANDS = [
+    "task create \"P\"",
+    "task add P \"H1\"",
+    "task next H1 \"A1\"",          # chain: H1 -> A1
+    "task add P \"H2\"",
+    "task chain H2 A1",             # splice A1 (already mid-chain) into a new chain after H2
+    "task show all",
+    "task unchain A1",              # A1 leaves the chain, becomes a plain child of P again
+    "task show all",
+    "task create \"ChainDeleteTest\"",
+    "task add ChainDeleteTest \"CH\"",
+    "task next CH \"CA\"",
+    "task next CA \"CB\"",
+    "task delete CH -chain",        # deletes CH/CA/CB in one shot
+    "task show all",
+]
+
+
+def test_run_chain_commands():
+
+    if os.path.exists(CHAIN_TESTING_DIR):
+        shutil.rmtree(CHAIN_TESTING_DIR)
+
+    os.makedirs(CHAIN_TESTING_DIR, exist_ok=True)
+    os.chdir(CHAIN_TESTING_DIR)
+
+    try:
+        for c in CHAIN_COMMANDS:
+            print(f"executing command '{c}'")
+            return_code = os.system(c)
+            print(f"return code: {return_code}")
+            if return_code != 0:
+                raise RuntimeError("test failed with return code {}".format(return_code))
+    finally:
+        os.chdir(CWD)
+        if os.path.exists(CHAIN_TESTING_DIR):
+            shutil.rmtree(CHAIN_TESTING_DIR)
+
 def test_args_parser():
     
     def _assert_list_equal(l1, l2):

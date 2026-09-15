@@ -239,12 +239,36 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
 
 ## Testing
 
-- [ ] **Zero test coverage for the chain feature.** The most structurally
+- [x] **Zero test coverage for the chain feature.** The most structurally
       risky thing shipping in this release (`next`/`chain`/`unchain`,
       `delete -chain`, chain-aware `clear`, the `insert_node_into_chain` /
       `remove_node_from_chain` / `delete_chain` DB methods) currently has no
       tests at all — worth prioritizing over the general suite-broadening
       below given how much subtle pointer-juggling is in that code path.
+      New [test/test_chains.py](test/test_chains.py), 12 DB-layer tests
+      covering insert (builds exactly one head; detaches a node already
+      mid-chain before re-splicing it elsewhere, verifying *both* chains
+      end up clean; pops a node off a real tree parent; inserting into the
+      middle of an existing chain), remove (middle-link relink; tail
+      shortening; head removal both standalone — the old head legitimately
+      stays put, matching what `unchain` needs — and via `delete_item`,
+      where it doesn't, which is the actual regression test for the
+      chain-head-deletion bug; the length-2-chain collapse edge case), and
+      `delete_chain`/`delete_item` interplay (full cascade + parent
+      detachment; a chain nested under a deleted parent takes its
+      real-children cascade path too; a plain mid-chain `delete` still
+      behaves like a linked-list splice). Also added a CLI-dispatch smoke
+      test to `test_cli.py` (`test_run_chain_commands`) exercising
+      `next`/`chain`/`unchain`/`delete -chain` end to end through the real
+      `execute_commands` path, matching the existing suite's
+      subprocess-based style. **Found one real bug writing these**, caught
+      by the test suite itself: my first draft of the head-removal test
+      called `remove_node_from_chain` directly and asserted the old head
+      was gone from the parent's children — wrong assertion, not a code
+      bug (that function alone never deletes anything, `delete_item` does,
+      by calling `remove_child_from_parent` *before* it) — but chasing it
+      down is exactly the kind of thing this coverage was for. All 20 tests
+      pass (7 pre-existing + 13 new).
 - [ ] Broaden the general test suite (DEVPLAN Phase 6) — currently 7 tests
       total across `test_cli.py`/`test_execution.py`/
       `test_json_dir_database.py`/`test_view.py`. Lower priority than the
