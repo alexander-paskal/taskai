@@ -81,13 +81,24 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
 
 ## New features for v1
 
-- [ ] **Configuration needs to actually reach the browser.** `STYLE` in
+- [x] **Configuration needs to actually reach the browser.** `STYLE` in
       `config.js` is hardcoded JS — the file's own header comment already
       says "this will eventually be served by a backend endpoint (e.g.
       `GET /api/style`)." This is the foundational piece the next two items
       ride on: a config surface (new `CLIConfig` keys, most likely) that
       the browser reads at load, rather than everything being a compile-time
-      JS constant.
+      JS constant. New `GET /api/style` (`browser.py`) returns the raw
+      `CLIConfig.model_dump()` unprocessed — no new endpoint needed every
+      time a renderer-relevant key gets added later, interpreting it is
+      each consumer's own job. Frontend: `canvas.js`'s new `loadConfig()`
+      fetches it into `STYLE.serverConfig` before the first tree load
+      (`loadConfig().then(loadTree)`, so config is guaranteed to be in
+      place before the first real render); `config.js` seeds
+      `STYLE.serverConfig = {}` so nothing has to null-check before that
+      resolves. Verified: `curl /api/style` against a live instance
+      returns the real `CLIConfig` JSON. No visible UI change from this
+      commit alone by design — nothing reads `serverConfig` yet, the next
+      item is the first real consumer.
 - [x] **Node render color as an item attribute.** A per-item color override
       (new `TodoItem` field, or reuse an existing free-form one) that
       `render.js`'s `drawNode` checks before falling back to the

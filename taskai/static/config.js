@@ -82,4 +82,8 @@ const STYLE = {
 		font: "16px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
 		message: "No tasks yet — press ` to open the console and create one",
 	},
+	// raw CLIConfig from GET /api/style, filled in by canvas.js's loadConfig()
+	// before the first tree load - seeded empty so any consumer can safely
+	// read from it even if that fetch hasn't resolved yet
+	serverConfig: {},
 };

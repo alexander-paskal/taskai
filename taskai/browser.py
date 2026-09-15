@@ -79,6 +79,15 @@ def get_tree():
     return _full_tree()
 
 
+@app.get("/api/style")
+def get_style():
+    """Raw CLIConfig, unprocessed - so `task config set ...` reaches the
+    browser without a new endpoint every time a new renderer-relevant key
+    gets added. Interpreting any of it is the frontend's job."""
+    db.flush()
+    return db.get_config().model_dump()
+
+
 class CommandRequest(BaseModel):
     input: str
     # raw filter args from the last `show <attr><op>value ...` the frontend

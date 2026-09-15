@@ -56,6 +56,19 @@ async function loadTree() {
 	applyTree(await res.json());
 }
 
+// raw CLIConfig from the server, stashed on STYLE so any renderer-relevant
+// key (e.g. status colors) can be added there and read here with no new
+// endpoint or fetch needed. Config.js seeds STYLE.serverConfig = {} so
+// consumers can safely read from it even before this resolves.
+async function loadConfig() {
+	try {
+		const res = await fetch("/api/style");
+		STYLE.serverConfig = await res.json();
+	} catch (err) {
+		console.error("Failed to load server config, using defaults:", err);
+	}
+}
+
 function navigate(direction) {
 	const target = navigateGraph(direction, state.selectedNode || state.graph.rootNode, state.graph);
 	if (!target) return;
@@ -143,7 +156,7 @@ canvasEl.addEventListener("wheel", (e) => {
 }, { passive: false });
 
 state.camera.resize();
-loadTree();
+loadConfig().then(loadTree);
 
 // refetch on window focus so edits made elsewhere (e.g. the CLI) while this
 // tab was in the background show up without needing a manual reload
