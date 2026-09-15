@@ -4,8 +4,10 @@ A command-line task manager with AI features.
 
 ![taskai on the command line](_static/demo.gif)
 
-<!-- demo.gif: record a short terminal session (create a tree, `task show all`,
-     complete an item, `task ai ...`) and drop it at docs/_static/demo.gif -->
+<!-- demo.gif: record a short terminal session and drop it at
+     docs/_static/demo.gif. Full shot list + exact commands in
+     docs/_static/demo-script.md (not a published page - a production note
+     for whoever records this). -->
 
 ## What you can do
 

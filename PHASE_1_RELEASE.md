@@ -221,14 +221,27 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
 
 ## Docs
 
-- [ ] Replace `docs/_static/demo.gif` placeholder with a real recording —
-      referenced from `index.md` and the README.
+- [~] Replace `docs/_static/demo.gif` placeholder with a real recording —
+      referenced from `index.md` and the README. Can't record the actual
+      gif (needs a real screen capture), but wrote the exact recording
+      script — `docs/_static/demo-script.md` (a production note, not a
+      published page; `_static/` is copied as-is, never parsed) — with the
+      precise commands to run, why each one's included, and what to skip.
+      Still needs someone to actually record it.
 - [x] Confirm the Read the Docs project slug (`conf.py`'s `html_baseurl` +
       README currently assume `taskai`). Confirmed live: fetched
       `https://taskai.readthedocs.io/` and it resolves to the real project
       (v1.9.0, right author, right content) — not a 404, not someone else's
       docs. Removed the "needs confirmation" note in `conf.py`.
-- [ ] Screenshots for browser-mode docs.
+- [~] Screenshots for browser-mode docs. Can't capture real screenshots
+      (no browser automation available here), but added the exact shot
+      list inline in `docs/browser-mode.md` as HTML comments right where
+      each image belongs (matching `index.md`'s existing placeholder
+      pattern) — what each one should show and why, not just "add a
+      screenshot here." Updated the surrounding text in passing: it didn't
+      mention chains, the new per-item `color` field, or `due_by` display
+      at all, all real gaps now that those features exist. Still needs
+      someone to actually capture and drop in the images.
 - [x] `help_menu.py`/README are current as of the chain work (Phase 8) —
       spot-check the RTD site's generated pages didn't drift now that
       `help_general` has a new "Chains:" section (`docs/commands.md`
