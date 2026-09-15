@@ -120,9 +120,13 @@ class Controller:
         return kwargs
 
     def _get_root_ids():
+        # a chain member's parent_id is always None too (only prev_chain_id
+        # links it) - exclude those here so they're reached by walking
+        # next_chain_id from their head instead of also listing as roots
         return [
             item_id for item_id in db.get_item_ids()
             if db.get_item_attr(item_id, "parent_id") is None
+            and db.get_item_attr(item_id, "prev_chain_id") is None
         ]
 
     def _debug(args, kwargs):

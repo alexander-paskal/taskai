@@ -859,7 +859,7 @@ progress.
       itself (not as a special case bolted onto one call site) — `clear`'s
       item-by-item deletion loop and a plain `task delete <head>` both need
       to go through this same path and come out correct.
-- [ ] **`_get_root_ids` (`cli.py`) doesn't exclude chain members.** It
+- [x] **`_get_root_ids` (`cli.py`) doesn't exclude chain members.** It
       filters on `parent_id is None` only, so `task show all` lists every
       non-head chain link as a spurious top-level root. Add the same
       `prev_chain_id is None` check the browser's `Graph` already uses.
