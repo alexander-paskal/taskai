@@ -27,10 +27,18 @@ staying in DEVPLAN/TRIAGE, not duplicated here.
 - [ ] **`style.css` spacing/typography consistency pass.** (DEVPLAN Phase 3)
       Never done; low effort, worth a once-over before screenshots go in
       the docs/listing.
-- [ ] **Re-check the Phase 0 fixes are still holding.** (DEVPLAN Phase 3)
+- [x] **Re-check the Phase 0 fixes are still holding.** (DEVPLAN Phase 3)
       Written when the web UI was new; now that chains + the new CLI
       surface exercise a lot more of `execute_commands`, worth a quick
-      re-pass rather than assuming.
+      re-pass rather than assuming. All 5 confirmed intact via source
+      inspection: `ai_prompt` (not the raw prompt) is what's sent to the
+      LLM; `_add_info`'s visited-set bug stays fixed; the parsed command
+      list from `task ai` is actually executed
+      (`services/ai.py`'s loop over `execute_commands`); `execute_commands`'s
+      except block has no `raise e` ahead of the friendly `throw_error`
+      path; `views.py` no longer calls the nonexistent `db.read`/`db.items`.
+      No live LLM call made (didn't want to spend API quota for this) —
+      everything else checked statically.
 - [x] **Delete should shift focus intelligently, not just to the root.**
       After deleting the selected node, restore selection to whatever was
       focused *before* it (needs at least a one-deep "previously selected"
