@@ -34,6 +34,14 @@ task due 4                          # no value clears the field
 The value is everything after the item, so multi-word text and dates like
 `task due 4 Dec 31 2026` work without quotes.
 
+`task description` takes an `-a` flag to append to the existing description
+(on a new line) instead of replacing it:
+
+```bash
+task description 4 first draft outline
+task description 4 -a also cover the hosting options
+```
+
 A few other changes have their own command too:
 
 ```bash

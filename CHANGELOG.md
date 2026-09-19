@@ -15,6 +15,8 @@ CLI expansion.
   `task description 10 ...`, `task priority`, `task color` (`task status`
   already existed). The value needn't be quoted, and leaving it off clears
   the field. `task name` is now an alias for `task rename`.
+- `task description {id|name} -a {text}` appends to the existing description
+  (on a new line) instead of replacing it
 
 ### Changed
 - `due_by` is now just `due` everywhere: `--due`, `task show 'due<...'`, the

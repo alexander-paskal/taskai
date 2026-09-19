@@ -28,6 +28,7 @@ Modifying items (an id or a name works everywhere):
 'task {field} {id|name} {value}' --> set one item field with its own command; field is one of description, due, priority, status, color
   e.g. task due 10 tomorrow / task priority 10 2 / task status 10 "in review" / task color 10 "#ff8844"
   the value needn't be quoted (task description 10 needs a rewrite); leave it off to clear the field (task due 10)
+  task description {id|name} -a {text} --> append text to the existing description, on a new line, instead of replacing it
 'task comment {id|name} {text}' --> add a comment to an item
 'task complete {id|name}' / 'task done {id|name}' --> mark an item complete; add -r (or -recursive) to also complete all its descendants
 'task undone {id|name}' --> mark an item not complete; add -r (or -recursive) to also un-complete all its descendants
@@ -96,6 +97,8 @@ Work an item and finish it:
   task status 4 "in progress"
   task due 4 tomorrow               # every item field has a command like this
   task priority 4 2
+  task description 4 first draft outline
+  task description 4 -a "also cover the hosting options"   # -a appends instead of replacing
   task comment 4 "stuck on the intro paragraph"
   task done 4                       # completes just item 4
   task done 4 -r                    # completes item 4 and everything under it

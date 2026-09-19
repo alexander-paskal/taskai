@@ -207,11 +207,22 @@ class Controller:
 
         db.commit()
 
-    def set_attribute(item_id: int|str, attr: str, value: str = ""):
+    def set_attribute(item_id: int|str, attr: str, value: str = "", append: bool = False):
         """Backs the dedicated `task <attr> {id|name} {value}` commands: set
         one item field. An empty value clears it back to the field's default
-        (no due date, priority 0, no color, ...)."""
-        if value == "":
+        (no due date, priority 0, no color, ...). With `append` (description
+        only) the value goes on a new line after the existing text instead of
+        replacing it."""
+        if append:
+            if attr != "description":
+                Controller.throw_error(f"-a only applies to description, not {attr}")
+            if value == "":
+                Controller.throw_error("nothing to append - give the text to add")
+            item = Controller._resolve_item(item_id)
+            item_id = item.id
+            if item.description.strip():
+                value = f"{item.description.rstrip()}\n{value}"
+        elif value == "":
             value = TodoItem.model_fields[attr].default
         Controller.update_item(item_id, **{attr: value})
 
@@ -609,11 +620,14 @@ def execute_commands(*args, **kwargs) -> int:
 
             # one dedicated command per item field: `task due 10 tomorrow`.
             # The value is everything after the item, so it needn't be quoted
-            # (`task description 10 needs a rewrite`); leaving it off clears it
+            # (`task description 10 needs a rewrite`); leaving it off clears
+            # it, and `description -a` appends to the existing text instead
             case "description" | "due" | "priority" | "color" | "status":
-                if len(args) < 2:
+                append = "-a" in args
+                words = [a for a in args[1:] if a != "-a"]
+                if not words:
                     Controller.throw_error(f"usage: task {args[0]} {{id|name}} {{value}}")
-                Controller.set_attribute(args[1], args[0], " ".join(args[2:]))
+                Controller.set_attribute(words[0], args[0], " ".join(words[1:]), append=append)
 
             case "pomo":
                 pomodoro_service(int(args[1]), int(args[2]))
