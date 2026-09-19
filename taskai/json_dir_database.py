@@ -23,6 +23,30 @@ def _is_chain_head(item: TodoItem) -> bool:
     return item.prev_chain_id is None and item.next_chain_id is not None
 
 
+def _migrate_legacy_keys(user_data: UserData) -> None:
+    """Backwards compatibility for data written before `due_by` became `due`.
+
+    Runs once per load, right after the file is read, so everything
+    downstream - raw-dict reads like get_item_attr included - only ever sees
+    the current names; the next commit writes them back out under the new
+    ones. A legacy `due_by` only fills in `due` when it has a value and `due`
+    doesn't, and the legacy key is dropped either way so it can't linger.
+    """
+    for item in user_data.todo_items.values():
+        if "due_by" in item:
+            legacy_due = item.pop("due_by")
+            if legacy_due and not item.get("due"):
+                item["due"] = legacy_due
+
+    # a saved DISPLAY_STRING can name the old attribute too (the default
+    # used to, and `task config set` persists every default it fills in)
+    display_string = user_data.config.get("DISPLAY_STRING")
+    if display_string:
+        user_data.config["DISPLAY_STRING"] = " ".join(
+            "due" if attr == "due_by" else attr for attr in display_string.split(" ")
+        )
+
+
 class JsonDirectoryDatabase:
     """
     All views extracted from the database are read only
@@ -59,6 +83,7 @@ class JsonDirectoryDatabase:
                     )
                 else:
                     self.user_data = UserData(**json.loads(json_bstring))
+                    _migrate_legacy_keys(self.user_data)
         else:
             raise DatabaseError("Database already connected")
 

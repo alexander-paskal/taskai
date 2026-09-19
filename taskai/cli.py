@@ -113,9 +113,9 @@ class Controller:
                         kwargs["completed"] = v
                     else:
                         kwargs["completed"] = str(v).strip().lower() in ("true", "1", "yes")
-                case "due_by":
+                case "due":
                     if isinstance(v, str):
-                        kwargs["due_by"] = parse_date_value(v)
+                        kwargs["due"] = parse_date_value(v)
                 case "depends_on":
                     # CLI-facing alias for the model's dependency_ids field;
                     # accepts a comma-separated id list ("1,2,3") or one id

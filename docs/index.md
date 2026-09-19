@@ -15,7 +15,7 @@ A command-line task manager with AI features.
   items at any depth; there's no separate notion of "lists"
 - **Attach data to each item** — description, due date, priority, status,
   completion, comments
-- **Filter** — `task show 'priority>=2' 'due_by<10-01-2026'` narrows the tree to
+- **Filter** — `task show 'priority>=2' 'due<10-01-2026'` narrows the tree to
   matching items and their parents
 - **Soft-link** an item under more than one parent without moving it
 - **Interactive mode** — run `task` with no arguments for a live view that

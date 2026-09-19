@@ -24,7 +24,7 @@ def _populate_db():
     child1 = db.create_item(name="child 1", parent_id=root1, priority=3)
     root2 = db.create_item(name="root 2", description="Describe Marcellus Wallace")
     child2 = db.create_item(name="child 2", parent_id=root2, priority=2)
-    child3 = db.create_item(name="child 3", parent_id=root2, due_by=datetime(2026,10, 1))
+    child3 = db.create_item(name="child 3", parent_id=root2, due=datetime(2026,10, 1))
     gchild1 = db.create_item(name="grandchild 1", parent_id=child3, completed=True, description="Say 'what' again.")
     db.create_comment("I dare you", item_id=gchild1)
     db.create_comment("I double dare you mothafucka, say 'what' one more goddamn time", item_id=gchild1)

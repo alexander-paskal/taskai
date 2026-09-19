@@ -68,7 +68,7 @@ Pass any of these as `--field value` to `create`, `add`, or `update`:
 | Field | Format | Example |
 |---|---|---|
 | `description` | string | `--description "needs review"` |
-| `due_by` | MM-DD-YYYY | `--due_by 08-15-2026` |
+| `due` | MM-DD-YYYY | `--due 08-15-2026` |
 | `priority` | integer | `--priority 2` |
 | `status` | string | `--status "in progress"` |
 | `completed` | bool | `--completed true` |
@@ -141,7 +141,7 @@ task create "Launch website"
 # add subtasks (by name or id)
 task add "Launch website" "Write copy"
 task add "Launch website" "Design mockups" --priority 1
-task add "Launch website" "Set up hosting" --due_by 08-15-2026
+task add "Launch website" "Set up hosting" --due 08-15-2026
 
 # check your work
 task show "Launch website"

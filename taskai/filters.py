@@ -1,7 +1,7 @@
 """
 Attribute filters for `task show`.
 
-    task show status="IN PROGRESS" priority>=2 due_by<12-31-2026
+    task show status="IN PROGRESS" priority>=2 due<12-31-2026
 
 Each argument is one filter, `attr<op>value`, with no spaces around the
 operator (a quoted value with spaces still arrives as a single token). Every
@@ -23,7 +23,7 @@ from taskai.json_dir_database import DatabaseError
 
 # attr -> how both sides of the comparison should be read
 _INT_ATTRS = {"id", "parent_id", "priority"}
-_DATE_ATTRS = {"due_by", "created_on"}
+_DATE_ATTRS = {"due", "created_on"}
 _BOOL_ATTRS = {"completed"}
 _STR_ATTRS = {"name", "description", "status"}
 

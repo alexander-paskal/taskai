@@ -15,8 +15,8 @@ Viewing:
 'task show {attr}{op}{value} ...' --> show only items matching every filter, each with its parent chain for context
   ops: = > < >= <= ; text uses = with fnmatch (name=Write*), the rest compare numbers/dates
   no spaces around the operator; quote each expression so your shell doesn't treat > < as redirects
-  e.g. task show 'status=IN PROGRESS' 'priority>=2' 'due_by<12-31-2026'
-  due_by/created_on also accept the keywords today/tomorrow, e.g. 'due_by=today', 'due_by<tomorrow'
+  e.g. task show 'status=IN PROGRESS' 'priority>=2' 'due<12-31-2026'
+  due/created_on also accept the keywords today/tomorrow, e.g. 'due=today', 'due<tomorrow'
 
 Creating:
 'task create {name} {--field value ...}' --> create a new top-level (root) item - use this when there's no existing parent to attach to
@@ -50,7 +50,7 @@ Deleting:
 
 Item fields (pass as named options, e.g. --priority 2, to create/add/update):
   description  string
-  due_by       MM-DD-YYYY, YYYY-MM-DD, MM/DD/YYYY, "Dec 31, 2026", or the keywords today/tomorrow
+  due          MM-DD-YYYY, YYYY-MM-DD, MM/DD/YYYY, "Dec 31, 2026", or the keywords today/tomorrow
   priority     integer
   status       string
   completed    true|false
@@ -84,7 +84,7 @@ help_examples = """
 Worked examples - copy/paste and adapt. Names with spaces must be quoted.
 
 Build a small project tree:
-  task create "Launch blog" --due_by 09-15-2026
+  task create "Launch blog" --due 09-15-2026
   task add "Launch blog" "Write first post" --priority 1
   task add "Launch blog" "Set up hosting"
   task add "Write first post" "Draft outline"

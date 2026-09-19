@@ -6,6 +6,17 @@ history. Versions before 1.6.6 predate this file and aren't reconstructed
 here in detail — see `DEVLOG.md` for the full engineering history back to
 the project's start.
 
+## [1.10.0] - Unreleased
+
+CLI expansion.
+
+### Changed
+- `due_by` is now just `due` everywhere: `--due`, `task show 'due<...'`, the
+  `DISPLAY_STRING` attribute, and the item JSON. Existing databases upgrade
+  themselves on load - a stored `due_by` is read in as `due` (only when `due`
+  isn't already set) and written back out under the new name, and a saved
+  `DISPLAY_STRING` that names `due_by` is rewritten too.
+
 ## [Unreleased]
 
 The v1 release polish pass — see `PHASE_1_RELEASE.md` for the full working

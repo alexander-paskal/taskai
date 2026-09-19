@@ -26,7 +26,7 @@ VALID_ATTRS = {
     "id",
     "name",
     "created_on",
-    "due_by",
+    "due",
     "priority",
     "status"
 }
@@ -132,8 +132,8 @@ def view_item(
 
     console = Console()
     console.print(f"[bold green]Name:[/bold green] {item.name}")
-    if item.due_by:
-        console.print(f"[bold green]Due By:[/bold green] {item.due_by or ""}")
+    if item.due:
+        console.print(f"[bold green]Due:[/bold green] {item.due}")
     
     if item.description:
         console.print(f"\n[bold green]Description:[/bold green]\n{item.description}")

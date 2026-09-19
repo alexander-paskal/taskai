@@ -20,13 +20,13 @@ task config pop <key>      # remove a key; it returns to its default
 
 `DISPLAY_STRING`
 : Space-separated list of item attributes shown per row by `task show`.
-  Default: `id name status due_by`.
+  Default: `id name status due`.
 
 `DISPLAY_COLORS`
 : Space-separated colors, matched position-for-position to `DISPLAY_STRING`.
   Use `_` to leave a column uncolored. Default: `_ white dark_orange _`.
 
 ```bash
-task config set DISPLAY_STRING "id name priority due_by"
+task config set DISPLAY_STRING "id name priority due"
 task config set DISPLAY_COLORS "_ white cyan _"
 ```

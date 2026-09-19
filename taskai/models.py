@@ -36,7 +36,7 @@ class TodoItem(Base):
     created_on: datetime = Field(default_factory=datetime.now)
     completed: bool = False
     description: str = ""
-    due_by: Optional[datetime] = None
+    due: Optional[datetime] = None
     comment_ids: list[int] = Field(default_factory=list)
     dependency_ids: list[int] = Field(default_factory=list)
     linked_ids: list[int] = Field(default_factory=list)
@@ -73,7 +73,7 @@ class CLIConfig(Base):
     AI_MODEL: Optional[str] = None
 
     # VIEW
-    DISPLAY_STRING: str = "id name status due_by"
+    DISPLAY_STRING: str = "id name status due"
     DISPLAY_COLORS: str = "_ white dark_orange _"
     # per-status-string color for the DAG node's status label, e.g.
     # "RUNNING=green,BLOCKED=red" - browser-only today (CLI status display

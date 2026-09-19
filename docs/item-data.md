@@ -5,14 +5,14 @@ fields. Set them as named options — `--<name> <value>` — on `task create`,
 `task add`, and `task update`:
 
 ```bash
-task create "Ship v2" --due_by 10-01-2026 --priority 2
+task create "Ship v2" --due 10-01-2026 --priority 2
 task update "Ship v2" --status "in progress" --description "cut the release branch first"
 ```
 
 | Option | Value | Meaning |
 |---|---|---|
 | `--description` | text | A longer note on the item. Quote it if it has spaces. |
-| `--due_by` | `MM-DD-YYYY` | When the item is due. |
+| `--due` | `MM-DD-YYYY` | When the item is due. |
 | `--priority` | integer | A number you choose; sort or filter by it. Default `0`. |
 | `--status` | text | A free-form state such as `blocked` or `in review`. Shown on the node in the browser view. |
 | `--completed` | `true` / `false` | Whether the item is done. |

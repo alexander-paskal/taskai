@@ -15,7 +15,7 @@ and the tree is uncluttered.
 
 ```bash
 task create "Launch blog"
-task add "Launch blog" "Write outline" --priority 1 --due_by tomorrow
+task add "Launch blog" "Write outline" --priority 1 --due tomorrow
 task next "Write outline" "Draft intro"
 task show all
 task done "Write outline"
@@ -25,7 +25,7 @@ task show all
 
 What this covers, in order:
 1. `create`/`add` — the everything-is-an-item tree, with a couple of fields
-   set (`--priority`, `--due_by tomorrow` — also shows off the relative
+   set (`--priority`, `--due tomorrow` — also shows off the relative
    date keyword)
 2. `next` — chains, the newest major feature, right after the tree basics
 3. `show all` — the Rich-rendered tree, chain included (rendered inline

@@ -25,7 +25,7 @@ function isoToDateInputValue(iso) {
 }
 
 // "YYYY-MM-DD" (native <input type="date"> value) -> "MM-DD-YYYY", matching
-// the CLI's documented --due_by format
+// the CLI's documented --due format
 function dateInputValueToCliFormat(value) {
 	const [year, month, day] = value.split("-");
 	return `${month}-${day}-${year}`;
@@ -42,7 +42,7 @@ const FIELD_DEFS = [
 	// but an empty string here correctly means "no override, use the default"
 	{ key: "color", label: "Color", type: "text" },
 	{ key: "priority", label: "Priority", type: "number" },
-	{ key: "due_by", label: "Due by", type: "date", format: isoToDateInputValue },
+	{ key: "due", label: "Due", type: "date", format: isoToDateInputValue },
 	{ key: "completed", label: "Completed", type: "checkbox" },
 	// description goes last and is flagged `grow`: it's the big free-text
 	// field, so it sits at the bottom and stretches to fill whatever panel
@@ -102,8 +102,8 @@ function handleFieldChange(item, def, value, immediate = false) {
 		return;
 	}
 
-	if (def.key === "due_by") {
-		if (!value) return; // clearing due_by isn't supported by the CLI today
+	if (def.key === "due") {
+		if (!value) return; // clearing due isn't supported by the CLI today
 		value = dateInputValueToCliFormat(value);
 	}
 

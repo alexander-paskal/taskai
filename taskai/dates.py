@@ -1,7 +1,7 @@
 """Shared due-date parsing: a couple of relative keywords plus a handful of
-common formats, tried in turn. Used by both the CLI's --due_by/create/
+common formats, tried in turn. Used by both the CLI's --due/create/
 update path (cli.py's _parse_item_kwargs) and date-attribute filter values
-(filters.py's due_by/created_on) so the two don't drift apart.
+(filters.py's due/created_on) so the two don't drift apart.
 """
 
 from datetime import datetime, timedelta

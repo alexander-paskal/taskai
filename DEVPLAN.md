@@ -19,7 +19,7 @@ generic tree node: `parent_id` + `child_ids` form the hierarchy (a root item
 has `parent_id = None`); any item can be a parent of any other item to any
 depth, and the same node type is used whether it's acting as a "list" or a
 "task." Other `TodoItem` fields: `dependency_ids` (blocks-on), `linked_ids`
-(soft link, not reparenting), `comment_ids`, `due_by`, `priority`, `status`,
+(soft link, not reparenting), `comment_ids`, `due`, `priority`, `status`,
 `completed`, `description`, and unused-so-far recurrence fields
 (`recurs_every`/`recurs_until`/`recur_keep_incomplete`). `Comment` is a
 simple `{content, item_id, created_on}`. `UserData` is the whole-DB

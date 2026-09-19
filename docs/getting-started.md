@@ -59,7 +59,7 @@ Every item is a tree node. Start with a root item, then hang children off it.
 Names with spaces must be quoted.
 
 ```bash
-task create "Launch blog" --due_by 09-15-2026
+task create "Launch blog" --due 09-15-2026
 task add "Launch blog" "Write first post" --priority 1
 task add "Launch blog" "Set up hosting"
 task add "Write first post" "Draft outline"

@@ -19,7 +19,7 @@ Double-click a card to center on it and open its edit panel.
 - **Completed** items are tinted green.
 - **`status`** text appears in the top corner of a card (or the color set by
   `STATUS_COLORS` in config, if one's configured for that status).
-- **`due_by`**, if set, appears in the bottom corner.
+- **`due`**, if set, appears in the bottom corner.
 - **Soft links** (`task link`) are drawn as a dashed copy of the linked item
   under its host, distinct from the solid parent/child connectors.
 - **Chains** (`task next`/`task chain`) render as a straight bold arrow; a
