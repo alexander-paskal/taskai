@@ -25,6 +25,8 @@ task config pop <key>      # remove a key; it returns to its default
 `DISPLAY_COLORS`
 : Space-separated colors, matched position-for-position to `DISPLAY_STRING`.
   Use `_` to leave a column uncolored. Default: `_ white dark_orange _`.
+  An item with its own [`color`](item-data.md) set is drawn entirely in that
+  color instead, whatever these say.
 
 ```bash
 task config set DISPLAY_STRING "id name priority due"

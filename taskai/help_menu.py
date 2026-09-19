@@ -57,6 +57,7 @@ Item fields (pass as named options, e.g. --priority 2, to create/add/update):
   priority     integer
   status       string
   completed    true|false
+  color        a CSS color such as #ff8844 or green - fills the item's card in the browser and colors its whole line in `task show`
 
 AI:
 'task ai {prompt}' --> feed a prompt to an LLM, which converts it into a series of the commands above and runs them

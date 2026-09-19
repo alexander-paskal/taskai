@@ -18,6 +18,9 @@ CLI expansion.
 - `task description {id|name} -a {text}` appends to the existing description
   (on a new line) instead of replacing it
 
+- `task show` draws an item in its `color` (the same per-item color the
+  browser view uses), overriding the `DISPLAY_COLORS` columns for that item
+
 ### Changed
 - The CLI shows dates as just the day, `MM/DD/YY` (due dates, `created_on`,
   comment timestamps) - the time of day is no longer displayed

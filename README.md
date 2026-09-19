@@ -73,6 +73,7 @@ Pass any of these as `--field value` to `create`, `add`, or `update`:
 | `priority` | integer | `--priority 2` |
 | `status` | string | `--status "in progress"` |
 | `completed` | bool | `--completed true` |
+| `color` | CSS color | `--color "#ff8844"` |
 
 ---
 

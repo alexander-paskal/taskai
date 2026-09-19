@@ -16,6 +16,7 @@ task update "Ship v2" --status "in progress" --description "cut the release bran
 | `--priority` | integer | A number you choose; sort or filter by it. Default `0`. |
 | `--status` | text | A free-form state such as `blocked` or `in review`. Shown on the node in the browser view. |
 | `--completed` | `true` / `false` | Whether the item is done. |
+| `--color` | a CSS color, e.g. `"#ff8844"` or `green` | Fills the item's card in the browser view, and draws its whole line in `task show` in that color (overriding the `DISPLAY_COLORS` columns). |
 
 ## Dedicated commands
 

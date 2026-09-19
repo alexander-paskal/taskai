@@ -8,6 +8,7 @@ from taskai.config import config
 
 # external
 from rich import print
+from rich.color import Color, ColorParseError
 from rich.console import Console
 
 
@@ -64,13 +65,16 @@ def view_lists(
 
     def _render_display_string(item: TodoItem):
         display_string = ""
+        item_color = _rich_color(item.color)
         for i, attr in enumerate(attrs):
             part = getattr(item, attr)
             if not part:
                 continue
             part = _format_date(part) if isinstance(part, datetime) else str(part)
-            if display_colors and colors[i] != "_":
-                part = _wrap_string(part, f"[{colors[i]}]", f"[/{colors[i]}]")  
+            # an item's own color beats the column colors: it's drawn entirely in it
+            color = item_color or (colors[i] if display_colors and colors[i] != "_" else None)
+            if color:
+                part = _wrap_string(part, f"[{color}]", f"[/{color}]")  
             display_string += f" {part}"
         display_string = _wrap_string(display_string, "[strike]", "[/strike]", condition=item.completed)
         return display_string
@@ -134,7 +138,9 @@ def view_item(
     item = db.get_item(item_id)
 
     console = Console()
-    console.print(f"[bold green]Name:[/bold green] {item.name}")
+    item_color = _rich_color(item.color)
+    name = _wrap_string(item.name, f"[{item_color}]", f"[/{item_color}]", condition=bool(item_color))
+    console.print(f"[bold green]Name:[/bold green] {name}")
     if item.due:
         console.print(f"[bold green]Due:[/bold green] {_format_date(item.due)}")
     
@@ -160,6 +166,35 @@ def view_item(
 
 
 ### Utils
+
+# CSS color names Rich has no name for (its named colors come from the 256-color
+# ANSI palette), so an item colored "orange" in the browser can still be shown
+_CSS_COLORS_MISSING_IN_RICH = {
+    "orange": "#ffa500", "pink": "#ffc0cb", "gold": "#ffd700", "teal": "#008080",
+    "brown": "#a52a2a", "indigo": "#4b0082", "violet": "#ee82ee", "crimson": "#dc143c",
+    "coral": "#ff7f50", "salmon": "#fa8072", "lime": "#00ff00", "olive": "#808000",
+    "navy": "#000080", "maroon": "#800000", "silver": "#c0c0c0", "gray": "#808080",
+    "grey": "#808080",
+}
+
+
+def _rich_color(css_color: str | None) -> str | None:
+    """An item's `color` (a CSS color string, e.g. "#ff8844" or "green") as a
+    Rich color, or None when it's unset or isn't one Rich can draw - an
+    unusable color just isn't shown rather than breaking the whole listing."""
+    if not css_color:
+        return None
+    css_color = css_color.strip().lower()
+    for candidate in (css_color, _CSS_COLORS_MISSING_IN_RICH.get(css_color)):
+        if not candidate:
+            continue
+        try:
+            Color.parse(candidate)
+        except ColorParseError:
+            continue
+        return candidate
+    return None
+
 
 def _format_date(value: datetime) -> str:
     """How every date is shown in the CLI: just the day, MM/DD/YY - the time
