@@ -32,11 +32,12 @@ function navigateGraph(direction, cur, graph) {
 	} else if (direction === "back") {
 		target = cur.chainPrev || null;
 	} else if (direction === "left" || direction === "right") {
-		// nodes sharing cur's x, sorted by y — the layout gives every node at a
-		// given depth the same x (growth maps to screen X, see graph.js's
-		// place()), so this doubles as "the whole level" with no explicit
-		// depth bookkeeping. Wraps at the ends.
-		const row = graph.nodes.filter(n => Math.abs(n.x - cur.x) < 1).sort((a, b) => a.y - b.y);
+		// nodes sharing cur's growth coordinate, sorted along spread — the
+		// layout gives every node at a given depth the same growth position
+		// (see graph.js's place()), so this doubles as "the whole level" with
+		// no explicit depth bookkeeping. Wraps at the ends.
+		const [growth, spread] = STYLE.layout.growthDown ? ["y", "x"] : ["x", "y"];
+		const row = graph.nodes.filter(n => Math.abs(n[growth] - cur[growth]) < 1).sort((a, b) => a[spread] - b[spread]);
 		const i = row.indexOf(cur);
 		if (i === -1 || row.length < 2) return null;
 		const step = direction === "right" ? 1 : -1;

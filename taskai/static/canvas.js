@@ -79,6 +79,38 @@ function navigate(direction) {
 	else state.camera.focusOnNode(target);
 }
 
+// flips which screen axis the tree grows along (see STYLE.layout.growthDown)
+// and re-lays-out the current tree in place, easing every node from its old
+// position to its new one over the same duration as the camera animations
+function toggleOrientation() {
+	const from = new Map(state.graph.nodes.map(n => [n.id, { x: n.x, y: n.y }]));
+	STYLE.layout.growthDown = !STYLE.layout.growthDown;
+	applyTree(state.graph.itemsById);
+
+	// the camera targets the final layout, so it's kicked off before the
+	// nodes are pulled back to their starting positions (focusOnNode reads
+	// x/y every frame, hence the copy)
+	const nodes = state.graph.nodes;
+	const to = nodes.map(n => ({ x: n.x, y: n.y }));
+	if (state.selectedNode === state.graph.rootNode) state.camera.fitAll(state.graph);
+	else state.camera.focusOnNode({ x: state.selectedNode.x, y: state.selectedNode.y });
+
+	const start = performance.now();
+	const step = (now) => {
+		const t = Math.min(1, (now - start) / STYLE.zoom.focusDurationMs);
+		const eased = 1 - Math.pow(1 - t, 3);
+		nodes.forEach((n, i) => {
+			const f = from.get(n.id) || to[i];
+			n.x = f.x + (to[i].x - f.x) * eased;
+			n.y = f.y + (to[i].y - f.y) * eased;
+		});
+		redraw();
+		if (t < 1) requestAnimationFrame(step);
+	};
+	step(start);
+	requestAnimationFrame(step);
+}
+
 window.addEventListener("resize", () => state.camera.resize());
 
 let isPanning = false;

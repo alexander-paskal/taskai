@@ -59,6 +59,7 @@ Press `?` for the full list in the app. The essentials:
 | arrows | move the selection through the tree |
 | `Shift`+arrows | pan the view |
 | `+` / `-` / `0` | zoom in / out / fit |
+| `t` | flip the layout between growing right and growing down |
 | `e` | toggle the edit panel |
 | `` ` `` | focus / close the console |
 | `a` | add a child of the selected card and name it |

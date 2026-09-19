@@ -130,11 +130,14 @@ function handleEscape() {
 
 // --- registry ------------------------------------------------------------
 
-// rotated 90° from the semantic direction names: the DAG grows rightward
-// and spreads downward (graph.js's place()), so the physical key that feels
-// like "descend"/"ascend" is now Right/Left, and the one that steps across
-// a depth level (stacked vertically now) is Down/Up
-const ARROW_DIR = { ArrowRight: "down", ArrowLeft: "up", ArrowDown: "right", ArrowUp: "left" };
+// the physical arrow -> structural direction mapping follows the layout's
+// orientation (STYLE.layout.growthDown). By default the DAG grows rightward
+// and spreads downward (graph.js's place()), so the key that feels like
+// "descend"/"ascend" is Right/Left, and the one that steps across a depth
+// level (stacked vertically) is Down/Up. Flipped, it's the classic mapping.
+const ARROW_DIR_GROWTH_RIGHT = { ArrowRight: "down", ArrowLeft: "up", ArrowDown: "right", ArrowUp: "left" };
+const ARROW_DIR_GROWTH_DOWN = { ArrowDown: "down", ArrowUp: "up", ArrowRight: "right", ArrowLeft: "left" };
+const arrowDir = (key) => (STYLE.layout.growthDown ? ARROW_DIR_GROWTH_DOWN : ARROW_DIR_GROWTH_RIGHT)[key];
 // screen-space pan vectors, matching console.js's "pan <dir>" commands -
 // tied to the actual screen direction, not tree semantics, so unaffected
 // by the DAG's orientation
@@ -169,7 +172,7 @@ const SHORTCUTS = [
 	{
 		combos: [{ key: "ArrowUp" }, { key: "ArrowDown" }, { key: "ArrowLeft" }, { key: "ArrowRight" }],
 		glyphs: ["↑", "↓", "←", "→"], desc: "Navigate the tree",
-		run: (e) => navigate(ARROW_DIR[e.key]),
+		run: (e) => navigate(arrowDir(e.key)),
 	},
 	{
 		combos: [{ key: "f" }, { key: "b" }], glyphs: ["f", "b"], desc: "Step forward / back in a chain",
@@ -194,6 +197,10 @@ const SHORTCUTS = [
 	{
 		combos: [{ key: "0" }], glyphs: ["0"], desc: "Fit / show all",
 		run: () => showAll(),
+	},
+	{
+		combos: [{ key: "t" }], glyphs: ["t"], desc: "Flip layout direction",
+		run: () => toggleOrientation(),
 	},
 
 	{ section: "Selected node" },

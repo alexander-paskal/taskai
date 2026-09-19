@@ -108,18 +108,24 @@ function measure(node) {
 }
 
 // top-down: places `node` at grid position (spread, growth) along the two
-// abstract layout axes — resolved to world coordinates here. Growth maps to
-// screen X and spread to screen Y (a tree grows rightward, siblings/chain
-// side-rows stack downward) — that mapping lives entirely in the two lines
-// below; every recursive call below them just passes spread/growth values
-// through unchanged, so it's the only place the DAG's orientation is
-// decided. Then places descendants per the rule measure() used. A child is
-// anchored at `spread + cursor + child.left` (not `cursor + width/2`) so
-// its bounding box's leading edge lands exactly at `cursor` regardless of
-// whether that child's own footprint is symmetric or lopsided.
+// abstract layout axes — resolved to world coordinates here. By default growth
+// maps to screen X and spread to screen Y (a tree grows rightward,
+// siblings/chain side-rows stack downward); STYLE.layout.growthDown swaps
+// them. That mapping lives entirely in the lines below; every recursive call
+// below them just passes spread/growth values through unchanged, so it's the
+// only place the DAG's orientation is decided. Then places descendants per
+// the rule measure() used. A child is anchored at `spread + cursor +
+// child.left` (not `cursor + width/2`) so its bounding box's leading edge
+// lands exactly at `cursor` regardless of whether that child's own footprint
+// is symmetric or lopsided.
 function place(node, spread, growth) {
-	node.x = STYLE.layout.marginX + growth * STYLE.layout.xSpacing;
-	node.y = STYLE.layout.marginY + spread * STYLE.layout.ySpacing;
+	if (STYLE.layout.growthDown) {
+		node.x = STYLE.layout.marginX + spread * STYLE.layout.xSpacing;
+		node.y = STYLE.layout.marginY + growth * STYLE.layout.ySpacing;
+	} else {
+		node.x = STYLE.layout.marginX + growth * STYLE.layout.xSpacing;
+		node.y = STYLE.layout.marginY + spread * STYLE.layout.ySpacing;
+	}
 
 	if (isChainMember(node)) {
 		let cursor = 1; // side row starts one column past the spine
@@ -161,8 +167,9 @@ class Graph {
 		measure(superRoot);
 
 		// treeGap is a spread-axis gap (roots spread out like any other
-		// sibling row), and spread maps to screen Y - see place()
-		const extraGapUnits = STYLE.layout.treeGap / STYLE.layout.ySpacing;
+		// sibling row), so convert it with the spread axis's spacing - see place()
+		const spreadSpacing = STYLE.layout.growthDown ? STYLE.layout.xSpacing : STYLE.layout.ySpacing;
+		const extraGapUnits = STYLE.layout.treeGap / spreadSpacing;
 		const totalWidth = superRoot._left + superRoot._right + Math.max(0, this.roots.length - 1) * extraGapUnits;
 		let cursor = -totalWidth / 2;
 		this.roots.forEach((root, i) => {
@@ -183,10 +190,17 @@ class Graph {
 		this.rootNode = { id: ROOT_NODE_ID, isRoot: true, label: "", size: 0, children: this.roots, x: 0, y: 0 };
 		this.roots.forEach(r => { r.parent = this.rootNode; });
 		if (this.roots.length) {
-			// one step back along growth (screen X) from the leftmost root,
-			// centered on spread (screen Y) across all of them
-			this.rootNode.x = Math.min(...this.roots.map(r => r.x)) - STYLE.layout.xSpacing;
-			this.rootNode.y = this.roots.reduce((sum, r) => sum + r.y, 0) / this.roots.length;
+			// one step back along growth from the first root, centered on
+			// spread across all of them
+			const meanX = this.roots.reduce((sum, r) => sum + r.x, 0) / this.roots.length;
+			const meanY = this.roots.reduce((sum, r) => sum + r.y, 0) / this.roots.length;
+			if (STYLE.layout.growthDown) {
+				this.rootNode.x = meanX;
+				this.rootNode.y = Math.min(...this.roots.map(r => r.y)) - STYLE.layout.ySpacing;
+			} else {
+				this.rootNode.x = Math.min(...this.roots.map(r => r.x)) - STYLE.layout.xSpacing;
+				this.rootNode.y = meanY;
+			}
 		}
 	}
 

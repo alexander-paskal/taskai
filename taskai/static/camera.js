@@ -102,10 +102,10 @@ class Camera {
 		this._panelAnim[side] = requestAnimationFrame(step);
 	}
 
-	// eases to `scale`, vertically centering `node` and placing it at
-	// STYLE.zoom.focusGrowthRatio across the screen along the growth axis
-	// (screen X) - not horizontally centered, so there's room to see its
-	// descendants, which render further along growth from it
+	// eases to `scale`, centering `node` along the spread axis and placing it
+	// at STYLE.zoom.focusGrowthRatio across the screen along the growth axis
+	// - not centered, so there's room to see its descendants, which render
+	// further along growth from it
 	focusOnNode(node, scale = STYLE.zoom.focusScale, duration = STYLE.zoom.focusDurationMs) {
 		const startOffsetX = this.offsetX;
 		const startOffsetY = this.offsetY;
@@ -122,8 +122,9 @@ class Camera {
 			// side panel opening in step with this animation resizes the canvas
 			// mid-flight, and a target captured once up front would leave the
 			// node off-centre by half the width change
-			const targetOffsetX = this.canvas.width * STYLE.zoom.focusGrowthRatio - node.x * scale;
-			const targetOffsetY = this.canvas.height / 2 - node.y * scale;
+			const growthDown = STYLE.layout.growthDown;
+			const targetOffsetX = this.canvas.width * (growthDown ? 0.5 : STYLE.zoom.focusGrowthRatio) - node.x * scale;
+			const targetOffsetY = this.canvas.height * (growthDown ? STYLE.zoom.focusGrowthRatio : 0.5) - node.y * scale;
 
 			this.offsetX = startOffsetX + (targetOffsetX - startOffsetX) * eased;
 			this.offsetY = startOffsetY + (targetOffsetY - startOffsetY) * eased;
@@ -192,8 +193,10 @@ class Camera {
 		const pad = 60; // screen px of breathing room around the content
 		const scale = Math.min(
 			// don't auto-zoom in past the focus threshold — a small subset
-			// shouldn't fill the screen; the user can still wheel in past this
-			STYLE.zoom.focusScale,
+			// shouldn't fill the screen; the user can still wheel in past this.
+			// Capped below focusScale so show-all always visibly zooms out
+			// from a selected node, even when the content would fit larger
+			STYLE.zoom.fitMaxScale,
 			Math.max(
 				STYLE.zoom.min,
 				Math.min(

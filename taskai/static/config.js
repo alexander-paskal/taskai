@@ -58,13 +58,18 @@ const STYLE = {
 		ySpacing: 230,
 		marginX: 120,
 		marginY: 120,
-		treeGap: 260, // extra spread-axis (screen Y) gap, on top of ySpacing, between separate root trees
+		treeGap: 260, // extra spread-axis gap, on top of the spread spacing, between separate root trees
+		// false: growth runs along screen X, spread along Y (the default);
+		// true: growth runs down screen Y, spread along X. Flipped at runtime
+		// by canvas.js's toggleOrientation() (the `t` shortcut).
+		growthDown: false,
 	},
 	zoom: {
 		min: 0.1,
 		max: 4,
 		speed: 0.001,
 		focusScale: 0.85,
+		fitMaxScale: 0.7, // show-all's zoom-in cap - deliberately farther out than focusScale
 		focusDurationMs: 250,
 		// growth-axis (screen X) position a focused node lands at, as a
 		// fraction of canvas width from the left (0 = left, 1 = right); kept
