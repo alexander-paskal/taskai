@@ -45,10 +45,16 @@ function applyTree(itemsById) {
 	// it's gone (e.g. just deleted), fall back to the previously-selected
 	// node before it, and only give up to the synthetic root if that's gone too.
 	const prevId = state.selectedNode ? state.selectedNode.id : null;
-	const resolved = (prevId && state.graph.getNode(prevId))
+	const kept = prevId && state.graph.getNode(prevId);
+	const resolved = kept
 		|| (state.previousSelectedId && state.graph.getNode(state.previousSelectedId))
 		|| state.graph.rootNode;
 	selectNode(resolved);
+
+	// the selection vanished (e.g. it was just deleted) and fell back to a
+	// real node: bring that node into view. Falling back to the synthetic
+	// root leaves the camera alone.
+	if (!kept && resolved !== state.graph.rootNode) state.camera.focusOnNode(resolved);
 }
 
 async function loadTree() {
