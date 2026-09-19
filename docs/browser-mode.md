@@ -57,6 +57,7 @@ Press `?` for the full list in the app. The essentials:
 | Key | Action |
 |---|---|
 | arrows | move the selection through the tree |
+| `Ctrl`+`↑` / `↓` | jump out of / into a chain member's subtree (`↑`/`↓` walk the chain itself) |
 | `Shift`+arrows | pan the view |
 | `+` / `-` / `0` | zoom in / out / fit |
 | `t` | flip the layout between growing down and growing right |

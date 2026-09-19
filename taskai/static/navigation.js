@@ -1,32 +1,63 @@
 // navigateGraph(direction, currentNode, graph) decides which node a
-// direction key moves to. Arrow keys are primarily tree nav — down/up are
-// children/parent, left/right step across the whole depth level (wrapping
-// at its ends) — but fall back to the chain axis (chainNext/chainPrev) when
-// the tree relationship in that direction is simply absent: a node with its
-// own real children still descends into them (down never means "skip my
-// children"), and a node with a tree parent still ascends to it, but a pure
-// chain link (no children, or - always true for a non-head member - no tree
-// parent) would otherwise be a dead end. "forward"/"back" remain the
-// explicit, always-available chain axis regardless of tree relationships.
+// direction key moves to. Every direction has exactly one meaning, with no
+// fallbacks:
+//   - a plain (non-chain) node: down/up are children/parent, as ever
+//   - a chain member: down/up are chainNext/chainPrev — the chain is the
+//     spine you walk, and its side subtrees are never entered by accident.
+//     The one exception is up from the head of a chain that sits at the top
+//     level of the forest, which goes to the synthetic root (show all)
+//   - into: chain member -> its subtree (remembered/first child), else nothing
+//   - out: jump to the nearest chain member whose subtree contains the
+//     current node (starting from the head of the node's own chain, if it's
+//     in one). A top-level chain has no such owner, so its members go to the
+//     synthetic root instead; anything else with no owner does nothing
+//   - left/right step across the whole depth level (wrapping at its ends)
+//   - forward/back: the explicit chain axis (console commands only)
 
 // parentId -> childId memory of the last child navigated to under a given
 // parent (ids, not node references, since nodes are rebuilt on every tree
-// load). Lets `down` return to where you last were; a stale id just misses
-// and falls back to the first child.
+// load). Lets `down`/`into` return to where you last were; a stale id just
+// misses and falls back to the first child.
 const lastChildByParent = {};
+
+function rememberedChild(node) {
+	if (!node.children.length) return null;
+	const remembered = lastChildByParent[node.id];
+	return node.children.find(c => c.id === remembered) || node.children[0];
+}
+
+function chainHead(node) {
+	let n = node;
+	while (n.chainPrev) n = n.chainPrev;
+	return n;
+}
+
+// the nearest chain member whose subtree contains `node`. A chain's parent is
+// its head's parent, so a chain member starts from its chain's head — never
+// resolving to one of its own chain-mates.
+function chainOwner(node) {
+	for (let n = chainHead(node).parent; n; n = n.parent) {
+		if (isChainMember(n)) return n;
+	}
+	return null;
+}
 
 function navigateGraph(direction, cur, graph) {
 	let target = null;
+	const inChain = isChainMember(cur);
 
 	if (direction === "down") {
-		if (cur.children.length) {
-			const remembered = lastChildByParent[cur.id];
-			target = cur.children.find(c => c.id === remembered) || cur.children[0];
-		} else {
-			target = cur.chainNext || null; // no real children - fall back to the chain
-		}
+		target = inChain ? cur.chainNext : rememberedChild(cur);
 	} else if (direction === "up") {
-		target = cur.parent || cur.chainPrev || null; // no tree parent - fall back to the chain
+		// only a chain's head has a parent - a top-level one is the synthetic root
+		target = inChain
+			? cur.chainPrev || (cur.parent === graph.rootNode ? graph.rootNode : null)
+			: cur.parent;
+	} else if (direction === "into") {
+		target = inChain ? rememberedChild(cur) : null;
+	} else if (direction === "out") {
+		target = chainOwner(cur)
+			|| (inChain && chainHead(cur).parent === graph.rootNode ? graph.rootNode : null);
 	} else if (direction === "forward") {
 		target = cur.chainNext || null;
 	} else if (direction === "back") {

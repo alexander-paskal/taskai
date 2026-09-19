@@ -5,9 +5,10 @@
 //   1. Shortcuts are inert while a text field is focused — the handler bails
 //      out with no preventDefault, so arrows/letters behave normally when
 //      typing. The only exceptions are marked `whileTyping`.
-//   2. Only modifier-free keys and Shift+<key> are bound. Nothing with
-//      Ctrl/Cmd/Alt or a function key, so no OS/browser shortcut is shadowed
-//      (browser zoom stays on Cmd/Ctrl +/-/0; we use bare +/-/0).
+//   2. Only modifier-free keys and Shift+<key> are bound, with one deliberate
+//      exception: Ctrl+Up/Down (into/out of a chain member's subtree). Nothing with Cmd/Alt or a
+//      function key, so no OS/browser shortcut is shadowed (browser zoom
+//      stays on Cmd/Ctrl +/-/0; we use bare +/-/0).
 //   3. A shortcut never moves focus, except the two that are supposed to:
 //      opening the terminal, and add-node (which focuses the name field).
 
@@ -181,8 +182,9 @@ const SHORTCUTS = [
 		run: (e) => navigate(arrowDir(e.key)),
 	},
 	{
-		combos: [{ key: "f" }, { key: "b" }], glyphs: ["f", "b"], desc: "Step forward / back in a chain",
-		run: (e) => navigate(e.key === "f" ? "forward" : "back"),
+		combos: [{ key: "ArrowUp", ctrl: true }, { key: "ArrowDown", ctrl: true }],
+		glyphs: ["Ctrl↑", "Ctrl↓"], desc: "Into / out of a chain member's subtree",
+		run: (e) => navigate(e.key === "ArrowDown" ? "into" : "out"),
 	},
 	{
 		combos: [
@@ -233,15 +235,17 @@ function isTypingContext() {
 }
 
 // a named key (ArrowUp, Delete, Escape) can be gated on Shift; a typed
-// character (a, +, ?, `) already carries Shift in e.key, so don't re-check it
+// character (a, +, ?, `) already carries Shift in e.key, so don't re-check it.
+// Ctrl must match exactly (a combo without `ctrl` never fires with it held);
+// Cmd/Alt never match anything
 function comboMatches(combo, e) {
-	if (e.ctrlKey || e.metaKey || e.altKey) return false;
+	if (e.metaKey || e.altKey || e.ctrlKey !== (combo.ctrl === true)) return false;
 	if (combo.key.length > 1 && (combo.shift === true) !== e.shiftKey) return false;
 	return combo.key === e.key;
 }
 
 window.addEventListener("keydown", (e) => {
-	if (e.ctrlKey || e.metaKey || e.altKey) return; // leave browser/OS combos alone
+	if (e.metaKey || e.altKey) return; // leave browser/OS combos alone (Ctrl combos are gated per-shortcut in comboMatches)
 
 	const typing = isTypingContext();
 
