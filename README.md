@@ -42,7 +42,8 @@ task link <parent> <item>         soft-link an item under a second parent
 task unlink <parent> <item>       remove a soft-link
 task reorder <id1> before|after <id2>
 
-task status <id> <text>           set a status string
+task <field> <id> <value>         set one field: description, due, priority, status, color
+                                  (leave the value off to clear it)
 task pomo <on_mins> <off_mins>    pomodoro timer
 
 task ai <prompt>                  natural language → commands

@@ -10,6 +10,12 @@ the project's start.
 
 CLI expansion.
 
+### Added
+- A dedicated command for every item field: `task due 10 tomorrow`,
+  `task description 10 ...`, `task priority`, `task color` (`task status`
+  already existed). The value needn't be quoted, and leaving it off clears
+  the field. `task name` is now an alias for `task rename`.
+
 ### Changed
 - `due_by` is now just `due` everywhere: `--due`, `task show 'due<...'`, the
   `DISPLAY_STRING` attribute, and the item JSON. Existing databases upgrade

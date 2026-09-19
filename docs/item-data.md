@@ -19,11 +19,25 @@ task update "Ship v2" --status "in progress" --description "cut the release bran
 
 ## Dedicated commands
 
-Some changes have their own command instead of an option:
+Every field above also has its own command, so you can skip `update` and the
+`--` for the common case:
+
+```bash
+task due 4 tomorrow                 # same as: task update 4 --due tomorrow
+task priority 4 2
+task status 4 "in review"
+task color 4 "#ff8844"
+task description 4 needs a rewrite  # the value needn't be quoted
+task due 4                          # no value clears the field
+```
+
+The value is everything after the item, so multi-word text and dates like
+`task due 4 Dec 31 2026` work without quotes.
+
+A few other changes have their own command too:
 
 ```bash
 task rename 4 "Ship v2.1"
-task status 4 "in review"           # same as --status, as its own verb
 task comment 4 "waiting on QA sign-off"
 task complete 4                     # mark item 4 done
 task done 4                         # alias for complete

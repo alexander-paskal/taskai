@@ -207,6 +207,14 @@ class Controller:
 
         db.commit()
 
+    def set_attribute(item_id: int|str, attr: str, value: str = ""):
+        """Backs the dedicated `task <attr> {id|name} {value}` commands: set
+        one item field. An empty value clears it back to the field's default
+        (no due date, priority 0, no color, ...)."""
+        if value == "":
+            value = TodoItem.model_fields[attr].default
+        Controller.update_item(item_id, **{attr: value})
+
     def delete_item(id_: int|str, chain: bool = False):
         item = Controller._resolve_item(id_)
 
@@ -596,8 +604,16 @@ def execute_commands(*args, **kwargs) -> int:
             case "move":
                 Controller.move_item(args[1], args[2])
 
-            case "rename":
+            case "rename" | "name":
                 Controller.update_item(args[1], name=args[2])
+
+            # one dedicated command per item field: `task due 10 tomorrow`.
+            # The value is everything after the item, so it needn't be quoted
+            # (`task description 10 needs a rewrite`); leaving it off clears it
+            case "description" | "due" | "priority" | "color" | "status":
+                if len(args) < 2:
+                    Controller.throw_error(f"usage: task {args[0]} {{id|name}} {{value}}")
+                Controller.set_attribute(args[1], args[0], " ".join(args[2:]))
 
             case "pomo":
                 pomodoro_service(int(args[1]), int(args[2]))
@@ -606,13 +622,6 @@ def execute_commands(*args, **kwargs) -> int:
             case "db":
                 import orjson as json
                 print_json(json.dumps(db.get_item(int(args[1])).model_dump()).decode())
-
-            case "status":
-                if len(args) < 3:
-                    item_id, status_val = args[1], ""
-                else:
-                    item_id, status_val = args[1:3]
-                Controller.update_item(item_id, status=status_val)
 
             case "exit" | "exit()" | "quit":
                 return 0
