@@ -82,12 +82,9 @@ function deleteSelected() {
 	runMutation(`delete ${node.id}`);
 }
 
-// add a child of the selected node (or a new root when nothing is selected),
-// then select it, open the edit panel, and put the cursor in the name field
-async function addNodeAndEdit() {
-	const parent = selectedRealNode();
-	const input = parent ? `add ${parent.id} "New task"` : `create "New task"`;
-
+// run a command that creates exactly one item, then select it, open the edit
+// panel, and put the cursor in the name field
+async function createAndEdit(input) {
 	const before = new Set(Object.keys(state.graph.itemsById));
 	const data = await runMutation(input);
 	if (!data) return;
@@ -109,6 +106,18 @@ async function addNodeAndEdit() {
 			nameInput.select();
 		}
 	});
+}
+
+// `a`: a child of the selected node (or a new root when nothing is selected)
+function addNodeAndEdit() {
+	const parent = selectedRealNode();
+	return createAndEdit(parent ? `add ${parent.id} "New task"` : `create "New task"`);
+}
+
+// `n`: the next link in the selected node's chain
+function nextNodeAndEdit() {
+	const node = selectedRealNode();
+	if (node) return createAndEdit(`next ${node.id} "New task"`);
 }
 
 function handleEscape() {
@@ -215,6 +224,14 @@ const SHORTCUTS = [
 	{
 		combos: [{ key: "a" }], glyphs: ["a"], desc: "Add a child, edit its name",
 		run: () => addNodeAndEdit(),
+	},
+	{
+		combos: [{ key: "c" }], glyphs: ["c"], desc: "Create a top-level item, edit its name",
+		run: () => createAndEdit(`create "New task"`),
+	},
+	{
+		combos: [{ key: "n" }], glyphs: ["n"], desc: "Add the next chain link, edit its name",
+		run: () => nextNodeAndEdit(),
 	},
 	{
 		combos: [{ key: "d" }], glyphs: ["d"], desc: "Toggle done",

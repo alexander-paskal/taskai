@@ -122,10 +122,10 @@ def run_command(request: CommandRequest):
     if args[0] == "show":
         return _run_show(args)
 
-    # `next` and `create` make a new item but have no id to name it by up
-    # front - diff the id set before/after so the frontend can focus what it
-    # just made, the same way `show`'s focus works
-    before_ids = set(db.get_item_ids()) if args[0] in ("next", "create") else None
+    # `next`, `create` and `add` make a new item but have no id to name it by
+    # up front - diff the id set before/after so the frontend can focus what
+    # it just made, the same way `show`'s focus works
+    before_ids = set(db.get_item_ids()) if args[0] in ("next", "create", "add") else None
 
     output = io.StringIO()
     try:

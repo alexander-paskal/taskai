@@ -64,6 +64,8 @@ Press `?` for the full list in the app. The essentials:
 | `e` | toggle the edit panel |
 | `` ` `` | focus / close the console |
 | `a` | add a child of the selected card and name it |
+| `c` | create a new top-level card and name it |
+| `n` | add the next card in the selected card's chain and name it |
 | `d` | toggle done on the selected card |
 | `Delete` | delete the selected card |
 | `Esc` | leave a field, then close the panel, then (with every panel closed) show the whole tree |
