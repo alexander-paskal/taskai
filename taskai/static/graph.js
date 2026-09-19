@@ -109,9 +109,9 @@ function measure(node) {
 
 // top-down: places `node` at grid position (spread, growth) along the two
 // abstract layout axes — resolved to world coordinates here. By default growth
-// maps to screen X and spread to screen Y (a tree grows rightward,
-// siblings/chain side-rows stack downward); STYLE.layout.growthDown swaps
-// them. That mapping lives entirely in the lines below; every recursive call
+// maps to screen Y and spread to screen X (a tree grows downward,
+// siblings/chain side-rows fan out sideways); STYLE.layout.growthDown = false
+// swaps them. That mapping lives entirely in the lines below; every recursive call
 // below them just passes spread/growth values through unchanged, so it's the
 // only place the DAG's orientation is decided. Then places descendants per
 // the rule measure() used. A child is anchored at `spread + cursor +

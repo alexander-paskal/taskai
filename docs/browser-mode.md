@@ -59,10 +59,10 @@ Press `?` for the full list in the app. The essentials:
 | arrows | move the selection through the tree |
 | `Shift`+arrows | pan the view |
 | `+` / `-` / `0` | zoom in / out / fit |
-| `t` | flip the layout between growing right and growing down |
+| `t` | flip the layout between growing down and growing right |
 | `e` | toggle the edit panel |
 | `` ` `` | focus / close the console |
 | `a` | add a child of the selected card and name it |
 | `d` | toggle done on the selected card |
 | `Delete` | delete the selected card |
-| `Esc` | leave a field, then close the panel, then clear the selection |
+| `Esc` | leave a field, then close the panel, then (with every panel closed) show the whole tree |

@@ -189,7 +189,9 @@ canvasEl.addEventListener("wheel", (e) => {
 }, { passive: false });
 
 state.camera.resize();
-loadConfig().then(loadTree);
+// fit once on the first load only - the focus refetch below reuses loadTree
+// and shouldn't move the camera
+loadConfig().then(loadTree).then(() => state.camera.fitAll(state.graph));
 
 // refetch on window focus so edits made elsewhere (e.g. the CLI) while this
 // tab was in the background show up without needing a manual reload

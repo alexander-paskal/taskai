@@ -124,17 +124,23 @@ function handleEscape() {
 		closeEditPanelAndRefocus();
 		return;
 	}
-	// deselect, but leave the camera where it is — Esc shouldn't move/zoom
+	// nothing left to back out of (every panel collapsed): rehome the view
+	if (![editPanel, consolePanel, shortcutPanel].some(p => p.classList.contains("expanded"))) {
+		showAll();
+		return;
+	}
+	// a panel is still open: just deselect, leaving the camera where it is
 	selectNode(state.graph.rootNode);
 }
 
 // --- registry ------------------------------------------------------------
 
 // the physical arrow -> structural direction mapping follows the layout's
-// orientation (STYLE.layout.growthDown). By default the DAG grows rightward
-// and spreads downward (graph.js's place()), so the key that feels like
-// "descend"/"ascend" is Right/Left, and the one that steps across a depth
-// level (stacked vertically) is Down/Up. Flipped, it's the classic mapping.
+// orientation (STYLE.layout.growthDown). By default the DAG grows downward
+// and spreads sideways (graph.js's place()), so the key that feels like
+// "descend"/"ascend" is Down/Up, and the one that steps across a depth
+// level is Right/Left. Flipped (growing rightward), Right/Left descend/ascend
+// and Down/Up step across a level.
 const ARROW_DIR_GROWTH_RIGHT = { ArrowRight: "down", ArrowLeft: "up", ArrowDown: "right", ArrowUp: "left" };
 const ARROW_DIR_GROWTH_DOWN = { ArrowDown: "down", ArrowUp: "up", ArrowRight: "right", ArrowLeft: "left" };
 const arrowDir = (key) => (STYLE.layout.growthDown ? ARROW_DIR_GROWTH_DOWN : ARROW_DIR_GROWTH_RIGHT)[key];
@@ -163,7 +169,7 @@ const SHORTCUTS = [
 		run: () => toggleEditPanel(),
 	},
 	{
-		combos: [{ key: "Escape" }], glyphs: ["Esc"], desc: "Leave field · deselect",
+		combos: [{ key: "Escape" }], glyphs: ["Esc"], desc: "Leave field · close · show all",
 		whileTyping: true, keepDefault: true,
 		run: handleEscape,
 	},

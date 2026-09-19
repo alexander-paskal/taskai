@@ -59,10 +59,10 @@ const STYLE = {
 		marginX: 120,
 		marginY: 120,
 		treeGap: 260, // extra spread-axis gap, on top of the spread spacing, between separate root trees
-		// false: growth runs along screen X, spread along Y (the default);
-		// true: growth runs down screen Y, spread along X. Flipped at runtime
+		// true: growth runs down screen Y, spread along X (the default);
+		// false: growth runs along screen X, spread along Y. Flipped at runtime
 		// by canvas.js's toggleOrientation() (the `t` shortcut).
-		growthDown: false,
+		growthDown: true,
 	},
 	zoom: {
 		min: 0.1,
