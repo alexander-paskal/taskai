@@ -1,3 +1,6 @@
+# standard lib
+from datetime import datetime
+
 # local
 from taskai.json_dir_database import JsonDirectoryDatabase, DatabaseError
 from taskai.models import TodoItem, Comment
@@ -65,7 +68,7 @@ def view_lists(
             part = getattr(item, attr)
             if not part:
                 continue
-            part = str(part)
+            part = _format_date(part) if isinstance(part, datetime) else str(part)
             if display_colors and colors[i] != "_":
                 part = _wrap_string(part, f"[{colors[i]}]", f"[/{colors[i]}]")  
             display_string += f" {part}"
@@ -133,7 +136,7 @@ def view_item(
     console = Console()
     console.print(f"[bold green]Name:[/bold green] {item.name}")
     if item.due:
-        console.print(f"[bold green]Due:[/bold green] {item.due}")
+        console.print(f"[bold green]Due:[/bold green] {_format_date(item.due)}")
     
     if item.description:
         console.print(f"\n[bold green]Description:[/bold green]\n{item.description}")
@@ -142,7 +145,7 @@ def view_item(
         console.print("\n[bold green]\nComments:[/bold green]")
         for comment_id in item.comment_ids:
             comment: Comment = db.get_comment(comment_id)
-            console.print(f"{comment.created_on.strftime("%Y-%m-%d %H:%M:%S")} - {comment.content}")
+            console.print(f"{_format_date(comment.created_on)} - {comment.content}")
     
     if item.child_ids:
         console.print("\n[bold green]\nSubtasks:[/bold green]")
@@ -157,6 +160,11 @@ def view_item(
 
 
 ### Utils
+
+def _format_date(value: datetime) -> str:
+    """How every date is shown in the CLI: just the day, MM/DD/YY - the time
+    of day is never displayed."""
+    return value.strftime("%m/%d/%y")
 
 
 def _wrap_string(string_, before, after=None, condition=True):

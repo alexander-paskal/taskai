@@ -19,6 +19,8 @@ CLI expansion.
   (on a new line) instead of replacing it
 
 ### Changed
+- The CLI shows dates as just the day, `MM/DD/YY` (due dates, `created_on`,
+  comment timestamps) - the time of day is no longer displayed
 - `due_by` is now just `due` everywhere: `--due`, `task show 'due<...'`, the
   `DISPLAY_STRING` attribute, and the item JSON. Existing databases upgrade
   themselves on load - a stored `due_by` is read in as `due` (only when `due`
