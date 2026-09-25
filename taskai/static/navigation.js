@@ -2,10 +2,11 @@
 // direction key moves to. Every direction has exactly one meaning, with no
 // fallbacks:
 //   - a plain (non-chain) node: down/up are children/parent, as ever
-//   - a chain member: down/up are chainNext/chainPrev — the chain is the
+//   - a chain member: down is chainNext, up is chainPrev — the chain is the
 //     spine you walk, and its side subtrees are never entered by accident.
-//     The one exception is up from the head of a chain that sits at the top
-//     level of the forest, which goes to the synthetic root (show all)
+//     A chain's head has no chainPrev, so up from it leaves the chain for the
+//     head's tree parent (the synthetic root, i.e. show all, for a top-level
+//     chain)
 //   - into: chain member -> its subtree (remembered/first child), else nothing
 //   - out: jump to the nearest chain member whose subtree contains the
 //     current node (starting from the head of the node's own chain, if it's
@@ -49,10 +50,11 @@ function navigateGraph(direction, cur, graph) {
 	if (direction === "down") {
 		target = inChain ? cur.chainNext : rememberedChild(cur);
 	} else if (direction === "up") {
-		// only a chain's head has a parent - a top-level one is the synthetic root
-		target = inChain
-			? cur.chainPrev || (cur.parent === graph.rootNode ? graph.rootNode : null)
-			: cur.parent;
+		// a node has either a chainPrev (a non-head chain member) or a tree
+		// parent (a chain's head, or any plain node), never both, so this never
+		// has to choose: walk back along the chain, and from its head leave it
+		// for the tree parent (the synthetic root for a top-level chain)
+		target = cur.chainPrev || cur.parent;
 	} else if (direction === "into") {
 		target = inChain ? rememberedChild(cur) : null;
 	} else if (direction === "out") {
