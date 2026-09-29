@@ -576,7 +576,7 @@ def execute_commands(*args, **kwargs) -> int:
 
             case "complete" | "done":
                 recursive = "-r" in args or "-recursive" in args
-                Controller.update_item(args[1], completed=True, recursive=recursive)
+                Controller.update_item(args[1], completed=True, recursive=recursive, status="")
 
             case "undone":
                 recursive = "-r" in args or "-recursive" in args
