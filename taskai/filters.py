@@ -19,7 +19,7 @@ import re
 from dataclasses import dataclass
 
 from taskai.dates import parse_date_value
-from taskai.json_dir_database import DatabaseError
+from taskai.json_dir_database import DatabaseError, JsonDirectoryDatabase
 
 # attr -> how both sides of the comparison should be read
 _INT_ATTRS = {"id", "parent_id", "priority"}
@@ -133,7 +133,7 @@ def match_items(db, exprs) -> set:
     return matched
 
 
-def with_ancestors(db, ids) -> set:
+def with_ancestors(db: JsonDirectoryDatabase, ids) -> set:
     """`ids` plus every ancestor of every id, so the selection is a set of
     complete root-to-node paths."""
     keep = set()
@@ -141,8 +141,17 @@ def with_ancestors(db, ids) -> set:
         cursor = id_
         while cursor is not None and cursor not in keep:
             keep.add(cursor)
-            try:
-                cursor = db.get_item_attr(cursor, "parent_id")
-            except DatabaseError:
-                break
+ 
+            parent_id = db.get_item_attr(cursor, "parent_id")
+
+            # breakpoint()
+            if parent_id is not None:
+                cursor = parent_id
+                continue
+            
+            cursor = db.get_item_attr(cursor, "prev_chain_id")
+                
+
+
+    # breakpoint()
     return keep
